@@ -14,6 +14,9 @@ const blog = defineCollection({
     pubDate: z.string(),
     content: z.string(),
     heroImage: z.string().optional(),
+    author: z.string().optional(),
+    tags: z.string().optional(),
+    display: z.boolean().optional().default(true),
   }),
   transform: async (document, context) => {
     const isMdx = document._meta.filePath.endsWith('.mdx')
