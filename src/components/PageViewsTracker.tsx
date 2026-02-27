@@ -29,11 +29,9 @@ export default function PageViewsTracker() {
       })
   }, [pathname])
 
-  if (count === null) return null
-
   return (
     <span className="text-xs text-[var(--sea-ink-soft)] opacity-60">
-      {count.toLocaleString()} {count === 1 ? 'view' : 'views'}
+      {count === null ? '\u00A0' : `${count.toLocaleString()} ${count === 1 ? 'view' : 'views'}`}
     </span>
   )
 }
