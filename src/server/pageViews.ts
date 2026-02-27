@@ -3,12 +3,14 @@ import { getRequestIP } from '@tanstack/react-start/server'
 import { getSupabaseClient } from '#/lib/supabase'
 import { z } from 'zod'
 
-const isDev = () => process.env.NODE_ENV === 'development'
+const shouldSkip = () =>
+  process.env.NODE_ENV === 'development' &&
+  process.env.DEBUG_PAGE_VIEWS !== 'true'
 
 export const logPageView = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ url: z.string() }))
   .handler(async ({ data }) => {
-    if (isDev()) return { ok: true, dev: true }
+    if (shouldSkip()) return { ok: true, dev: true }
 
     const userIp = getRequestIP({ xForwardedFor: true }) ?? 'unknown'
 
