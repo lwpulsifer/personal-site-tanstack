@@ -1,13 +1,11 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
-import { SITE_TITLE } from '#/lib/site'
 
-export const Route = createFileRoute('/about')({
-  head: () => ({
-    meta: [{ title: `About | ${SITE_TITLE}` }],
-  }),
-  component: About,
-})
+// export const Route = createFileRoute('/about')({
+//   head: () => ({
+//     meta: [{ title: `About | ${SITE_TITLE}` }],
+//   }),
+//   component: About,
+// })
 
 type TimelineEvent = {
   beginning: Date

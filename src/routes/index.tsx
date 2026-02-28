@@ -42,14 +42,14 @@ function Home() {
                 to="/blog"
                 className="rounded-full border border-[rgba(37,99,235,0.3)] bg-[rgba(59,130,246,0.1)] px-5 py-2.5 text-sm font-semibold text-[var(--blue-deep)] no-underline transition hover:-translate-y-0.5 hover:bg-[rgba(59,130,246,0.18)]"
               >
-                Read the Blog
+                Check out my Blog
               </Link>
-              <Link
+              {/* <Link
                 to="/about"
                 className="rounded-full border border-[rgba(17,24,39,0.2)] bg-white/50 px-5 py-2.5 text-sm font-semibold text-[var(--text)] no-underline transition hover:-translate-y-0.5 hover:border-[rgba(17,24,39,0.35)]"
               >
                 About Me
-              </Link>
+              </Link> */}
             </div>
           </div>
 
