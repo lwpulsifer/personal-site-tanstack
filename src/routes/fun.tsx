@@ -33,12 +33,12 @@ function Fun() {
     <main className="page-wrap px-4 pb-12 pt-14">
       <section className="island-shell rounded-2xl p-6 sm:p-8">
         <p className="island-kicker mb-2">Spotify</p>
-        <h1 className="display-title mb-6 text-4xl font-bold text-[var(--sea-ink)] sm:text-5xl">
+        <h1 className="display-title mb-6 text-4xl font-bold text-[var(--text)] sm:text-5xl">
           My Top Tracks
         </h1>
 
         {tracks.length === 0 ? (
-          <p className="text-[var(--sea-ink-soft)]">
+          <p className="text-[var(--text-muted)]">
             Couldn't load tracks right now — Spotify credentials may not be
             configured.
           </p>
@@ -48,9 +48,9 @@ function Fun() {
               {tracks.map((track, i) => (
                 <li
                   key={track.id}
-                  className="flex items-center gap-4 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3 transition hover:border-[var(--lagoon)] hover:shadow-sm"
+                  className="flex items-center gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 transition hover:border-[var(--blue)] hover:shadow-sm"
                 >
-                  <span className="w-6 shrink-0 text-right text-sm font-semibold text-[var(--sea-ink-soft)]">
+                  <span className="w-6 shrink-0 text-right text-sm font-semibold text-[var(--text-muted)]">
                     {i + 1}
                   </span>
                   {track.albumImageUrl && (
@@ -65,15 +65,15 @@ function Fun() {
                       href={track.songUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="block truncate font-semibold text-[var(--sea-ink)] no-underline hover:text-[var(--lagoon-deep)]"
+                      className="block truncate font-semibold text-[var(--text)] no-underline hover:text-[var(--blue-deep)]"
                     >
                       {track.title}
                     </a>
-                    <p className="m-0 truncate text-sm italic text-[var(--sea-ink-soft)]">
+                    <p className="m-0 truncate text-sm italic text-[var(--text-muted)]">
                       {track.artist}
                     </p>
                   </div>
-                  <span className="hidden shrink-0 text-right text-sm text-[var(--sea-ink-soft)] sm:block">
+                  <span className="hidden shrink-0 text-right text-sm text-[var(--text-muted)] sm:block">
                     {track.album}
                   </span>
                 </li>
@@ -81,7 +81,7 @@ function Fun() {
             </ol>
 
             {dominantArtist && (
-              <p className="mt-6 text-center text-sm text-[var(--sea-ink-soft)]">
+              <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
                 Yeah, I know it's a little embarrassing to have more than half
                 my top ten be{' '}
                 <span className="italic">{dominantArtist}</span> 🙃

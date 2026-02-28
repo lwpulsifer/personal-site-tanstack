@@ -11,7 +11,7 @@ export default function Footer() {
   const year = new Date().getFullYear()
 
   return (
-    <footer className="site-footer mt-20 px-4 pb-14 pt-10 text-[var(--sea-ink-soft)]">
+    <footer className="site-footer px-4 pb-14 pt-10 text-(--sea-ink-soft)">
       <div className="page-wrap flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
         <div className="flex flex-col items-center gap-1 sm:items-start">
           <p className="m-0 text-sm">&copy; {year} Liam Pulsifer. All rights reserved.</p>
@@ -24,7 +24,7 @@ export default function Footer() {
               href={href}
               target="_blank"
               rel="noreferrer"
-              className="text-[var(--sea-ink-soft)] no-underline transition hover:text-[var(--sea-ink)]"
+              className="text-[var(--text-muted)] no-underline transition hover:text-[var(--text)]"
             >
               {label}
             </a>

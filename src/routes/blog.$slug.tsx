@@ -70,11 +70,11 @@ function BlogPost() {
           <p className="island-kicker mb-2">{tags[0]}</p>
         )}
 
-        <h1 className="display-title mb-3 text-4xl font-bold text-[var(--sea-ink)] sm:text-5xl">
+        <h1 className="display-title mb-3 text-4xl font-bold text-[var(--text)] sm:text-5xl">
           {post.title}
         </h1>
 
-        <div className="mb-6 flex flex-wrap items-center gap-3 text-sm text-[var(--sea-ink-soft)]">
+        <div className="mb-6 flex flex-wrap items-center gap-3 text-sm text-[var(--text-muted)]">
           {post.author && <span>{post.author}</span>}
           {post.author && <span aria-hidden>·</span>}
           <time dateTime={post.pubDate}>{formattedDate}</time>
@@ -86,7 +86,7 @@ function BlogPost() {
           )}
         </div>
 
-        <div className="prose prose-slate prose-headings:text-[var(--sea-ink)] prose-p:text-[var(--sea-ink-soft)] prose-li:text-[var(--sea-ink-soft)] prose-ul:text-[var(--sea-ink-soft)] prose-ol:text-[var(--sea-ink-soft)] prose-strong:text-[var(--sea-ink)] prose-a:text-[var(--lagoon-deep)] max-w-none">
+        <div className="prose prose-slate prose-headings:text-[var(--text)] prose-p:text-[var(--text-muted)] prose-li:text-[var(--text-muted)] prose-ul:text-[var(--text-muted)] prose-ol:text-[var(--text-muted)] prose-strong:text-[var(--text)] prose-a:text-[var(--blue-deep)] max-w-none">
           {post.mdx ? (
             <MDXContent
               code={post.mdx}
@@ -97,10 +97,10 @@ function BlogPost() {
           )}
         </div>
 
-        <div className="mt-8 border-t border-[var(--line)] pt-6">
+        <div className="mt-8 border-t border-[var(--border)] pt-6">
           <Link
             to="/blog"
-            className="text-sm font-semibold text-[var(--lagoon-deep)] no-underline hover:underline"
+            className="text-sm font-semibold text-[var(--blue-deep)] no-underline hover:underline"
           >
             ← Back to all posts
           </Link>

@@ -112,7 +112,7 @@ function About() {
     <main className="page-wrap px-4 pb-12 pt-14">
       <section className="island-shell rounded-2xl p-6 sm:p-8">
         <p className="island-kicker mb-2">About Me</p>
-        <h1 className="display-title mb-6 text-4xl font-bold text-[var(--sea-ink)] sm:text-5xl">
+        <h1 className="display-title mb-6 text-4xl font-bold text-[var(--text)] sm:text-5xl">
           Personal Timeline
         </h1>
 
@@ -121,30 +121,30 @@ function About() {
             <li key={event.title} className="flex gap-5">
               {/* Left column: timeline line + dot */}
               <div className="flex flex-col items-center">
-                <div className="mt-1 h-3 w-3 shrink-0 rounded-full bg-[var(--lagoon)] ring-2 ring-[var(--bg-base)]" />
+                <div className="mt-1 h-3 w-3 shrink-0 rounded-full bg-[var(--blue)] ring-2 ring-[var(--bg)]" />
                 {i < shown.length - 1 && (
-                  <div className="mt-1 w-px flex-1 bg-[var(--line)]" />
+                  <div className="mt-1 w-px flex-1 bg-[var(--border)]" />
                 )}
               </div>
 
               {/* Right column: content */}
               <div className="min-w-0 flex-1 pb-8">
                 <div className="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                  <span className="text-xs font-semibold text-[var(--kicker)]">
+                  <span className="text-xs font-semibold text-[var(--accent)]">
                     {formatDate(event.beginning)}
                     {event.end ? ` → ${formatDate(event.end)}` : ''}
                   </span>
                   {event.location && (
-                    <span className="text-xs text-[var(--sea-ink-soft)]">
+                    <span className="text-xs text-[var(--text-muted)]">
                       {event.location}
                     </span>
                   )}
                 </div>
-                <h3 className="m-0 text-base font-semibold text-[var(--sea-ink)]">
+                <h3 className="m-0 text-base font-semibold text-[var(--text)]">
                   {event.title}
                 </h3>
                 {event.description && (
-                  <p className="mt-1.5 text-sm leading-relaxed text-[var(--sea-ink-soft)]">
+                  <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-muted)]">
                     {event.description}
                   </p>
                 )}
@@ -158,7 +158,7 @@ function About() {
             {hasMore && (
               <button
                 onClick={() => setVisible((v) => v + INCREMENT)}
-                className="rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] px-4 py-1.5 text-sm font-semibold text-[var(--lagoon-deep)] transition hover:-translate-y-0.5"
+                className="rounded-full border border-[var(--chip-border)] bg-[var(--chip-bg)] px-4 py-1.5 text-sm font-semibold text-[var(--blue-deep)] transition hover:-translate-y-0.5"
               >
                 Show more
               </button>
@@ -169,7 +169,7 @@ function About() {
                   setVisible(INITIAL_COUNT)
                   window.scrollTo({ top: 0, behavior: 'smooth' })
                 }}
-                className="text-sm text-[var(--sea-ink-soft)] underline"
+                className="text-sm text-[var(--text-muted)] underline"
               >
                 Collapse
               </button>

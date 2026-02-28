@@ -56,7 +56,7 @@ function BlogIndex() {
       <section className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="island-kicker mb-2">Latest Dispatches</p>
-          <h1 className="display-title m-0 text-4xl font-bold tracking-tight text-[var(--sea-ink)] sm:text-5xl">
+          <h1 className="display-title m-0 text-4xl font-bold tracking-tight text-[var(--text)] sm:text-5xl">
             Blog
           </h1>
         </div>
@@ -68,7 +68,7 @@ function BlogIndex() {
               value={tagFilter}
               onChange={(e) => setTagFilter(e.target.value)}
               placeholder="Filter by tag"
-              className="rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] px-4 py-1.5 text-sm text-[var(--sea-ink)] placeholder-[var(--sea-ink-soft)] outline-none focus:border-[var(--lagoon)]"
+              className="rounded-full border border-[var(--chip-border)] bg-[var(--chip-bg)] px-4 py-1.5 text-sm text-[var(--text)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--blue)]"
             />
             <datalist id="tag-options">
               {allTags.map((tag) => (
@@ -78,7 +78,7 @@ function BlogIndex() {
             {tagFilter && (
               <button
                 onClick={() => setTagFilter('')}
-                className="text-sm text-[var(--sea-ink-soft)] underline"
+                className="text-sm text-[var(--text-muted)] underline"
               >
                 Clear
               </button>
@@ -88,7 +88,7 @@ function BlogIndex() {
       </section>
 
       {posts.length === 0 ? (
-        <p className="text-[var(--sea-ink-soft)]">No posts found.</p>
+        <p className="text-[var(--text-muted)]">No posts found.</p>
       ) : (
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {featured && (
@@ -105,7 +105,7 @@ function BlogIndex() {
                   {featured.tags.split(',')[0]?.trim()}
                 </p>
               )}
-              <h2 className="m-0 text-2xl font-semibold text-[var(--sea-ink)]">
+              <h2 className="m-0 text-2xl font-semibold text-[var(--text)]">
                 <Link
                   to="/blog/$slug"
                   params={{ slug: featured.slug }}
@@ -114,10 +114,10 @@ function BlogIndex() {
                   {featured.title}
                 </Link>
               </h2>
-              <p className="mb-2 mt-3 text-base text-[var(--sea-ink-soft)]">
+              <p className="mb-2 mt-3 text-base text-[var(--text-muted)]">
                 {featured.description}
               </p>
-              <p className="m-0 text-xs text-[var(--sea-ink-soft)]">
+              <p className="m-0 text-xs text-[var(--text-muted)]">
                 {new Date(featured.pubDate).toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'short',
@@ -145,7 +145,7 @@ function BlogIndex() {
                   {post.tags.split(',')[0]?.trim()}
                 </p>
               )}
-              <h2 className="m-0 text-2xl font-semibold text-[var(--sea-ink)]">
+              <h2 className="m-0 text-2xl font-semibold text-[var(--text)]">
                 <Link
                   to="/blog/$slug"
                   params={{ slug: post.slug }}
@@ -154,10 +154,10 @@ function BlogIndex() {
                   {post.title}
                 </Link>
               </h2>
-              <p className="mb-2 mt-2 text-sm text-[var(--sea-ink-soft)]">
+              <p className="mb-2 mt-2 text-sm text-[var(--text-muted)]">
                 {post.description}
               </p>
-              <p className="m-0 text-xs text-[var(--sea-ink-soft)]">
+              <p className="m-0 text-xs text-[var(--text-muted)]">
                 {new Date(post.pubDate).toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'short',
