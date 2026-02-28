@@ -1,5 +1,4 @@
 import { Link } from '@tanstack/react-router'
-import ThemeToggle from './ThemeToggle'
 import NowPlaying from './NowPlaying'
 
 export default function Header() {
@@ -17,10 +16,6 @@ export default function Header() {
 
         <div className="ml-auto hidden sm:flex sm:items-center">
           <NowPlaying />
-        </div>
-
-        <div className="flex items-center gap-1.5 sm:ml-2 sm:gap-2">
-          <ThemeToggle />
         </div>
 
         <div className="order-3 flex w-full flex-wrap items-center gap-x-4 gap-y-1 pb-1 text-sm font-semibold sm:order-2 sm:w-auto sm:flex-nowrap sm:pb-0">
