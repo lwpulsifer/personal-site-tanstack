@@ -1,5 +1,8 @@
 import { useState } from 'react'
 
+// IN PROGRESS
+// Will be added back to the site once I find time to write some more of my timeline.
+
 // export const Route = createFileRoute('/about')({
 //   head: () => ({
 //     meta: [{ title: `About | ${SITE_TITLE}` }],

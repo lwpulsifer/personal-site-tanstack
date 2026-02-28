@@ -3,6 +3,7 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
+import { AuthProvider } from '../lib/auth'
 import { SITE_DESCRIPTION, SITE_TITLE } from '../lib/site'
 
 import appCss from '../styles.css?url'
@@ -50,9 +51,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(59,130,246,0.24)]">
-        <Header />
-        <div className="flex-1">{children}</div>
-        <Footer />
+        <AuthProvider>
+          <Header />
+          <div className="flex-1">{children}</div>
+          <Footer />
+        </AuthProvider>
         <TanStackDevtools
           config={{
             position: 'bottom-right',
