@@ -1,30 +1,9 @@
-import { useEffect, useState } from 'react'
-import { getNowPlaying } from '#/server/spotify'
-import type { NowPlayingData } from '#/lib/spotify'
+import { useQuery } from '@tanstack/react-query'
+import { nowPlayingQueryOptions } from '#/lib/queries'
 import Marquee from './Marquee'
 
 export default function NowPlaying() {
-  const [data, setData] = useState<NowPlayingData | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function poll() {
-      try {
-        const result = await getNowPlaying()
-        if (!cancelled) setData(result)
-      } catch {
-        // Spotify creds may not be set in dev — fail silently
-      }
-    }
-
-    poll()
-    const id = setInterval(poll, 30_000)
-    return () => {
-      cancelled = true
-      clearInterval(id)
-    }
-  }, [])
+  const { data } = useQuery(nowPlayingQueryOptions)
 
   if (!data) return null
 
