@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 
 export type SiteView = {
   id: number
@@ -17,7 +18,7 @@ export function getSupabaseClient() {
   return createClient(url, key)
 }
 
-// Browser-side client (anon key — safe to expose, respects RLS).
+// Browser-side client — stores session in cookies for SSR compatibility.
 // Requires VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.
 export function getSupabaseBrowserClient() {
   const url = import.meta.env.VITE_SUPABASE_URL as string
@@ -25,5 +26,7 @@ export function getSupabaseBrowserClient() {
   if (!url || !key) {
     throw new Error('VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set')
   }
-  return createClient(url, key)
+  return createBrowserClient(url, key)
 }
+
+

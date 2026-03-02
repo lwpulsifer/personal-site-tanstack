@@ -28,8 +28,8 @@ function Home() {
                 athlete
               </a>
               . When I'm not working at my day job at{' '}
-              <a href="https://www.ixl.com/" target="_blank" rel="noreferrer">
-                IXL Learning
+              <a href="https://www.outschool.com/" target="_blank" rel="noreferrer">
+                Outschool
               </a>
               , you can often find me reading, playing tennis, or riding my bike
               around the San Francisco Bay Area. I'm always looking for new

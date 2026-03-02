@@ -12,10 +12,16 @@ const AuthContext = createContext<AuthState>({
   isAuthenticated: false,
 })
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({
+  initialUser = null,
+  children,
+}: {
+  initialUser?: User | null
+  children: React.ReactNode
+}) {
   const [state, setState] = useState<AuthState>({
-    user: null,
-    isAuthenticated: false,
+    user: initialUser,
+    isAuthenticated: !!initialUser,
   })
 
   useEffect(() => {
