@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { marked } from 'marked'
+import { sanitize } from '#/lib/sanitize'
 import type { DbPost, PostStatus } from '#/server/posts'
 import { upsertPost, setPostStatus } from '#/server/posts'
 
@@ -128,7 +129,7 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
   }, [onClose])
 
   const renderedHtml = useMemo(
-    () => marked.parse(fields.content) as string,
+    () => sanitize(marked.parse(fields.content) as string),
     [fields.content],
   )
 

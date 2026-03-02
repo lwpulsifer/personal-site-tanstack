@@ -5,6 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
 import { AuthProvider } from '../lib/auth'
+import { getServerUser } from '../server/auth'
 import { queryClient } from '../router'
 import { SITE_DESCRIPTION, SITE_TITLE } from '../lib/site'
 
@@ -13,6 +14,14 @@ import appCss from '../styles.css?url'
 const THEME_INIT_SCRIPT = `(function(){try{var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.style.colorScheme=prefersDark?'dark':'light';}catch(e){}})();`
 
 export const Route = createRootRoute({
+  loader: async () => {
+    try {
+      const user = await getServerUser()
+      return { user }
+    } catch {
+      return { user: null }
+    }
+  },
   head: () => ({
     meta: [
       {
@@ -46,6 +55,7 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const { user } = Route.useLoaderData()
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -54,7 +64,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(59,130,246,0.24)]">
         <QueryClientProvider client={queryClient}>
-          <AuthProvider>
+          <AuthProvider initialUser={user}>
             <Header />
             <div className="flex-1">{children}</div>
             <Footer />

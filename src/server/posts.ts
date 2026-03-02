@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getSupabaseClient } from '#/lib/supabase'
+import { requireAuth } from '#/server/auth.server'
 import { z } from 'zod'
 
 export type PostStatus = 'PENDING' | 'PUBLISHED' | 'ARCHIVED'
@@ -78,6 +79,7 @@ export const getPublishedPost = createServerFn({ method: 'GET' })
 
 export const getAdminPosts = createServerFn({ method: 'GET' }).handler(
   async () => {
+    await requireAuth()
     const supabase = getSupabaseClient()
     const [{ data: posts, error }, { data: statuses }] = await Promise.all([
       supabase
@@ -98,6 +100,7 @@ export const getAdminPosts = createServerFn({ method: 'GET' }).handler(
 export const getPostBySlug = createServerFn({ method: 'GET' })
   .inputValidator(z.object({ slug: z.string() }))
   .handler(async ({ data }) => {
+    await requireAuth()
     const supabase = getSupabaseClient()
     const [{ data: post, error }, { data: statuses }] = await Promise.all([
       supabase.from('posts').select('*').eq('slug', data.slug).single(),
@@ -112,6 +115,7 @@ export const getPostBySlug = createServerFn({ method: 'GET' })
 export const upsertPost = createServerFn({ method: 'POST' })
   .inputValidator(UpsertPostSchema)
   .handler(async ({ data }) => {
+    await requireAuth()
     const supabase = getSupabaseClient()
     const { data: post, error } = await supabase
       .from('posts')
@@ -142,6 +146,7 @@ export const setPostStatus = createServerFn({ method: 'POST' })
     }),
   )
   .handler(async ({ data }) => {
+    await requireAuth()
     const supabase = getSupabaseClient()
 
     const { error } = await supabase

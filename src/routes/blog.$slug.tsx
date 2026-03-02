@@ -1,6 +1,7 @@
 import { Link, createFileRoute, notFound } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
 import { marked } from 'marked'
+import { sanitize } from '#/lib/sanitize'
 import { SITE_URL } from '#/lib/site'
 import { PostEditor } from '#/components/PostEditor'
 import { useAuth } from '#/lib/auth'
@@ -43,7 +44,7 @@ function BlogPost() {
   const [isEditing, setIsEditing] = useState(false)
 
   const renderedHtml = useMemo(
-    () => marked.parse(post.content) as string,
+    () => sanitize(marked.parse(post.content) as string),
     [post.content],
   )
 
