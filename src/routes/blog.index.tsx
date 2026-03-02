@@ -1,16 +1,12 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
-import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from '#/lib/site'
 import { PostEditor } from '#/components/PostEditor'
+import { PostCard } from '#/components/blog/PostCard'
 import { useAuth } from '#/lib/auth'
-import {
-  getAllTags,
-  getAdminPosts,
-  getPublishedPosts,
-  setPostStatus,
-  type DbPost,
-  type PostStatus,
-} from '#/server/posts'
+import { adminPostsQueryOptions, allTagsQueryOptions } from '#/lib/queries'
+import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from '#/lib/site'
+import { getPublishedPosts, type DbPost } from '#/server/posts'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
 
 const canonical = `${SITE_URL}/blog`
 const pageTitle = `Blog | ${SITE_TITLE}`
@@ -27,137 +23,30 @@ export const Route = createFileRoute('/blog/')({
   component: BlogIndex,
 })
 
-const STATUS_STYLES: Record<PostStatus, string> = {
-  PUBLISHED:
-    'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
-  PENDING:
-    'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  ARCHIVED: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
-}
-
-function StatusBadge({ status }: { status: PostStatus }) {
-  return (
-    <span
-      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_STYLES[status]}`}
-    >
-      {status}
-    </span>
-  )
-}
-
-function AdminActions({
-  post,
-  onStatusChange,
-  onEdit,
-}: {
-  post: DbPost
-  onStatusChange: (id: string, status: PostStatus) => void
-  onEdit: (post: DbPost) => void
-}) {
-  const [acting, setActing] = useState(false)
-
-  async function changeStatus(next: PostStatus) {
-    setActing(true)
-    try {
-      await setPostStatus({ data: { postId: post.id, status: next } })
-      onStatusChange(post.id, next)
-    } finally {
-      setActing(false)
-    }
-  }
-
-  return (
-    <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-dashed border-[var(--border)] pt-3">
-      <button
-        type="button"
-        onClick={() => onEdit(post)}
-        className="rounded-full border border-[var(--blue-deep)] px-2.5 py-0.5 text-xs font-semibold text-[var(--blue-deep)] transition hover:bg-[var(--blue-deep)] hover:text-white"
-      >
-        Edit
-      </button>
-
-      {post.status !== 'PUBLISHED' && (
-        <button
-          type="button"
-          onClick={() => changeStatus('PUBLISHED')}
-          disabled={acting}
-          className="rounded-full bg-emerald-600 px-2.5 py-0.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
-        >
-          Publish
-        </button>
-      )}
-
-      {post.status === 'PUBLISHED' && (
-        <button
-          type="button"
-          onClick={() => changeStatus('ARCHIVED')}
-          disabled={acting}
-          className="rounded-full bg-gray-500 px-2.5 py-0.5 text-xs font-semibold text-white transition hover:bg-gray-600 disabled:opacity-50"
-        >
-          Archive
-        </button>
-      )}
-
-      {post.status === 'ARCHIVED' && (
-        <button
-          type="button"
-          onClick={() => changeStatus('PENDING')}
-          disabled={acting}
-          className="rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-semibold text-white transition hover:bg-amber-600 disabled:opacity-50"
-        >
-          Restore
-        </button>
-      )}
-    </div>
-  )
-}
-
-function PostDate({ post }: { post: DbPost }) {
-  return (
-    <p className="m-0 text-xs text-[var(--text-muted)]">
-      {new Date(post.published_at ?? post.created_at).toLocaleDateString(
-        'en-US',
-        { year: 'numeric', month: 'short', day: 'numeric' },
-      )}
-    </p>
-  )
-}
-
 function BlogIndex() {
   const publishedPosts = Route.useLoaderData()
   const { isAuthenticated } = useAuth()
+  const queryClient = useQueryClient()
 
   const [tagFilter, setTagFilter] = useState('')
-  const [adminPosts, setAdminPosts] = useState<DbPost[]>([])
-  const [adminLoaded, setAdminLoaded] = useState(false)
   const [editingPost, setEditingPost] = useState<DbPost | 'new' | null>(null)
-  const [knownTags, setKnownTags] = useState<string[]>([])
 
-  // Fetch all posts (including drafts/archived) for admin view
-  useEffect(() => {
-    if (!isAuthenticated) return
-    getAdminPosts()
-      .then(setAdminPosts)
-      .finally(() => setAdminLoaded(true))
-    getAllTags().then(setKnownTags)
-  }, [isAuthenticated])
+  const { data: adminPosts } = useQuery({
+    ...adminPostsQueryOptions,
+    enabled: isAuthenticated,
+  })
 
-  function handleStatusChange(id: string, status: PostStatus) {
-    setAdminPosts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status } : p)),
-    )
-  }
+  const { data: knownTags = [] } = useQuery({
+    ...allTagsQueryOptions,
+    enabled: isAuthenticated,
+  })
 
-  // Admin sees all posts; public sees only published
-  const displayPosts =
-    isAuthenticated && adminLoaded ? adminPosts : publishedPosts
+  // Admin sees all posts (including drafts/archived); public sees only published.
+  const displayPosts = isAuthenticated && adminPosts ? adminPosts : publishedPosts
 
-  const allTags = [
-    ...new Set(displayPosts.flatMap((p) => p.tags)),
-  ].sort()
+  const allTags = [...new Set(displayPosts.flatMap((p) => p.tags))].sort()
 
-  const sortKey = (p: DbPost) =>
-    new Date(p.published_at ?? p.created_at).valueOf()
+  const sortKey = (p: DbPost) => new Date(p.published_at ?? p.created_at).valueOf()
 
   const filtered = displayPosts
     .filter(
@@ -169,9 +58,12 @@ function BlogIndex() {
 
   const activePosts = filtered.filter((p) => p.status !== 'ARCHIVED')
   const archivedPosts = filtered.filter((p) => p.status === 'ARCHIVED')
+  const [featured, ...rest] = activePosts
 
-  const featured = activePosts[0]
-  const rest = activePosts.slice(1)
+  function handleSaved() {
+    queryClient.invalidateQueries({ queryKey: adminPostsQueryOptions.queryKey })
+    setEditingPost(null)
+  }
 
   return (
     <>
@@ -193,17 +85,7 @@ function BlogIndex() {
           }
           knownTags={knownTags}
           onClose={() => setEditingPost(null)}
-          onSaved={(saved) => {
-            setAdminPosts((prev) => {
-              const exists = prev.find((p) => p.id === saved.id)
-              if (exists)
-                return prev.map((p) =>
-                  p.id === saved.id ? { ...saved, status: p.status } : p,
-                )
-              return [{ ...saved, status: 'PENDING' as PostStatus }, ...prev]
-            })
-            setEditingPost(null)
-          }}
+          onSaved={handleSaved}
         />
       )}
 
@@ -258,133 +140,45 @@ function BlogIndex() {
 
         {activePosts.length === 0 && archivedPosts.length === 0 ? (
           <p className="text-[var(--text-muted)]">No posts found.</p>
-        ) : activePosts.length === 0 ? null : (
+        ) : activePosts.length > 0 ? (
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {featured && (
-              <article className="island-shell rise-in rounded-2xl p-5 sm:p-6 lg:col-span-2">
-                {featured.hero_image && (
-                  <img
-                    src={featured.hero_image}
-                    alt=""
-                    className="mb-4 h-44 w-full rounded-xl object-cover xl:h-60"
-                  />
-                )}
-                <div className="mb-2 flex items-center gap-2">
-                  {isAuthenticated && (
-                    <StatusBadge status={featured.status} />
-                  )}
-                  {featured.tags.length > 0 && (
-                    <p className="island-kicker m-0">{featured.tags[0]}</p>
-                  )}
-                </div>
-                <h2 className="m-0 text-2xl font-semibold text-[var(--text)]">
-                  {featured.status === 'PUBLISHED' ? (
-                    <Link
-                      to="/blog/$slug"
-                      params={{ slug: featured.slug }}
-                      className="no-underline"
-                    >
-                      {featured.title}
-                    </Link>
-                  ) : (
-                    featured.title
-                  )}
-                </h2>
-                <p className="mb-2 mt-3 text-base text-[var(--text-muted)]">
-                  {featured.description}
-                </p>
-                <PostDate post={featured} />
-                {isAuthenticated && adminLoaded && (
-                  <AdminActions
-                    post={featured}
-                    onStatusChange={handleStatusChange}
-                    onEdit={setEditingPost}
-                  />
-                )}
-              </article>
+              <PostCard
+                post={featured}
+                featured
+                showAdmin={isAuthenticated}
+                onEdit={setEditingPost}
+                className="rise-in lg:col-span-2"
+              />
             )}
-
-            {rest.map((post, index) => (
-              <article
+            {rest.map((post, i) => (
+              <PostCard
                 key={post.id}
-                className="island-shell rise-in rounded-2xl p-5 sm:last:col-span-2 lg:last:col-span-1"
-                style={{ animationDelay: `${index * 80 + 120}ms` }}
-              >
-                {post.hero_image && (
-                  <img
-                    src={post.hero_image}
-                    alt=""
-                    className="mb-4 h-44 w-full rounded-xl object-cover"
-                  />
-                )}
-                <div className="mb-2 flex items-center gap-2">
-                  {isAuthenticated && <StatusBadge status={post.status} />}
-                  {post.tags.length > 0 && (
-                    <p className="island-kicker m-0">{post.tags[0]}</p>
-                  )}
-                </div>
-                <h2 className="m-0 text-2xl font-semibold text-[var(--text)]">
-                  {post.status === 'PUBLISHED' ? (
-                    <Link
-                      to="/blog/$slug"
-                      params={{ slug: post.slug }}
-                      className="no-underline"
-                    >
-                      {post.title}
-                    </Link>
-                  ) : (
-                    post.title
-                  )}
-                </h2>
-                <p className="mb-2 mt-2 text-sm text-[var(--text-muted)]">
-                  {post.description}
-                </p>
-                <PostDate post={post} />
-                {isAuthenticated && adminLoaded && (
-                  <AdminActions
-                    post={post}
-                    onStatusChange={handleStatusChange}
-                    onEdit={setEditingPost}
-                  />
-                )}
-              </article>
+                post={post}
+                showAdmin={isAuthenticated}
+                onEdit={setEditingPost}
+                className="rise-in sm:last:col-span-2 lg:last:col-span-1"
+                style={{ animationDelay: `${i * 80 + 120}ms` }}
+              />
             ))}
           </section>
-        )}
+        ) : null}
 
         {isAuthenticated && archivedPosts.length > 0 && (
-          <details className="mt-12 group">
+          <details className="group mt-12">
             <summary className="island-kicker mb-3 cursor-pointer select-none list-none">
               <span>Archived ({archivedPosts.length})</span>
               <span className="ml-1 inline-block transition-transform group-open:rotate-90">›</span>
             </summary>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 opacity-60">
+            <div className="grid gap-4 opacity-60 sm:grid-cols-2 lg:grid-cols-3">
               {archivedPosts.map((post) => (
-                <article
+                <PostCard
                   key={post.id}
-                  className="island-shell rounded-2xl p-5"
-                >
-                  <div className="mb-2 flex items-center gap-2">
-                    <StatusBadge status={post.status} />
-                    {post.tags.length > 0 && (
-                      <p className="island-kicker m-0">{post.tags[0]}</p>
-                    )}
-                  </div>
-                  <h2 className="m-0 text-xl font-semibold text-[var(--text)]">
-                    {post.title}
-                  </h2>
-                  {post.description && (
-                    <p className="mb-2 mt-2 text-sm text-[var(--text-muted)]">
-                      {post.description}
-                    </p>
-                  )}
-                  <PostDate post={post} />
-                  <AdminActions
-                    post={post}
-                    onStatusChange={handleStatusChange}
-                    onEdit={setEditingPost}
-                  />
-                </article>
+                  post={post}
+                  compact
+                  showAdmin
+                  onEdit={setEditingPost}
+                />
               ))}
             </div>
           </details>
