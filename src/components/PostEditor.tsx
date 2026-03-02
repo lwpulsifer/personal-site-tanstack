@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEscapeKey } from '#/lib/hooks'
 import { useMutation } from '@tanstack/react-query'
 import { marked } from 'marked'
 import { sanitize } from '#/lib/sanitize'
@@ -315,14 +316,7 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
     if (tab === 'write') textareaRef.current?.focus()
   }, [tab])
 
-  // Escape closes the editor
-  useEffect(() => {
-    const handler = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [onClose])
+  useEscapeKey(onClose)
 
   const renderedHtml = useMemo(
     () => sanitize(marked.parse(fields.content) as string),

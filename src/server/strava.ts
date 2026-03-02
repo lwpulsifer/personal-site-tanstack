@@ -17,6 +17,7 @@ export type StravaActivity = {
 export const getStravaActivitiesForWeek = createServerFn({ method: 'GET' })
   .inputValidator(z.object({ startDate: z.string(), endDate: z.string() }))
   .handler(async ({ data }) => {
+    await requireAuth()
     try {
       const after = Math.floor(new Date(`${data.startDate}T00:00:00Z`).getTime() / 1000)
       const before = Math.floor(new Date(`${data.endDate}T23:59:59Z`).getTime() / 1000)

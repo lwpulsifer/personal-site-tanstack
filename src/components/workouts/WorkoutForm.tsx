@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEscapeKey } from '#/lib/hooks'
 import { createWorkout, updateWorkout } from '#/server/workouts'
 import type { WorkoutInstance } from '#/server/workouts'
 import { WORKOUT_TYPES, type WorkoutType } from '#/lib/workout-types'
@@ -35,13 +36,7 @@ export function WorkoutForm({ initial, onClose }: Props) {
 
   const isEditing = !!initial.id
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [onClose])
+  useEscapeKey(onClose)
 
   function toggleDay(day: number) {
     setRecurrenceDays((prev) =>

@@ -1,5 +1,8 @@
+import { z } from 'zod'
+
 export const WORKOUT_TYPES = ['Run', 'Bike', 'Swim', 'Lift', 'Walk', 'Yoga', 'Other'] as const
 export type WorkoutType = (typeof WORKOUT_TYPES)[number]
+export const WorkoutTypeEnum = z.enum([...WORKOUT_TYPES] as [WorkoutType, ...WorkoutType[]])
 
 export const WORKOUT_TYPE_ABBR: Record<WorkoutType, string> = {
   Run: 'RUN',

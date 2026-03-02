@@ -3,6 +3,7 @@ import { getSupabaseClient } from '#/lib/supabase'
 import { requireAuth } from '#/server/auth.server'
 import { addDays } from '#/lib/date-utils'
 import dayjs from '#/lib/dayjs'
+import { WorkoutTypeEnum } from '#/lib/workout-types'
 import type { WorkoutType } from '#/lib/workout-types'
 import { z } from 'zod'
 
@@ -23,7 +24,6 @@ export type WorkoutInstance = {
   updated_at: string
 }
 
-const WorkoutTypeEnum = z.enum(['Run', 'Bike', 'Swim', 'Lift', 'Walk', 'Yoga', 'Other'])
 const RecurrenceEnum = z.enum(['none', 'daily', 'weekly', 'biweekly', 'custom'])
 
 // ── Queries ───────────────────────────────────────────────────────────────────

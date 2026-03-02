@@ -17,7 +17,6 @@ export function WorkoutCard({ workout, stravaMatch, onEdit }: Props) {
   const queryClient = useQueryClient()
   const [showMenu, setShowMenu] = useState(false)
   const [showDeleteScope, setShowDeleteScope] = useState(false)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   function invalidate() {
@@ -42,9 +41,6 @@ export function WorkoutCard({ workout, stravaMatch, onEdit }: Props) {
       setShowMenu(false)
       invalidate()
     },
-    onError: (err) => {
-      setDeleteError(err instanceof Error ? err.message : 'Delete failed')
-    },
   })
 
   const abbr = WORKOUT_TYPE_ABBR[workout.type] ?? 'OTH'
@@ -66,7 +62,6 @@ export function WorkoutCard({ workout, stravaMatch, onEdit }: Props) {
           onClick={() => {
             setShowMenu((v) => !v)
             setShowDeleteScope(false)
-            setDeleteError(null)
           }}
           className="flex h-5 w-5 items-center justify-center rounded text-[var(--text-muted)] opacity-0 transition group-hover:opacity-100 hover:bg-[var(--hover-bg)] hover:text-[var(--text)]"
           aria-label="Workout options"
@@ -129,15 +124,18 @@ export function WorkoutCard({ workout, stravaMatch, onEdit }: Props) {
                       </button>
                     </>
                   )}
-                  {deleteError && (
-                    <p className="px-3 py-1.5 text-xs text-red-500">{deleteError}</p>
+                  {deleteMutation.error && (
+                    <p className="px-3 py-1.5 text-xs text-red-500">
+                      {deleteMutation.error instanceof Error
+                        ? deleteMutation.error.message
+                        : 'Delete failed'}
+                    </p>
                   )}
                   <button
                     type="button"
                     onClick={() => {
                       setShowDeleteScope(false)
                       setShowMenu(false)
-                      setDeleteError(null)
                     }}
                     className="w-full border-t border-[var(--border)] px-3 py-1.5 text-left text-xs text-[var(--text-muted)] hover:bg-[var(--hover-bg)]"
                   >

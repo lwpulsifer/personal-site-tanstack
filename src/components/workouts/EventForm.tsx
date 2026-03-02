@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEscapeKey } from '#/lib/hooks'
 import { createEvent, updateEvent, deleteEvent } from '#/server/events'
 import type { CalendarEvent } from '#/server/events'
 import { WORKOUT_TYPES, type WorkoutType } from '#/lib/workout-types'
@@ -31,13 +32,7 @@ export function EventForm({ initial, onClose }: Props) {
 
   const isEditing = !!existing
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [onClose])
+  useEscapeKey(onClose)
 
   function toggleType(t: WorkoutType) {
     setSelectedTypes((prev) =>

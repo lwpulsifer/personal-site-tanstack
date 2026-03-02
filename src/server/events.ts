@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getSupabaseClient } from '#/lib/supabase'
 import { requireAuth } from '#/server/auth.server'
-import { WORKOUT_TYPES, type WorkoutType } from '#/lib/workout-types'
+import { WorkoutTypeEnum, type WorkoutType } from '#/lib/workout-types'
 import { z } from 'zod'
 
 export type CalendarEvent = {
@@ -15,8 +15,6 @@ export type CalendarEvent = {
   created_at: string
   updated_at: string
 }
-
-const WorkoutTypeEnum = z.enum([...WORKOUT_TYPES] as [WorkoutType, ...WorkoutType[]])
 
 const EventSchema = z.object({
   name: z.string().min(1),
