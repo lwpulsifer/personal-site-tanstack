@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { marked } from 'marked'
 import type { DbPost, PostStatus } from '#/server/posts'
 import { upsertPost, setPostStatus } from '#/server/posts'
@@ -56,18 +57,38 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
   const [tagsRaw, setTagsRaw] = useState(initial.tags?.join(', ') ?? '')
   const [content, setContent] = useState(initial.content ?? '')
   const [heroImage, setHeroImage] = useState(initial.hero_image ?? '')
-  const [saving, setSaving] = useState(false)
-  const [acting, setActing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [savedPostId, setSavedPostId] = useState<string | null>(
-    initial.id ?? null,
-  )
-  const [status, setStatus] = useState<EditorStatus>(
-    initial.status ?? 'draft',
-  )
+  const [savedPostId, setSavedPostId] = useState<string | null>(initial.id ?? null)
+  const [status, setStatus] = useState<EditorStatus>(initial.status ?? 'draft')
   const [tab, setTab] = useState<'write' | 'preview'>('write')
   const slugManuallyEdited = useRef(!!initial.slug)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      upsertPost({
+        data: {
+          ...(savedPostId ? { id: savedPostId } : {}),
+          slug,
+          title,
+          description: description || undefined,
+          content,
+          tags: tagsRaw.split(',').map((t) => t.trim()).filter(Boolean),
+          hero_image: heroImage || undefined,
+        },
+      }),
+    onSuccess: (post) => {
+      setSavedPostId(post.id)
+      onSaved(post as DbPost)
+    },
+  })
+
+  const statusMutation = useMutation({
+    mutationFn: (next: PostStatus) =>
+      setPostStatus({ data: { postId: savedPostId!, status: next } }),
+    onSuccess: (_data, next) => setStatus(next),
+  })
+
+  const error = saveMutation.error ?? statusMutation.error
 
   // Auto-generate slug from title for new posts
   useEffect(() => {
@@ -81,55 +102,6 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
     if (tab === 'write') textareaRef.current?.focus()
   }, [tab])
 
-  const renderedHtml = useMemo(
-    () => marked.parse(content) as string,
-    [content],
-  )
-
-  async function handleSave() {
-    setError(null)
-    setSaving(true)
-    try {
-      const tags = tagsRaw
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean)
-
-      const post = await upsertPost({
-        data: {
-          ...(savedPostId ? { id: savedPostId } : {}),
-          slug,
-          title,
-          description: description || undefined,
-          content,
-          tags,
-          hero_image: heroImage || undefined,
-        },
-      })
-
-      setSavedPostId(post.id)
-      onSaved(post as DbPost)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save post')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function handleStatusChange(next: PostStatus) {
-    const postId = savedPostId
-    if (!postId) return
-    setActing(true)
-    try {
-      await setPostStatus({ data: { postId, status: next } })
-      setStatus(next)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update status')
-    } finally {
-      setActing(false)
-    }
-  }
-
   // Intercept Escape key to close
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -139,7 +111,14 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
+  const renderedHtml = useMemo(
+    () => marked.parse(content) as string,
+    [content],
+  )
+
   const hasSavedId = !!savedPostId
+  const isSaving = saveMutation.isPending
+  const isActing = statusMutation.isPending
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)]">
@@ -189,8 +168,8 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
           {hasSavedId && status !== 'PUBLISHED' && (
             <button
               type="button"
-              onClick={() => handleStatusChange('PUBLISHED')}
-              disabled={acting}
+              onClick={() => statusMutation.mutate('PUBLISHED')}
+              disabled={isActing}
               className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
             >
               Publish
@@ -199,8 +178,8 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
           {hasSavedId && status === 'PUBLISHED' && (
             <button
               type="button"
-              onClick={() => handleStatusChange('ARCHIVED')}
-              disabled={acting}
+              onClick={() => statusMutation.mutate('ARCHIVED')}
+              disabled={isActing}
               className="rounded-full bg-gray-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-gray-600 disabled:opacity-50"
             >
               Archive
@@ -209,8 +188,8 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
           {hasSavedId && status === 'ARCHIVED' && (
             <button
               type="button"
-              onClick={() => handleStatusChange('PENDING')}
-              disabled={acting}
+              onClick={() => statusMutation.mutate('PENDING')}
+              disabled={isActing}
               className="rounded-full bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-600 disabled:opacity-50"
             >
               Restore
@@ -219,11 +198,11 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
 
           <button
             type="button"
-            onClick={handleSave}
-            disabled={saving || !title || !slug || !content}
+            onClick={() => saveMutation.mutate()}
+            disabled={isSaving || !title || !slug || !content}
             className="rounded-full bg-[var(--blue-deep)] px-4 py-1.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50 disabled:hover:translate-y-0"
           >
-            {saving ? 'Saving…' : 'Save'}
+            {isSaving ? 'Saving…' : 'Save'}
           </button>
         </div>
       </header>
@@ -304,7 +283,7 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
       {/* ── Error banner ─────────────────────────────────────────────────── */}
       {error && (
         <div className="shrink-0 bg-red-50 px-4 py-2.5 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400">
-          {error}
+          {error instanceof Error ? error.message : 'Something went wrong'}
         </div>
       )}
 
