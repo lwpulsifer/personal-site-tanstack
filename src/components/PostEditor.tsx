@@ -4,6 +4,7 @@ import { marked } from 'marked'
 import { sanitize } from '#/lib/sanitize'
 import type { DbPost, PostStatus } from '#/server/posts'
 import { upsertPost, setPostStatus } from '#/server/posts'
+import { STATUS_STYLES } from '#/components/blog/StatusBadge'
 
 marked.setOptions({ async: false })
 
@@ -20,6 +21,7 @@ export type PostEditorInitial = {
 
 type Props = {
   initial: PostEditorInitial
+  knownTags?: string[]
   onClose: () => void
   onSaved: (post: DbPost) => void
 }
@@ -33,8 +35,6 @@ function slugify(str: string) {
     .replace(/-+/g, '-')
 }
 
-// Status badge shown in the editor toolbar.
-// 'draft' is a UI-only state — it is never written to the DB.
 type EditorStatus = PostStatus | 'draft'
 
 const STATUS_LABEL: Record<EditorStatus, string> = {
@@ -46,26 +46,155 @@ const STATUS_LABEL: Record<EditorStatus, string> = {
 
 const STATUS_CLASS: Record<EditorStatus, string> = {
   draft: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
-  PENDING: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  PUBLISHED: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
-  ARCHIVED: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+  ...STATUS_STYLES,
 }
 
 type PostFields = {
   title: string
   slug: string
   description: string
-  tagsRaw: string
+  tags: string[]
   content: string
   heroImage: string
 }
 
-export function PostEditor({ initial, onClose, onSaved }: Props) {
+// ── TagsInput ──────────────────────────────────────────────────────────────────
+
+function TagsInput({
+  value,
+  onChange,
+  suggestions,
+}: {
+  value: string[]
+  onChange: (tags: string[]) => void
+  suggestions: string[]
+}) {
+  const [input, setInput] = useState('')
+  const [open, setOpen] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const filtered = suggestions.filter(
+    (s) =>
+      s.toLowerCase().startsWith(input.toLowerCase()) && !value.includes(s),
+  )
+
+  function addTag(raw: string) {
+    const tag = raw.trim()
+    if (tag && !value.includes(tag)) onChange([...value, tag])
+    setInput('')
+    setOpen(false)
+    inputRef.current?.focus()
+  }
+
+  function removeTag(tag: string) {
+    onChange(value.filter((t) => t !== tag))
+  }
+
+  return (
+    <div className="relative">
+      <div className="flex min-h-[2.25rem] flex-wrap items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 transition focus-within:border-[var(--blue)] focus-within:ring-2 focus-within:ring-[rgba(59,130,246,0.2)]">
+        {value.map((tag) => (
+          <span
+            key={tag}
+            className="inline-flex items-center gap-1 rounded-full border border-[var(--chip-border)] bg-[var(--chip-bg)] px-2 py-0.5 text-xs font-medium text-[var(--text)]"
+          >
+            {tag}
+            <button
+              type="button"
+              onClick={() => removeTag(tag)}
+              className="leading-none text-[var(--text-muted)] hover:text-[var(--text)]"
+              aria-label={`Remove ${tag}`}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <input
+          ref={inputRef}
+          type="text"
+          value={input}
+          onChange={(e) => {
+            setInput(e.target.value)
+            setOpen(true)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ',') {
+              e.preventDefault()
+              addTag(input)
+            } else if (e.key === 'Backspace' && !input && value.length > 0) {
+              onChange(value.slice(0, -1))
+            } else if (e.key === 'Escape') {
+              setOpen(false)
+            }
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder={value.length === 0 ? 'Add tags…' : ''}
+          className="min-w-20 flex-1 bg-transparent text-sm text-[var(--text)] outline-none placeholder-[var(--text-muted)]"
+        />
+      </div>
+
+      {open && input && filtered.length > 0 && (
+        <ul className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg)] shadow-lg">
+          {filtered.slice(0, 8).map((tag) => (
+            <li key={tag}>
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  addTag(tag)
+                }}
+                className="w-full px-3 py-2 text-left text-sm text-[var(--text)] hover:bg-[var(--hover-bg)]"
+              >
+                {tag}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+// ── Toolbar ────────────────────────────────────────────────────────────────────
+
+const DIVIDER = <span className="w-px self-stretch bg-[var(--border)]" />
+
+function ToolbarButton({
+  label,
+  title,
+  labelClass,
+  onAction,
+}: {
+  label: string
+  title: string
+  labelClass?: string
+  onAction: () => void
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      // mousedown keeps focus in the textarea; click fires after blur
+      onMouseDown={(e) => {
+        e.preventDefault()
+        onAction()
+      }}
+      className="rounded px-2 py-1 text-xs text-[var(--text-muted)] transition hover:bg-[var(--hover-bg)] hover:text-[var(--text)]"
+    >
+      <span className={labelClass}>{label}</span>
+    </button>
+  )
+}
+
+// ── PostEditor ─────────────────────────────────────────────────────────────────
+
+export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props) {
   const [fields, setFields] = useState<PostFields>({
     title: initial.title ?? '',
     slug: initial.slug ?? '',
     description: initial.description ?? '',
-    tagsRaw: initial.tags?.join(', ') ?? '',
+    tags: initial.tags ?? [],
     content: initial.content ?? '',
     heroImage: initial.hero_image ?? '',
   })
@@ -80,6 +209,73 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
     setFields((prev) => ({ ...prev, [key]: value }))
   }
 
+  // ── Formatting helpers ─────────────────────────────────────────────────────
+
+  // Wraps the selected text (or a placeholder) in prefix/suffix.
+  // After update, the inserted word is selected so the user can keep typing.
+  function applyWrap(prefix: string, suffix: string, placeholder: string) {
+    const ta = textareaRef.current
+    if (!ta) return
+    const { selectionStart: s, selectionEnd: e, value } = ta
+    const word = value.slice(s, e) || placeholder
+    const next = value.slice(0, s) + prefix + word + suffix + value.slice(e)
+    setField('content', next)
+    requestAnimationFrame(() => {
+      ta.focus()
+      ta.setSelectionRange(s + prefix.length, s + prefix.length + word.length)
+    })
+  }
+
+  // Prepends prefix to the current line.
+  function applyPrefix(prefix: string) {
+    const ta = textareaRef.current
+    if (!ta) return
+    const { selectionStart: s, selectionEnd: e, value } = ta
+    const lineStart = value.lastIndexOf('\n', s - 1) + 1
+    const next = value.slice(0, lineStart) + prefix + value.slice(lineStart)
+    setField('content', next)
+    requestAnimationFrame(() => {
+      ta.focus()
+      ta.setSelectionRange(s + prefix.length, e + prefix.length)
+    })
+  }
+
+  // Inserts a link, pre-selecting the url placeholder so the user can type it.
+  function applyLink() {
+    const ta = textareaRef.current
+    if (!ta) return
+    const { selectionStart: s, selectionEnd: e, value } = ta
+    const text = value.slice(s, e) || 'link text'
+    const insertion = `[${text}](url)`
+    const next = value.slice(0, s) + insertion + value.slice(e)
+    setField('content', next)
+    requestAnimationFrame(() => {
+      ta.focus()
+      // select the "url" placeholder: after `[text](`
+      const urlStart = s + 1 + text.length + 2
+      ta.setSelectionRange(urlStart, urlStart + 3)
+    })
+  }
+
+  // Inserts an image tag, pre-selecting the url placeholder.
+  function applyImage() {
+    const ta = textareaRef.current
+    if (!ta) return
+    const { selectionStart: s, selectionEnd: e, value } = ta
+    const alt = value.slice(s, e) || 'alt text'
+    const insertion = `![${alt}](url)`
+    const next = value.slice(0, s) + insertion + value.slice(e)
+    setField('content', next)
+    requestAnimationFrame(() => {
+      ta.focus()
+      // select the "url" placeholder: after `![alt](`
+      const urlStart = s + 2 + alt.length + 2
+      ta.setSelectionRange(urlStart, urlStart + 3)
+    })
+  }
+
+  // ── Mutations ──────────────────────────────────────────────────────────────
+
   const saveMutation = useMutation({
     mutationFn: () =>
       upsertPost({
@@ -89,7 +285,7 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
           title: fields.title,
           description: fields.description || undefined,
           content: fields.content,
-          tags: fields.tagsRaw.split(',').map((t) => t.trim()).filter(Boolean),
+          tags: fields.tags,
           hero_image: fields.heroImage || undefined,
         },
       }),
@@ -114,18 +310,18 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
     }
   }, [fields.title, initial.slug])
 
-  // Focus textarea on mount
+  // Focus textarea on tab switch to Write
   useEffect(() => {
     if (tab === 'write') textareaRef.current?.focus()
   }, [tab])
 
-  // Intercept Escape key to close
+  // Escape closes the editor
   useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
+    const handler = (e: globalThis.KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
   const renderedHtml = useMemo(
@@ -145,7 +341,7 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-2.5 py-1.5 text-sm text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text)] transition"
+            className="rounded-lg px-2.5 py-1.5 text-sm text-[var(--text-muted)] transition hover:bg-[var(--hover-bg)] hover:text-[var(--text)]"
             aria-label="Close editor"
           >
             ✕
@@ -153,17 +349,12 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
           <span className="text-sm font-semibold text-[var(--text)]">
             {initial.id ? 'Edit post' : 'New post'}
           </span>
-
-          {/* Status badge — always visible, UI-only for 'draft' */}
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_CLASS[status]}`}
-          >
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_CLASS[status]}`}>
             {STATUS_LABEL[status]}
           </span>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Write / Preview tabs */}
           <div className="flex rounded-full border border-[var(--border)] bg-[var(--chip-bg)] p-0.5 text-sm">
             <button
               type="button"
@@ -181,7 +372,6 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
             </button>
           </div>
 
-          {/* Status actions — only enabled once the post is saved to DB */}
           {hasSavedId && status !== 'PUBLISHED' && (
             <button
               type="button"
@@ -258,14 +448,12 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
 
           <div>
             <label className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
-              Tags (comma-separated)
+              Tags
             </label>
-            <input
-              type="text"
-              value={fields.tagsRaw}
-              onChange={(e) => setField('tagsRaw', e.target.value)}
-              placeholder="tag1, tag2"
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)] outline-none transition focus:border-[var(--blue)] focus:ring-2 focus:ring-[rgba(59,130,246,0.2)]"
+            <TagsInput
+              value={fields.tags}
+              onChange={(tags) => setField('tags', tags)}
+              suggestions={knownTags}
             />
           </div>
 
@@ -296,6 +484,91 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
           </div>
         </div>
       </div>
+
+      {/* ── Formatting toolbar (Write mode only) ─────────────────────────── */}
+      {tab === 'write' && (
+        <div className="flex shrink-0 items-center gap-0.5 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-1.5">
+          <ToolbarButton
+            label="B"
+            title="Bold (wrap with **)"
+            labelClass="font-bold"
+            onAction={() => applyWrap('**', '**', 'bold')}
+          />
+          <ToolbarButton
+            label="I"
+            title="Italic (wrap with *)"
+            labelClass="italic"
+            onAction={() => applyWrap('*', '*', 'italic')}
+          />
+          <ToolbarButton
+            label="S"
+            title="Strikethrough (wrap with ~~)"
+            labelClass="line-through"
+            onAction={() => applyWrap('~~', '~~', 'text')}
+          />
+
+          {DIVIDER}
+
+          <ToolbarButton
+            label="H2"
+            title="Heading 2 (prefix ##)"
+            labelClass="font-bold font-mono"
+            onAction={() => applyPrefix('## ')}
+          />
+          <ToolbarButton
+            label="H3"
+            title="Heading 3 (prefix ###)"
+            labelClass="font-mono"
+            onAction={() => applyPrefix('### ')}
+          />
+          <ToolbarButton
+            label="❝"
+            title="Blockquote (prefix >)"
+            onAction={() => applyPrefix('> ')}
+          />
+
+          {DIVIDER}
+
+          <ToolbarButton
+            label="`code`"
+            title="Inline code"
+            labelClass="font-mono"
+            onAction={() => applyWrap('`', '`', 'code')}
+          />
+          <ToolbarButton
+            label="```block"
+            title="Code block"
+            labelClass="font-mono"
+            onAction={() => applyWrap('```\n', '\n```', 'code')}
+          />
+
+          {DIVIDER}
+
+          <ToolbarButton
+            label="• list"
+            title="Unordered list item"
+            onAction={() => applyPrefix('- ')}
+          />
+          <ToolbarButton
+            label="1. list"
+            title="Ordered list item"
+            onAction={() => applyPrefix('1. ')}
+          />
+
+          {DIVIDER}
+
+          <ToolbarButton
+            label="Link"
+            title="Insert link"
+            onAction={applyLink}
+          />
+          <ToolbarButton
+            label="Image"
+            title="Insert image"
+            onAction={applyImage}
+          />
+        </div>
+      )}
 
       {/* ── Error banner ─────────────────────────────────────────────────── */}
       {error && (

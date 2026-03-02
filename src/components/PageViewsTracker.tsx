@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useLocation } from '@tanstack/react-router'
-import { logPageView, getPageViews } from '#/server/pageViews'
+import { useQuery } from '@tanstack/react-query'
+import { logPageView } from '#/server/pageViews'
+import { pageViewsQueryOptions } from '#/lib/queries'
 
 /**
  * Converts a pathname to the URL key used in the DB.
@@ -18,32 +20,23 @@ const shouldLog =
 
 export default function PageViewsTracker() {
   const { pathname } = useLocation()
-  const [count, setCount] = useState<number | null>(null)
+  const key = pathToKey(pathname)
 
+  // Side effect: log the view once per session per path.
+  // This stays in useEffect because it's a fire-and-forget write, not a query.
   useEffect(() => {
-    const key = pathToKey(pathname)
+    if (!shouldLog) return
+    const storageKey = `pv:${key}`
+    if (sessionStorage.getItem(storageKey) !== null) return
+    sessionStorage.setItem(storageKey, '1')
+    logPageView({ data: { url: key } }).catch(() => {})
+  }, [key])
 
-    if (shouldLog) {
-      const storageKey = `pv:${key}`
-
-      // Set the flag synchronously before the async call so that React
-      // StrictMode's second effect invocation (and genuine same-session
-      // return visits) find it already set and skip logging.
-      const alreadyLogged = sessionStorage.getItem(storageKey) !== null
-      if (!alreadyLogged) {
-        sessionStorage.setItem(storageKey, '1')
-        logPageView({ data: { url: key } }).catch(() => {})
-      }
-    }
-
-    getPageViews({ data: { url: key } })
-      .then(setCount)
-      .catch(() => {})
-  }, [pathname])
+  const { data: count } = useQuery(pageViewsQueryOptions(key))
 
   return (
     <span className="text-xs text-(--sea-ink-soft) opacity-60">
-      {count === null
+      {count == null
         ? '\u00A0'
         : `${count.toLocaleString()} ${count === 1 ? 'view' : 'views'}`}
     </span>
