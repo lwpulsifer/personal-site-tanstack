@@ -6,7 +6,7 @@ import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from '#/lib/site'
 import { getPublishedPosts, type DbPost } from '#/server/posts'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 const canonical = `${SITE_URL}/blog`
 const pageTitle = `Blog | ${SITE_TITLE}`
@@ -44,20 +44,29 @@ function BlogIndex() {
   // Admin sees all posts (including drafts/archived); public sees only published.
   const displayPosts = isAuthenticated && adminPosts ? adminPosts : publishedPosts
 
-  const allTags = [...new Set(displayPosts.flatMap((p) => p.tags))].sort()
+  const allTags = useMemo(
+    () => [...new Set(displayPosts.flatMap((p) => p.tags))].sort(),
+    [displayPosts],
+  )
 
-  const sortKey = (p: DbPost) => new Date(p.published_at ?? p.created_at).valueOf()
+  const { activePosts, archivedPosts } = useMemo(() => {
+    const sorted = displayPosts
+      .filter(
+        (p) =>
+          !tagFilter ||
+          p.tags.some((t) => t.toLowerCase().startsWith(tagFilter.toLowerCase())),
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.published_at ?? b.created_at).valueOf() -
+          new Date(a.published_at ?? a.created_at).valueOf(),
+      )
+    return {
+      activePosts: sorted.filter((p) => p.status !== 'ARCHIVED'),
+      archivedPosts: sorted.filter((p) => p.status === 'ARCHIVED'),
+    }
+  }, [displayPosts, tagFilter])
 
-  const filtered = displayPosts
-    .filter(
-      (p) =>
-        !tagFilter ||
-        p.tags.some((t) => t.toLowerCase().startsWith(tagFilter.toLowerCase())),
-    )
-    .sort((a, b) => sortKey(b) - sortKey(a))
-
-  const activePosts = filtered.filter((p) => p.status !== 'ARCHIVED')
-  const archivedPosts = filtered.filter((p) => p.status === 'ARCHIVED')
   const [featured, ...rest] = activePosts
 
   function handleSaved() {

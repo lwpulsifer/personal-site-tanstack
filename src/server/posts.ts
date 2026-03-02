@@ -97,10 +97,10 @@ export const getAdminPosts = createServerFn({ method: 'GET' }).handler(
       supabase.from('post_current_status').select('*'),
     ])
     if (error) throw new Error(error.message)
+    const statusById = new Map((statuses ?? []).map((s) => [s.post_id, s.status]))
     return (posts ?? []).map((post) => ({
       ...post,
-      status: ((statuses ?? []).find((s) => s.post_id === post.id)?.status ??
-        'PENDING') as PostStatus,
+      status: (statusById.get(post.id) ?? 'PENDING') as PostStatus,
     })) as DbPost[]
   },
 )
@@ -110,14 +110,18 @@ export const getPostBySlug = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     await requireAuth()
     const supabase = getSupabaseClient()
-    const [{ data: post, error }, { data: statuses }] = await Promise.all([
-      supabase.from('posts').select('*').eq('slug', data.slug).single(),
-      supabase.from('post_current_status').select('*').eq('post_id', data.slug),
-    ])
+    const { data: post, error } = await supabase
+      .from('posts')
+      .select('*')
+      .eq('slug', data.slug)
+      .single()
     if (error || !post) return null
-    const status =
-      (statuses ?? []).find((s) => s.post_id === post.id)?.status ?? 'PENDING'
-    return { ...post, status } as DbPost
+    const { data: statusRow } = await supabase
+      .from('post_current_status')
+      .select('status')
+      .eq('post_id', post.id)
+      .single()
+    return { ...post, status: (statusRow?.status ?? 'PENDING') as PostStatus } as DbPost
   })
 
 export const upsertPost = createServerFn({ method: 'POST' })

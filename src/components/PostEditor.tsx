@@ -4,6 +4,7 @@ import { marked } from 'marked'
 import { sanitize } from '#/lib/sanitize'
 import type { DbPost, PostStatus } from '#/server/posts'
 import { upsertPost, setPostStatus } from '#/server/posts'
+import { STATUS_STYLES } from '#/components/blog/StatusBadge'
 
 marked.setOptions({ async: false })
 
@@ -45,11 +46,7 @@ const STATUS_LABEL: Record<EditorStatus, string> = {
 
 const STATUS_CLASS: Record<EditorStatus, string> = {
   draft: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
-  PENDING:
-    'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  PUBLISHED:
-    'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
-  ARCHIVED: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+  ...STATUS_STYLES,
 }
 
 type PostFields = {

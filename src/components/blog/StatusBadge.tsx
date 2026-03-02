@@ -1,6 +1,6 @@
 import type { PostStatus } from '#/server/posts'
 
-const STATUS_STYLES: Record<PostStatus, string> = {
+export const STATUS_STYLES: Record<PostStatus, string> = {
   PUBLISHED:
     'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
   PENDING:
