@@ -55,6 +55,15 @@ export default function Header() {
           >
             Fun
           </Link>
+          {isAuthenticated && (
+            <Link
+              to="/workouts"
+              className="nav-link"
+              activeProps={{ className: 'nav-link is-active' }}
+            >
+              Workouts
+            </Link>
+          )}
         </div>
       </nav>
     </header>

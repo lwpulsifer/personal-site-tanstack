@@ -9,14 +9,22 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WorkoutsRouteImport } from './routes/workouts'
 import { Route as RssDotxmlRouteImport } from './routes/rss[.]xml'
 import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FunRouteImport } from './routes/fun'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as StravaConnectRouteImport } from './routes/strava.connect'
+import { Route as StravaCallbackRouteImport } from './routes/strava.callback'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 
+const WorkoutsRoute = WorkoutsRouteImport.update({
+  id: '/workouts',
+  path: '/workouts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RssDotxmlRoute = RssDotxmlRouteImport.update({
   id: '/rss.xml',
   path: '/rss.xml',
@@ -47,6 +55,16 @@ const BlogIndexRoute = BlogIndexRouteImport.update({
   path: '/blog/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StravaConnectRoute = StravaConnectRouteImport.update({
+  id: '/strava/connect',
+  path: '/strava/connect',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StravaCallbackRoute = StravaCallbackRouteImport.update({
+  id: '/strava/callback',
+  path: '/strava/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({
   id: '/blog/$slug',
   path: '/blog/$slug',
@@ -59,7 +77,10 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/rss.xml': typeof RssDotxmlRoute
+  '/workouts': typeof WorkoutsRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/strava/callback': typeof StravaCallbackRoute
+  '/strava/connect': typeof StravaConnectRoute
   '/blog/': typeof BlogIndexRoute
 }
 export interface FileRoutesByTo {
@@ -68,7 +89,10 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/rss.xml': typeof RssDotxmlRoute
+  '/workouts': typeof WorkoutsRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/strava/callback': typeof StravaCallbackRoute
+  '/strava/connect': typeof StravaConnectRoute
   '/blog': typeof BlogIndexRoute
 }
 export interface FileRoutesById {
@@ -78,7 +102,10 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/rss.xml': typeof RssDotxmlRoute
+  '/workouts': typeof WorkoutsRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/strava/callback': typeof StravaCallbackRoute
+  '/strava/connect': typeof StravaConnectRoute
   '/blog/': typeof BlogIndexRoute
 }
 export interface FileRouteTypes {
@@ -89,10 +116,23 @@ export interface FileRouteTypes {
     | '/login'
     | '/logout'
     | '/rss.xml'
+    | '/workouts'
     | '/blog/$slug'
+    | '/strava/callback'
+    | '/strava/connect'
     | '/blog/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/fun' | '/login' | '/logout' | '/rss.xml' | '/blog/$slug' | '/blog'
+  to:
+    | '/'
+    | '/fun'
+    | '/login'
+    | '/logout'
+    | '/rss.xml'
+    | '/workouts'
+    | '/blog/$slug'
+    | '/strava/callback'
+    | '/strava/connect'
+    | '/blog'
   id:
     | '__root__'
     | '/'
@@ -100,7 +140,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/logout'
     | '/rss.xml'
+    | '/workouts'
     | '/blog/$slug'
+    | '/strava/callback'
+    | '/strava/connect'
     | '/blog/'
   fileRoutesById: FileRoutesById
 }
@@ -110,12 +153,22 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
   RssDotxmlRoute: typeof RssDotxmlRoute
+  WorkoutsRoute: typeof WorkoutsRoute
   BlogSlugRoute: typeof BlogSlugRoute
+  StravaCallbackRoute: typeof StravaCallbackRoute
+  StravaConnectRoute: typeof StravaConnectRoute
   BlogIndexRoute: typeof BlogIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/workouts': {
+      id: '/workouts'
+      path: '/workouts'
+      fullPath: '/workouts'
+      preLoaderRoute: typeof WorkoutsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rss.xml': {
       id: '/rss.xml'
       path: '/rss.xml'
@@ -158,6 +211,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/strava/connect': {
+      id: '/strava/connect'
+      path: '/strava/connect'
+      fullPath: '/strava/connect'
+      preLoaderRoute: typeof StravaConnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/strava/callback': {
+      id: '/strava/callback'
+      path: '/strava/callback'
+      fullPath: '/strava/callback'
+      preLoaderRoute: typeof StravaCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/blog/$slug': {
       id: '/blog/$slug'
       path: '/blog/$slug'
@@ -174,7 +241,10 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,
   RssDotxmlRoute: RssDotxmlRoute,
+  WorkoutsRoute: WorkoutsRoute,
   BlogSlugRoute: BlogSlugRoute,
+  StravaCallbackRoute: StravaCallbackRoute,
+  StravaConnectRoute: StravaConnectRoute,
   BlogIndexRoute: BlogIndexRoute,
 }
 export const routeTree = rootRouteImport
