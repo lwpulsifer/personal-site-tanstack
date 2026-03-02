@@ -50,30 +50,46 @@ const STATUS_CLASS: Record<EditorStatus, string> = {
   ARCHIVED: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
 }
 
+type PostFields = {
+  title: string
+  slug: string
+  description: string
+  tagsRaw: string
+  content: string
+  heroImage: string
+}
+
 export function PostEditor({ initial, onClose, onSaved }: Props) {
-  const [title, setTitle] = useState(initial.title ?? '')
-  const [slug, setSlug] = useState(initial.slug ?? '')
-  const [description, setDescription] = useState(initial.description ?? '')
-  const [tagsRaw, setTagsRaw] = useState(initial.tags?.join(', ') ?? '')
-  const [content, setContent] = useState(initial.content ?? '')
-  const [heroImage, setHeroImage] = useState(initial.hero_image ?? '')
+  const [fields, setFields] = useState<PostFields>({
+    title: initial.title ?? '',
+    slug: initial.slug ?? '',
+    description: initial.description ?? '',
+    tagsRaw: initial.tags?.join(', ') ?? '',
+    content: initial.content ?? '',
+    heroImage: initial.hero_image ?? '',
+  })
+
   const [savedPostId, setSavedPostId] = useState<string | null>(initial.id ?? null)
   const [status, setStatus] = useState<EditorStatus>(initial.status ?? 'draft')
   const [tab, setTab] = useState<'write' | 'preview'>('write')
   const slugManuallyEdited = useRef(!!initial.slug)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  function setField<K extends keyof PostFields>(key: K, value: PostFields[K]) {
+    setFields((prev) => ({ ...prev, [key]: value }))
+  }
+
   const saveMutation = useMutation({
     mutationFn: () =>
       upsertPost({
         data: {
           ...(savedPostId ? { id: savedPostId } : {}),
-          slug,
-          title,
-          description: description || undefined,
-          content,
-          tags: tagsRaw.split(',').map((t) => t.trim()).filter(Boolean),
-          hero_image: heroImage || undefined,
+          slug: fields.slug,
+          title: fields.title,
+          description: fields.description || undefined,
+          content: fields.content,
+          tags: fields.tagsRaw.split(',').map((t) => t.trim()).filter(Boolean),
+          hero_image: fields.heroImage || undefined,
         },
       }),
     onSuccess: (post) => {
@@ -93,9 +109,9 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
   // Auto-generate slug from title for new posts
   useEffect(() => {
     if (!slugManuallyEdited.current && !initial.slug) {
-      setSlug(slugify(title))
+      setField('slug', slugify(fields.title))
     }
-  }, [title, initial.slug])
+  }, [fields.title, initial.slug])
 
   // Focus textarea on mount
   useEffect(() => {
@@ -112,8 +128,8 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
   }, [onClose])
 
   const renderedHtml = useMemo(
-    () => marked.parse(content) as string,
-    [content],
+    () => marked.parse(fields.content) as string,
+    [fields.content],
   )
 
   const hasSavedId = !!savedPostId
@@ -199,7 +215,7 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
           <button
             type="button"
             onClick={() => saveMutation.mutate()}
-            disabled={isSaving || !title || !slug || !content}
+            disabled={isSaving || !fields.title || !fields.slug || !fields.content}
             className="rounded-full bg-[var(--blue-deep)] px-4 py-1.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50 disabled:hover:translate-y-0"
           >
             {isSaving ? 'Saving…' : 'Save'}
@@ -216,8 +232,8 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
             </label>
             <input
               type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              value={fields.title}
+              onChange={(e) => setField('title', e.target.value)}
               placeholder="Post title"
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)] outline-none transition focus:border-[var(--blue)] focus:ring-2 focus:ring-[rgba(59,130,246,0.2)]"
             />
@@ -229,10 +245,10 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
             </label>
             <input
               type="text"
-              value={slug}
+              value={fields.slug}
               onChange={(e) => {
                 slugManuallyEdited.current = true
-                setSlug(e.target.value)
+                setField('slug', e.target.value)
               }}
               placeholder="post-slug"
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 font-mono text-sm text-[var(--text)] outline-none transition focus:border-[var(--blue)] focus:ring-2 focus:ring-[rgba(59,130,246,0.2)]"
@@ -245,8 +261,8 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
             </label>
             <input
               type="text"
-              value={tagsRaw}
-              onChange={(e) => setTagsRaw(e.target.value)}
+              value={fields.tagsRaw}
+              onChange={(e) => setField('tagsRaw', e.target.value)}
               placeholder="tag1, tag2"
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)] outline-none transition focus:border-[var(--blue)] focus:ring-2 focus:ring-[rgba(59,130,246,0.2)]"
             />
@@ -258,8 +274,8 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
             </label>
             <input
               type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              value={fields.description}
+              onChange={(e) => setField('description', e.target.value)}
               placeholder="Short description"
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)] outline-none transition focus:border-[var(--blue)] focus:ring-2 focus:ring-[rgba(59,130,246,0.2)]"
             />
@@ -271,8 +287,8 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
             </label>
             <input
               type="text"
-              value={heroImage}
-              onChange={(e) => setHeroImage(e.target.value)}
+              value={fields.heroImage}
+              onChange={(e) => setField('heroImage', e.target.value)}
               placeholder="https://…"
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)] outline-none transition focus:border-[var(--blue)] focus:ring-2 focus:ring-[rgba(59,130,246,0.2)]"
             />
@@ -292,8 +308,8 @@ export function PostEditor({ initial, onClose, onSaved }: Props) {
         {tab === 'write' ? (
           <textarea
             ref={textareaRef}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
+            value={fields.content}
+            onChange={(e) => setField('content', e.target.value)}
             placeholder="Write your post in Markdown…"
             spellCheck
             className="h-full w-full resize-none bg-[var(--bg)] p-6 font-mono text-sm leading-relaxed text-[var(--text)] outline-none"
