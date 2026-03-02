@@ -75,6 +75,14 @@ export const getPublishedPost = createServerFn({ method: 'GET' })
     return { ...post, status: 'PUBLISHED' as PostStatus } as DbPost
   })
 
+export const getAllTags = createServerFn({ method: 'GET' }).handler(async () => {
+  const supabase = getSupabaseClient()
+  const { data, error } = await supabase.from('posts').select('tags')
+  if (error) throw new Error(error.message)
+  const tags = [...new Set((data ?? []).flatMap((p) => p.tags as string[]))]
+  return tags.sort()
+})
+
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
 export const getAdminPosts = createServerFn({ method: 'GET' }).handler(

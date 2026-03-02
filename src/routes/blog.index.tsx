@@ -4,6 +4,7 @@ import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from '#/lib/site'
 import { PostEditor } from '#/components/PostEditor'
 import { useAuth } from '#/lib/auth'
 import {
+  getAllTags,
   getAdminPosts,
   getPublishedPosts,
   setPostStatus,
@@ -130,6 +131,7 @@ function BlogIndex() {
   const [adminPosts, setAdminPosts] = useState<DbPost[]>([])
   const [adminLoaded, setAdminLoaded] = useState(false)
   const [editingPost, setEditingPost] = useState<DbPost | 'new' | null>(null)
+  const [knownTags, setKnownTags] = useState<string[]>([])
 
   // Fetch all posts (including drafts/archived) for admin view
   useEffect(() => {
@@ -137,6 +139,7 @@ function BlogIndex() {
     getAdminPosts()
       .then(setAdminPosts)
       .finally(() => setAdminLoaded(true))
+    getAllTags().then(setKnownTags)
   }, [isAuthenticated])
 
   function handleStatusChange(id: string, status: PostStatus) {
@@ -188,6 +191,7 @@ function BlogIndex() {
                   status: editingPost.status,
                 }
           }
+          knownTags={knownTags}
           onClose={() => setEditingPost(null)}
           onSaved={(saved) => {
             setAdminPosts((prev) => {
