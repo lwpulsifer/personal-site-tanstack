@@ -1,3 +1,4 @@
+import { BuyMeACoffee } from './BuyMeACoffee'
 import PageViewsTracker from './PageViewsTracker'
 
 const SOCIAL_LINKS = [
@@ -29,6 +30,7 @@ export default function Footer() {
               {label}
             </a>
           ))}
+          <BuyMeACoffee />
         </nav>
       </div>
     </footer>
