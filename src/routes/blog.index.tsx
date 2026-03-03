@@ -1,3 +1,4 @@
+import { BuyMeACoffee } from '#/components/BuyMeACoffee'
 import { PostEditor } from '#/components/PostEditor'
 import { PostCard } from '#/components/blog/PostCard'
 import { useAuth } from '#/lib/auth'
@@ -108,6 +109,7 @@ function BlogIndex() {
           </div>
 
           <div className="flex items-center gap-2">
+            <BuyMeACoffee variant="prominent" label="Like the blog? Buy me a coffee!" />
             {isAuthenticated && (
               <button
                 type="button"

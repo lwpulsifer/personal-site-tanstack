@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { marked } from 'marked'
 import { sanitize } from '#/lib/sanitize'
 import { SITE_URL } from '#/lib/site'
+import { BuyMeACoffee } from '#/components/BuyMeACoffee'
 import { PostEditor } from '#/components/PostEditor'
 import { useAuth } from '#/lib/auth'
 import { getPublishedPost } from '#/server/posts'
@@ -124,6 +125,10 @@ function BlogPost() {
                 <span>{post.tags.join(', ')}</span>
               </>
             )}
+          </div>
+
+          <div className="mb-6 flex justify-end">
+            <BuyMeACoffee variant="prominent" />
           </div>
 
           <div
