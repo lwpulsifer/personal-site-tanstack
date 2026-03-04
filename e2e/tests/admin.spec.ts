@@ -47,9 +47,12 @@ test.describe('admin: post management', () => {
     await expect(card).toBeVisible()
     await card.getByRole('button', { name: 'Publish' }).click()
 
-    // The post is now public — navigate to it as anon
+    // Wait for the mutation to complete — Archive replaces Publish on success
+    await expect(card.getByRole('button', { name: 'Archive' })).toBeVisible()
+
+    // The post is now public — navigate to it
     await page.goto(`/blog/${slug}`)
-    await expect(page.getByText('Publish Test')).toBeVisible()
+    await expect(page.getByRole('heading', { name: title }).first()).toBeVisible()
   })
 
   test('can archive a published post', async ({ page }) => {
@@ -66,7 +69,12 @@ test.describe('admin: post management', () => {
 
     const card = page.locator('article').filter({ hasText: title })
     await card.getByRole('button', { name: 'Publish' }).click()
+    // Wait for publish to complete
+    await expect(card.getByRole('button', { name: 'Archive' })).toBeVisible()
+
     await card.getByRole('button', { name: 'Archive' }).click()
+    // Wait for archive to complete
+    await expect(card.getByRole('button', { name: 'Restore' })).toBeVisible()
 
     // Reload so the admin query refetches; archived posts move to the details section
     await page.reload()

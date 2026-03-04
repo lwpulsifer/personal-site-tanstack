@@ -37,7 +37,7 @@ test.describe('individual post', () => {
 
   test('renders post title and markdown content', async ({ page }) => {
     await page.goto('/blog/hello-world')
-    await expect(page.getByText('Hello World')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Hello World' }).first()).toBeVisible()
     await expect(page.getByText('Welcome to the test blog.')).toBeVisible()
   })
 })

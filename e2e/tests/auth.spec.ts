@@ -46,7 +46,10 @@ test.describe('logout', () => {
     await page.getByRole('button', { name: 'Sign in' }).click()
     await expect(page).toHaveURL('/')
 
+    // Wait for the async signOut() to finish before navigating away
     await page.goto('/logout')
+    await expect(page.getByText("You're signed out")).toBeVisible()
+
     await page.goto('/blog')
     await expect(page.getByRole('button', { name: '+ New Post' })).not.toBeVisible()
   })

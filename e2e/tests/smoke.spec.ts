@@ -12,5 +12,5 @@ test('blog listing loads', async ({ page }) => {
 
 test('individual blog post loads', async ({ page }) => {
   await page.goto('/blog/hello-world')
-  await expect(page.getByText('Hello World')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Hello World' }).first()).toBeVisible()
 })
