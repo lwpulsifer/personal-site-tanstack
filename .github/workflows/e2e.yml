@@ -20,6 +20,11 @@ jobs:
       - name: Start local Supabase
         run: supabase start
 
+      - name: Export Supabase credentials
+        run: |
+          echo "SUPABASE_ANON_KEY=$(supabase status 2>&1 | awk '/anon key/{print $NF}')" >> $GITHUB_ENV
+          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status 2>&1 | awk '/service_role key/{print $NF}')" >> $GITHUB_ENV
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -34,14 +39,17 @@ jobs:
         run: npm run build
         env:
           VITE_SUPABASE_URL: http://127.0.0.1:54321
-          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRFA0NiK7kyqd1YVEAa8VIoVJ6pPjNmQ1sRFYFAWCbw
+          VITE_SUPABASE_ANON_KEY: ${{ env.SUPABASE_ANON_KEY }}
           SUPABASE_URL: http://127.0.0.1:54321
-          SUPABASE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hj04zWl196z2-SB_E
+          SUPABASE_KEY: ${{ env.SUPABASE_SERVICE_ROLE_KEY }}
 
       - name: Run E2E tests
         run: npx playwright test
         env:
           CI: true
+          SUPABASE_URL: http://127.0.0.1:54321
+          SUPABASE_ANON_KEY: ${{ env.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SUPABASE_SERVICE_ROLE_KEY }}
 
       - uses: actions/upload-artifact@v4
         if: failure()
