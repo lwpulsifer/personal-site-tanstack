@@ -21,7 +21,7 @@ jobs:
         run: supabase start
 
       - name: Export Supabase credentials
-        run: supabase status -o env | sed 's/^/SUPABASE_/' >> $GITHUB_ENV
+        run: supabase status -o env | sed 's/^/SUPABASE_/' | tr -d '"' >> $GITHUB_ENV
 
       - uses: actions/setup-node@v4
         with:
