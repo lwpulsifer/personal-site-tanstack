@@ -21,13 +21,7 @@ jobs:
         run: supabase start
 
       - name: Export Supabase credentials
-        run: |
-          STATUS=$(supabase status 2>&1 || true)
-          echo "$STATUS"
-          ANON_KEY=$(echo "$STATUS" | grep -i 'anon' | grep -oE 'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+')
-          SVC_KEY=$(echo "$STATUS" | grep -i 'service_role' | grep -oE 'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+')
-          echo "SUPABASE_ANON_KEY=${ANON_KEY}" >> $GITHUB_ENV
-          echo "SUPABASE_SERVICE_ROLE_KEY=${SVC_KEY}" >> $GITHUB_ENV
+        run: supabase status -o env | sed 's/^/SUPABASE_/' >> $GITHUB_ENV
 
       - uses: actions/setup-node@v4
         with:
