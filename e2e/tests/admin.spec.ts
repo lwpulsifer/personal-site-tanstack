@@ -73,18 +73,18 @@ test.describe('admin: post management', () => {
     await expect(card.getByRole('button', { name: 'Archive' })).toBeVisible()
 
     await card.getByRole('button', { name: 'Archive' }).click()
-    // Wait for archive to complete
-    await expect(card.getByRole('button', { name: 'Restore' })).toBeVisible()
-
-    // Reload so the admin query refetches; archived posts move to the details section
-    await page.reload()
+    // After archive mutation completes and the query refetches, the post moves
+    // from the active grid into a collapsed <details> section — no longer visible.
+    await expect(card.getByRole('button', { name: 'Archive' })).not.toBeVisible({ timeout: 10_000 })
     await expect(page.getByText(/Archived \(\d+\)/)).toBeVisible()
   })
 
   test('edit button opens the editor with post data pre-filled', async ({ page }) => {
     await page.goto('/blog')
 
+    // Wait for admin query to resolve and Edit buttons to appear
     const card = page.locator('article').filter({ hasText: 'Hello World' }).first()
+    await expect(card.getByRole('button', { name: 'Edit' })).toBeVisible({ timeout: 10_000 })
     await card.getByRole('button', { name: 'Edit' }).click()
 
     await expect(page.getByPlaceholder('Post title')).toHaveValue('Hello World')
