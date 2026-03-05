@@ -56,9 +56,9 @@ test.describe('admin: post management', () => {
 
     // Clean up: archive the post so it doesn't leak into other tests (e.g. sitemap)
     await page.goto('/blog')
-    const card = page.locator('article').filter({ hasText: title })
-    await card.getByRole('button', { name: 'Archive' }).click()
-    await expect(card.getByRole('button', { name: 'Archive' })).not.toBeVisible({ timeout: 10_000 })
+    const publishedCard = page.locator('article').filter({ hasText: title })
+    await publishedCard.getByRole('button', { name: 'Archive' }).click()
+    await expect(publishedCard.getByRole('button', { name: 'Archive' })).not.toBeVisible({ timeout: 10_000 })
   })
 
   test('can archive a published post', async ({ page }) => {
