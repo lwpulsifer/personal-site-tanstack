@@ -53,6 +53,12 @@ test.describe('admin: post management', () => {
     // The post is now public — navigate to it
     await page.goto(`/blog/${slug}`)
     await expect(page.getByRole('heading', { name: title }).first()).toBeVisible()
+
+    // Clean up: archive the post so it doesn't leak into other tests (e.g. sitemap)
+    await page.goto('/blog')
+    const publishedCard = page.locator('article').filter({ hasText: title })
+    await publishedCard.getByRole('button', { name: 'Archive' }).click()
+    await expect(publishedCard.getByRole('button', { name: 'Archive' })).not.toBeVisible({ timeout: 10_000 })
   })
 
   test('can archive a published post', async ({ page }) => {
@@ -82,7 +88,8 @@ test.describe('admin: post management', () => {
   test('edit button opens the editor with post data pre-filled', async ({ page }) => {
     await page.goto('/blog')
 
-    // Wait for admin query to resolve and Edit buttons to appear
+    // Wait for admin query to resolve before looking for Edit buttons
+    await expect(page.getByRole('button', { name: '+ New Post' })).toBeVisible({ timeout: 10_000 })
     const card = page.locator('article').filter({ hasText: 'Hello World' }).first()
     await expect(card.getByRole('button', { name: 'Edit' })).toBeVisible({ timeout: 10_000 })
     await card.getByRole('button', { name: 'Edit' }).click()
