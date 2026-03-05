@@ -14,6 +14,9 @@ export const Route = createFileRoute('/blog/$slug')({
     if (!post) throw notFound()
     return post
   },
+  headers: () => ({
+    'cache-control': 'public, max-age=604800, s-maxage=604800',
+  }),
   head: ({ loaderData, params }) => {
     const title = loaderData?.title ?? 'Post'
     const description = loaderData?.description ?? ''
