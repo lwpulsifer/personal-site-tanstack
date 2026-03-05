@@ -88,7 +88,8 @@ test.describe('admin: post management', () => {
   test('edit button opens the editor with post data pre-filled', async ({ page }) => {
     await page.goto('/blog')
 
-    // Wait for admin query to resolve and Edit buttons to appear
+    // Wait for admin query to resolve before looking for Edit buttons
+    await expect(page.getByRole('button', { name: '+ New Post' })).toBeVisible({ timeout: 10_000 })
     const card = page.locator('article').filter({ hasText: 'Hello World' }).first()
     await expect(card.getByRole('button', { name: 'Edit' })).toBeVisible({ timeout: 10_000 })
     await card.getByRole('button', { name: 'Edit' }).click()
