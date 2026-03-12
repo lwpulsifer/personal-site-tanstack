@@ -40,6 +40,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.2.4",
     "@playwright/test": "^1.58.2",
+    "@rolldown/binding-darwin-arm64": "^1.0.0-rc.9",
     "@tailwindcss/typography": "^0.5.16",
     "@tanstack/devtools-vite": "^0.3.11",
     "@testing-library/dom": "^10.4.0",
@@ -48,16 +49,19 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@types/sanitize-html": "^2.16.0",
-    "@vitejs/plugin-react": "^5.0.4",
+    "@vitejs/plugin-react": "^6.0.0",
     "dotenv-cli": "^11.0.0",
     "happy-dom": "^20.8.3",
     "jsdom": "^27.0.0",
     "remark-gfm": "^4.0.1",
     "tsx": "^4.21.0",
     "typescript": "^5.7.2",
-    "vite": "^7.1.7",
+    "vite": "^8.0.0",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.0.5",
     "zod": "^4.3.5"
+  },
+  "optionalDependencies": {
+    "@rolldown/binding-darwin-arm64": "^1.0.0-rc.9"
   }
 }
