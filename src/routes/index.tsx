@@ -57,6 +57,8 @@ function Home() {
             <img
               src="/grad_cropped.jpg"
               alt="Liam Pulsifer"
+              width={384}
+              height={384}
               className="h-48 w-48 rounded-full object-cover shadow-lg ring-2 ring-[var(--border)]"
             />
           </div>
