@@ -128,7 +128,7 @@ function BlogIndex() {
               <div className="flex items-center gap-2">
                 <input
                   type="search"
-                  data-testid="tag-filter-input"
+                  data-testid="tag-filter"
                   list="tag-options"
                   value={tagFilter}
                   onChange={(e) => setTagFilter(e.target.value)}
@@ -143,7 +143,7 @@ function BlogIndex() {
                 {tagFilter && (
                   <button
                     type="button"
-                    data-testid="tag-filter-clear"
+                    data-testid="tag-clear-btn"
                     onClick={() => setTagFilter('')}
                     className="text-sm text-[var(--text-muted)] underline"
                   >
@@ -184,7 +184,7 @@ function BlogIndex() {
         {isAuthenticated && archivedPosts.length > 0 && (
           <details className="group mt-12">
             <summary
-              data-testid="archived-posts-summary"
+              data-testid="archived-summary"
               className="island-kicker mb-3 cursor-pointer select-none list-none"
             >
               <span>Archived ({archivedPosts.length})</span>

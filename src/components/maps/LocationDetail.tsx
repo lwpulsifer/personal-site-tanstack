@@ -9,16 +9,17 @@ export function LocationDetail({
   onClose: () => void
 }) {
   return (
-    <div className="island-shell flex h-full flex-col overflow-y-auto rounded-2xl p-5">
+    <div data-testid="location-detail" className="island-shell flex h-full flex-col overflow-y-auto rounded-2xl p-5">
       <div className="mb-4 flex items-start justify-between gap-2">
         <div>
-          <h2 className="m-0 text-xl font-bold text-[var(--text)]">{location.name}</h2>
+          <h2 data-testid="location-detail-name" className="m-0 text-xl font-bold text-[var(--text)]">{location.name}</h2>
           {location.address && (
             <p className="m-0 mt-1 text-sm text-[var(--text-muted)]">{location.address}</p>
           )}
         </div>
         <button
           type="button"
+          data-testid="location-detail-close"
           onClick={onClose}
           className="shrink-0 rounded-full p-1.5 text-[var(--text-muted)] transition hover:bg-[var(--surface)] hover:text-[var(--text)]"
         >

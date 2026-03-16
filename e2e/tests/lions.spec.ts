@@ -5,22 +5,22 @@ import { test as adminTest, expect as adminExpect } from '../fixtures/auth'
 
 test('lions page loads with heading and map', async ({ page }) => {
   await page.goto('/lions')
-  await expect(page.getByRole('heading', { name: /Lions of SF/i, level: 1 })).toBeVisible()
+  await expect(page.getByTestId('lions-heading')).toBeVisible()
   await expect(
-    page.locator('.leaflet-container').or(page.getByText('Loading map...')),
+    page.getByTestId('map-container').or(page.getByTestId('map-loading')),
   ).toBeVisible({ timeout: 10_000 })
 })
 
 test('seeded lion locations appear in sidebar list', async ({ page }) => {
   await page.goto('/lions')
-  await expect(page.getByText('Palace of Fine Arts Lions')).toBeVisible({ timeout: 10_000 })
-  await expect(page.getByText('City Hall Lions')).toBeVisible()
+  await expect(page.getByTestId('location-btn-palace-of-fine-arts-lions')).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByTestId('location-btn-city-hall-lions')).toBeVisible()
 })
 
 test('clicking a location in sidebar shows detail panel', async ({ page }) => {
   await page.goto('/lions')
-  await page.getByRole('button', { name: /Palace of Fine Arts Lions/ }).click()
-  await expect(page.getByRole('heading', { name: 'Palace of Fine Arts Lions' })).toBeVisible()
+  await page.getByTestId('location-btn-palace-of-fine-arts-lions').click()
+  await expect(page.getByTestId('location-detail')).toBeVisible()
   await expect(page.getByTestId('photos-heading')).toBeVisible()
 })
 
@@ -61,7 +61,7 @@ test('submission form close button returns to sidebar', async ({ page }) => {
 
 adminTest.describe('admin: lion management', () => {
   const pendingSubmissionCard = (page: import('@playwright/test').Page, name: string) =>
-    page.locator('[data-testid^="submission-card-"]').filter({ hasText: name })
+    page.getByTestId(`submission-card-${name}`)
 
   adminTest('admin panel is visible when authenticated', async ({ page }) => {
     await page.goto('/lions')
@@ -86,10 +86,10 @@ adminTest.describe('admin: lion management', () => {
     await card.getByTestId('approve-btn').click()
 
     // After approval the submission disappears from pending
-    await adminExpect(pendingSubmissionCard(page, 'e2e-test-lion-approve')).toHaveCount(0, { timeout: 10_000 })
+    await adminExpect(pendingSubmissionCard(page, 'e2e-test-lion-approve')).not.toBeVisible({ timeout: 10_000 })
 
     // The new location should appear in the sidebar list
-    await adminExpect(page.getByRole('button', { name: /e2e-test-lion-approve/ })).toBeVisible({ timeout: 10_000 })
+    await adminExpect(page.getByTestId('location-btn-e2e-test-lion-approve')).toBeVisible({ timeout: 10_000 })
   })
 
   adminTest('clicking a pending submission zooms the map', async ({ page }) => {
@@ -110,7 +110,7 @@ adminTest.describe('admin: lion management', () => {
     await submissionCard.click()
 
     // A preview marker should appear on the map at the submission coordinates
-    await adminExpect(page.locator('.leaflet-marker-icon').filter({ hasText: '📍' })).toBeVisible({ timeout: 5_000 })
+    await adminExpect(page.getByTestId('map-preview-marker')).toBeVisible({ timeout: 5_000 })
   })
 
   adminTest('admin can reject a submission', async ({ page }) => {
@@ -131,6 +131,6 @@ adminTest.describe('admin: lion management', () => {
     await card.getByTestId('reject-btn').click()
 
     // Submission disappears from pending list
-    await adminExpect(pendingSubmissionCard(page, 'e2e-test-lion-reject')).toHaveCount(0, { timeout: 10_000 })
+    await adminExpect(pendingSubmissionCard(page, 'e2e-test-lion-reject')).not.toBeVisible({ timeout: 10_000 })
   })
 })

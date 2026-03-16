@@ -11,10 +11,7 @@ If a change is not realistically testable, document why in the PR description an
 
 ## E2E Selectors Must Use `data-testid`
 
-All Playwright e2e selectors must use `data-testid` (via `page.getByTestId(...)`):
+All Playwright e2e selectors must use `data-testid` (prefer `page.getByTestId(...)`):
 
-- Do not select by visible text (`getByText`, role name, etc.)
-- Do not select by placeholder/label as the primary selector
-
-When implementing new UI that needs e2e coverage, add stable `data-testid` attributes to the relevant elements.
-
+- Do not select elements by visible text (`getByText`), labels/placeholders, role name text, or CSS structure.
+- If a stable `data-testid` does not exist, add one in the UI/component instead of using a text-based selector.

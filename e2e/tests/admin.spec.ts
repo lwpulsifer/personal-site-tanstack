@@ -21,14 +21,15 @@ test.describe('admin: post management', () => {
     await ensureHydrated(page)
     await clickUntilVisible(page.getByTestId('new-post-btn'), page.getByTestId('post-editor'), 15_000)
 
-    await fillStable(page.getByTestId('post-editor-title'), title, 15_000)
-    await fillStable(page.getByTestId('post-editor-slug'), slug, 15_000)
-    await fillStable(page.getByTestId('post-editor-content'), '# Draft\n\nCreated by e2e test.', 15_000)
+    await fillStable(page.getByTestId('post-title'), title, 15_000)
+    await fillStable(page.getByTestId('post-slug'), slug, 15_000)
+    await fillStable(page.getByTestId('post-content'), '# Draft\n\nCreated by e2e test.', 15_000)
 
-    await page.getByTestId('post-editor-save').click()
+    await page.getByTestId('post-save').click()
 
     // Editor closes on save; the new post should appear in the admin list
     await expect(page.getByTestId(`post-card-${slug}`)).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByTestId(`post-card-${slug}`)).toContainText(title)
   })
 
   test('can publish a post via the post card', async ({ page }) => {
@@ -38,25 +39,27 @@ test.describe('admin: post management', () => {
     await page.goto('/blog')
     await ensureHydrated(page)
     await clickUntilVisible(page.getByTestId('new-post-btn'), page.getByTestId('post-editor'), 15_000)
-    await fillStable(page.getByTestId('post-editor-title'), title, 15_000)
-    await fillStable(page.getByTestId('post-editor-slug'), slug, 15_000)
-    await fillStable(page.getByTestId('post-editor-content'), '# Publish Test\n\nE2E post to publish.', 15_000)
-    await page.getByTestId('post-editor-save').click()
+    await fillStable(page.getByTestId('post-title'), title, 15_000)
+    await fillStable(page.getByTestId('post-slug'), slug, 15_000)
+    await fillStable(page.getByTestId('post-content'), '# Publish Test\n\nE2E post to publish.', 15_000)
+    await page.getByTestId('post-save').click()
 
-    await expect(page.getByTestId(`post-card-${slug}`)).toBeVisible({ timeout: 20_000 })
-    await page.getByTestId(`post-publish-btn-${slug}`).click()
-    await expect(page.getByTestId(`post-archive-btn-${slug}`)).toBeVisible({ timeout: 20_000 })
+    const card = page.getByTestId(`post-card-${slug}`)
+    await expect(card).toBeVisible({ timeout: 20_000 })
+    await card.getByTestId('post-publish').click()
+    await expect(card.getByTestId('post-archive')).toBeVisible({ timeout: 20_000 })
 
     // The post is now public — navigate to it
     await page.goto(`/blog/${slug}`)
     await ensureHydrated(page)
-    await expect(page.getByTestId('post-title')).toHaveText(title)
+    await expect(page.getByTestId('post-heading')).toHaveText(title)
 
     // Clean up: archive the post so it doesn't leak into other tests (e.g. sitemap)
     await page.goto('/blog')
     await ensureHydrated(page)
-    await page.getByTestId(`post-archive-btn-${slug}`).click()
-    await expect(page.getByTestId(`post-archive-btn-${slug}`)).not.toBeVisible({ timeout: 20_000 })
+    const publishedCard = page.getByTestId(`post-card-${slug}`)
+    await publishedCard.getByTestId('post-archive').click()
+    await expect(publishedCard.getByTestId('post-archive')).not.toBeVisible({ timeout: 20_000 })
   })
 
   test('can archive a published post', async ({ page }) => {
@@ -66,20 +69,21 @@ test.describe('admin: post management', () => {
     await page.goto('/blog')
     await ensureHydrated(page)
     await clickUntilVisible(page.getByTestId('new-post-btn'), page.getByTestId('post-editor'), 15_000)
-    await fillStable(page.getByTestId('post-editor-title'), title, 15_000)
-    await fillStable(page.getByTestId('post-editor-slug'), slug, 15_000)
-    await fillStable(page.getByTestId('post-editor-content'), '# Archive Test', 15_000)
-    await page.getByTestId('post-editor-save').click()
+    await fillStable(page.getByTestId('post-title'), title, 15_000)
+    await fillStable(page.getByTestId('post-slug'), slug, 15_000)
+    await fillStable(page.getByTestId('post-content'), '# Archive Test', 15_000)
+    await page.getByTestId('post-save').click()
 
-    await expect(page.getByTestId(`post-card-${slug}`)).toBeVisible({ timeout: 20_000 })
-    await page.getByTestId(`post-publish-btn-${slug}`).click()
-    await expect(page.getByTestId(`post-archive-btn-${slug}`)).toBeVisible({ timeout: 20_000 })
+    const card = page.getByTestId(`post-card-${slug}`)
+    await expect(card).toBeVisible({ timeout: 20_000 })
+    await card.getByTestId('post-publish').click()
+    await expect(card.getByTestId('post-archive')).toBeVisible({ timeout: 20_000 })
 
-    await page.getByTestId(`post-archive-btn-${slug}`).click()
+    await card.getByTestId('post-archive').click()
     // After archive mutation completes and the query refetches, the post moves
     // from the active grid into a collapsed <details> section — no longer visible.
-    await expect(page.getByTestId(`post-archive-btn-${slug}`)).not.toBeVisible({ timeout: 20_000 })
-    await expect(page.getByTestId('archived-posts-summary')).toBeVisible()
+    await expect(card.getByTestId('post-archive')).not.toBeVisible({ timeout: 20_000 })
+    await expect(page.getByTestId('archived-summary')).toBeVisible()
   })
 
   test('edit button opens the editor with post data pre-filled', async ({ page }) => {
@@ -88,13 +92,15 @@ test.describe('admin: post management', () => {
     // Wait for admin query to resolve before looking for Edit buttons
     await ensureHydrated(page)
     await expect(page.getByTestId('new-post-btn')).toBeVisible({ timeout: 20_000 })
-    await page.getByTestId('post-edit-btn-hello-world').click()
+    const card = page.getByTestId('post-card-hello-world')
+    await expect(card.getByTestId('post-edit')).toBeVisible({ timeout: 20_000 })
+    await card.getByTestId('post-edit').click()
     await expect(page.getByTestId('post-editor')).toBeVisible({ timeout: 20_000 })
 
-    await expect(page.getByTestId('post-editor-title')).toHaveValue('Hello World')
-    await expect(page.getByTestId('post-editor-slug')).toHaveValue('hello-world')
+    await expect(page.getByTestId('post-title')).toHaveValue('Hello World')
+    await expect(page.getByTestId('post-slug')).toHaveValue('hello-world')
 
     // Close without saving
-    await page.getByTestId('post-editor-close').click()
+    await page.getByTestId('close-editor').click()
   })
 })

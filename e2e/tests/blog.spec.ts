@@ -13,19 +13,19 @@ test.describe('blog listing', () => {
   })
 
   test('hides pending posts from anonymous visitors', async ({ page }) => {
-    await expect(page.getByTestId('post-card-draft-post')).not.toBeVisible()
+    await expect(page.getByTestId('post-card-draft-post')).toHaveCount(0)
   })
 
   test('tag filter shows only matching posts', async ({ page }) => {
-    await fillStable(page.getByTestId('tag-filter-input'), 'intro')
+    await fillStable(page.getByTestId('tag-filter'), 'intro')
     await expect(page.getByTestId('post-card-hello-world')).toBeVisible()
     await expect(page.getByTestId('post-card-second-post')).toHaveCount(0)
   })
 
   test('clear button resets the tag filter', async ({ page }) => {
-    await fillStable(page.getByTestId('tag-filter-input'), 'intro')
+    await fillStable(page.getByTestId('tag-filter'), 'intro')
     await expect(page.getByTestId('post-card-second-post')).toHaveCount(0)
-    await page.getByTestId('tag-filter-clear').click()
+    await page.getByTestId('tag-clear-btn').click()
     await expect(page.getByTestId('post-card-second-post')).toBeVisible()
   })
 })
@@ -41,7 +41,7 @@ test.describe('individual post', () => {
   test('renders post title and markdown content', async ({ page }) => {
     await page.goto('/blog/hello-world')
     await ensureHydrated(page)
-    await expect(page.getByTestId('post-title')).toBeVisible()
-    await expect(page.getByTestId('post-body')).toContainText('Welcome to the test blog.')
+    await expect(page.getByTestId('post-heading')).toBeVisible()
+    await expect(page.getByTestId('post-content')).toContainText('Welcome to the test blog.')
   })
 })

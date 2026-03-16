@@ -26,7 +26,7 @@ const mapMarkerIcon = new L.DivIcon({
 })
 
 const previewMarkerIcon = new L.DivIcon({
-  html: '<span style="font-size:28px;line-height:1;opacity:0.7">📍</span>',
+  html: '<span data-testid="map-preview-marker" style="font-size:28px;line-height:1;opacity:0.7">📍</span>',
   className: 'map-marker-icon',
   iconSize: [32, 32],
   iconAnchor: [16, 32],
@@ -74,6 +74,7 @@ export function MapView({
       center={SF_CENTER}
       zoom={13}
       className="h-full w-full"
+      data-testid="map-container"
       scrollWheelZoom
     >
       <TileLayer

@@ -3,6 +3,14 @@ import { pendingMapSubmissionsQueryOptions, mapLocationsQueryOptions } from '#/l
 import { approveSubmission, rejectSubmission } from '#/server/maps'
 import type { MapSubmission } from '#/lib/map-types'
 
+function toTestIdPart(value: string) {
+	return value
+		.toLowerCase()
+		.trim()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "")
+}
+
 export function AdminPanel({
 	mapSlug,
 	onSelectSubmission,
@@ -50,9 +58,14 @@ export function AdminPanel({
 				Pending Submissions ({submissions.length})
 			</h3>
 			{submissions.map((sub) => (
+				// Use the proposed name when available so e2e can target cards via stable test IDs.
+				// Falls back to the submission id to keep the id unique even if proposed names collide.
+				// Example: `submission-card-e2e-test-lion-approve`
+				//          `submission-card-0f5d...` (fallback)
 				<div
 					key={sub.id}
-					data-testid={`submission-card-${sub.id}`}
+					data-testid={`submission-card-${toTestIdPart(sub.proposed_name ?? sub.id)}`}
+					data-submission-id={sub.id}
 					onClick={() => onSelectSubmission?.(sub)}
 					onKeyDown={(e) => {
 						if (e.key === "Enter" || e.key === " ") {
