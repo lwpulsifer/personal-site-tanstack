@@ -59,6 +59,22 @@ test('submission form can be filled and submitted', async ({ page }) => {
   await expect(page.getByTestId('submission-success')).toBeVisible({ timeout: 10_000 })
 })
 
+test('new sighting near an existing location suggests adding photos instead (dismissible)', async ({ page }) => {
+  await page.goto('/lions/')
+  await ensureHydrated(page)
+  await page.getByTestId('report-sighting-btn').click()
+
+  // City Hall Lions from seed.sql: 37.7793, -122.4193
+  await fillStable(page.getByTestId('field-lat'), '37.7793')
+  await fillStable(page.getByTestId('field-lng'), '-122.4193')
+
+  await expect(page.getByTestId('nearby-location-prompt')).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByTestId('nearby-location-name')).toContainText('City Hall Lions')
+
+  await page.getByTestId('nearby-location-dismiss').click()
+  await expect(page.getByTestId('nearby-location-prompt')).not.toBeVisible()
+})
+
 test('submission form close button returns to sidebar', async ({ page }) => {
   await page.goto('/lions/')
   await ensureHydrated(page)

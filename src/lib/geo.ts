@@ -22,3 +22,33 @@ export function isWithinBayArea(lat: number, lng: number) {
     lng <= BAY_AREA_BOUNDS.maxLng
   )
 }
+
+export function haversineDistanceMeters(a: LatLng, b: LatLng) {
+  const R = 6371e3
+  const phi1 = (a.lat * Math.PI) / 180
+  const phi2 = (b.lat * Math.PI) / 180
+  const dPhi = ((b.lat - a.lat) * Math.PI) / 180
+  const dLambda = ((b.lng - a.lng) * Math.PI) / 180
+
+  const x =
+    Math.sin(dPhi / 2) * Math.sin(dPhi / 2) +
+    Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) * Math.sin(dLambda / 2)
+  const c = 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))
+  return R * c
+}
+
+export function findNearestWithinRadius<T extends { lat: number; lng: number }>(
+  items: T[],
+  coords: LatLng | null | undefined,
+  radiusMeters: number,
+) {
+  if (!coords) return null
+  let best: { item: T; distanceMeters: number } | null = null
+  for (const it of items) {
+    const d = haversineDistanceMeters(coords, { lat: it.lat, lng: it.lng })
+    if (d <= radiusMeters && (!best || d < best.distanceMeters)) {
+      best = { item: it, distanceMeters: d }
+    }
+  }
+  return best
+}

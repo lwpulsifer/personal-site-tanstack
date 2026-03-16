@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { lazy, Suspense, useState, useCallback } from 'react'
+import { lazy, Suspense, useMemo, useState, useCallback, useEffect } from 'react'
 import { SITE_TITLE, SITE_URL } from '#/lib/site'
 import { getApprovedLocations } from '#/server/maps'
 import { mapLocationsQueryOptions } from '#/lib/queries'
@@ -10,6 +10,9 @@ import { SubmissionForm } from '#/components/maps/SubmissionForm'
 import { AdminPanel } from '#/components/maps/AdminPanel'
 import type { MapLocation, MapSubmission } from '#/lib/map-types'
 import { MapSkeleton } from '#/components/maps/MapSkeleton'
+import { findNearestWithinRadius } from '#/lib/geo'
+
+const NEARBY_LOCATION_SUGGEST_RADIUS_METERS = 25
 
 const MapView = lazy(() =>
   import('#/components/maps/MapView').then((m) => ({ default: m.MapView })),
@@ -58,6 +61,7 @@ function LionsPage() {
   const [previewCoords, setPreviewCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [selectedSubmission, setSelectedSubmission] = useState<MapSubmission | null>(null)
   const [mapBoundsError, setMapBoundsError] = useState<string | null>(null)
+  const [dismissedNearbyLocationId, setDismissedNearbyLocationId] = useState<string | null>(null)
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
     setMapBoundsError(null)
@@ -98,6 +102,19 @@ function LionsPage() {
     setPreviewCoords({ lat: location.lat, lng: location.lng })
   }, [])
 
+  const nearbySuggestion = useMemo(() => {
+    if (!showSubmitForm || submitMode !== 'new') return null
+    if (!previewCoords) return null
+    return findNearestWithinRadius(locations, previewCoords, NEARBY_LOCATION_SUGGEST_RADIUS_METERS)
+  }, [locations, previewCoords, showSubmitForm, submitMode])
+
+  useEffect(() => {
+    // If the suggested location changes, allow the prompt to show again.
+    if (nearbySuggestion?.item.id && dismissedNearbyLocationId && nearbySuggestion.item.id !== dismissedNearbyLocationId) {
+      setDismissedNearbyLocationId(null)
+    }
+  }, [dismissedNearbyLocationId, nearbySuggestion?.item.id])
+
   return (
     <main className="px-4 pb-8 pt-14">
       <section className="mx-auto mb-6 flex w-full max-w-[1080px] flex-wrap items-end justify-between gap-4">
@@ -124,6 +141,7 @@ function LionsPage() {
             setSelectedSubmission(null)
             setClickedCoords(null)
             setPreviewCoords(null)
+            setDismissedNearbyLocationId(null)
           }}
           className="rounded-full bg-[var(--blue-deep)] px-4 py-1.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)]"
         >
@@ -161,22 +179,63 @@ function LionsPage() {
         {/* Sidebar */}
         <div className="w-full shrink-0 lg:w-80">
           {showSubmitForm ? (
-            <SubmissionForm
-              mapSlug="lions"
-              mode={submitMode}
-              locationId={submitMode === 'add-photos' ? submitLocation?.id : undefined}
-              initialName={submitMode === 'add-photos' ? submitLocation?.name : undefined}
-              initialAddress={submitMode === 'add-photos' ? submitLocation?.address ?? undefined : undefined}
-              onClose={() => {
-                setShowSubmitForm(false)
-                setSubmitLocation(null)
-                setSubmitMode('new')
-                setPreviewCoords(null)
-              }}
-              initialLat={clickedCoords?.lat}
-              initialLng={clickedCoords?.lng}
-              onCoordsChange={(lat, lng) => setPreviewCoords({ lat, lng })}
-            />
+            <div className="space-y-3">
+              {submitMode === 'new' && nearbySuggestion?.item && nearbySuggestion.item.id !== dismissedNearbyLocationId && (
+                <div
+                  data-testid="nearby-location-prompt"
+                  className="island-shell rounded-2xl border border-[color-mix(in_oklab,var(--border),var(--blue)_25%)] bg-[color-mix(in_oklab,var(--surface),var(--blue)_3%)] p-4"
+                >
+                  <p className="m-0 text-sm font-semibold text-[var(--text)]">
+                    There is already a lion location nearby.
+                  </p>
+                  <p className="m-0 mt-1 text-xs text-[var(--text-muted)]">
+                    <span data-testid="nearby-location-name" className="font-semibold text-[var(--text)]">
+                      {nearbySuggestion.item.name}
+                    </span>{' '}
+                    is about {Math.round(nearbySuggestion.distanceMeters)}m away. Want to add photos to it instead?
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      data-testid="nearby-location-use-existing"
+                      onClick={() => {
+                        setDismissedNearbyLocationId(null)
+                        handleAddPhotos(nearbySuggestion.item)
+                      }}
+                      className="rounded-full bg-[var(--blue-deep)] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[var(--blue-darker)]"
+                    >
+                      Add photos to existing
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="nearby-location-dismiss"
+                      onClick={() => setDismissedNearbyLocationId(nearbySuggestion.item.id)}
+                      className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] transition hover:border-[var(--blue)]"
+                    >
+                      Continue new sighting
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <SubmissionForm
+                mapSlug="lions"
+                mode={submitMode}
+                locationId={submitMode === 'add-photos' ? submitLocation?.id : undefined}
+                initialName={submitMode === 'add-photos' ? submitLocation?.name : undefined}
+                initialAddress={submitMode === 'add-photos' ? submitLocation?.address ?? undefined : undefined}
+                onClose={() => {
+                  setShowSubmitForm(false)
+                  setSubmitLocation(null)
+                  setSubmitMode('new')
+                  setPreviewCoords(null)
+                  setDismissedNearbyLocationId(null)
+                }}
+                initialLat={clickedCoords?.lat}
+                initialLng={clickedCoords?.lng}
+                onCoordsChange={(lat, lng) => setPreviewCoords({ lat, lng })}
+              />
+            </div>
           ) : selectedLocation ? (
             <LocationDetail
               location={selectedLocation}
