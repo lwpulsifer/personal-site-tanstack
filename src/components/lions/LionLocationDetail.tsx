@@ -1,0 +1,45 @@
+import type { LionLocation } from '#/lib/lion-types'
+import { LionPhotoGallery } from './LionPhotoGallery'
+
+export function LionLocationDetail({
+  location,
+  onClose,
+}: {
+  location: LionLocation
+  onClose: () => void
+}) {
+  return (
+    <div className="island-shell flex h-full flex-col overflow-y-auto rounded-2xl p-5">
+      <div className="mb-4 flex items-start justify-between gap-2">
+        <div>
+          <h2 className="m-0 text-xl font-bold text-[var(--text)]">{location.name}</h2>
+          {location.address && (
+            <p className="m-0 mt-1 text-sm text-[var(--text-muted)]">{location.address}</p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="shrink-0 rounded-full p-1.5 text-[var(--text-muted)] transition hover:bg-[var(--surface)] hover:text-[var(--text)]"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M4 4l8 8M12 4l-8 8" />
+          </svg>
+        </button>
+      </div>
+
+      {location.description && (
+        <p className="mb-4 text-sm text-[var(--text-muted)]">{location.description}</p>
+      )}
+
+      <p className="mb-2 text-xs text-[var(--text-muted)]">
+        {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
+      </p>
+
+      <div className="flex-1">
+        <h3 className="mb-2 text-sm font-semibold text-[var(--text)]">Photos</h3>
+        <LionPhotoGallery locationId={location.id} />
+      </div>
+    </div>
+  )
+}
