@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { pendingMapSubmissionsQueryOptions, mapLocationsQueryOptions } from '#/lib/queries'
 import { approveSubmission, rejectSubmission } from '#/server/maps'
 import type { MapSubmission } from '#/lib/map-types'
+import { StorageImage } from './StorageImage'
 
 function toTestIdPart(value: string) {
 	return value
@@ -49,8 +50,6 @@ export function AdminPanel({
 			</div>
 		)
 	}
-
-	const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
 	return (
 		<div className="space-y-3">
@@ -134,12 +133,12 @@ export function AdminPanel({
 					{sub.photos.length > 0 && (
 						<div className="mt-3 flex gap-2 overflow-x-auto">
 							{sub.photos.map((photo) => (
-								<img
+								<StorageImage
 									key={photo.id}
-									src={`${supabaseUrl}/storage/v1/object/public/map-photos/${photo.storage_path}`}
+									bucket="map-photos"
+									storagePath={photo.storage_path}
 									alt="Submission photo"
 									className="h-16 w-16 shrink-0 rounded-lg object-cover"
-									loading="lazy"
 								/>
 							))}
 						</div>

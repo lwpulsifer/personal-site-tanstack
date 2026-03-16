@@ -95,7 +95,8 @@ export const submitSighting = createServerFn({ method: 'POST' })
         submission_id: submission.id,
         storage_path: path,
       }))
-      await supabase.from('map_photos').insert(photoRows)
+      const { error: photoError } = await supabase.from('map_photos').insert(photoRows)
+      if (photoError) throw new Error(photoError.message)
     }
 
     return submission

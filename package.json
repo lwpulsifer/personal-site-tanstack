@@ -34,6 +34,7 @@
     "@tanstack/router-plugin": "^1.132.0",
     "@types/marked": "^5.0.2",
     "exifreader": "^4.37.0",
+    "heic2any": "^0.0.4",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.545.0",
     "marked": "^17.0.3",

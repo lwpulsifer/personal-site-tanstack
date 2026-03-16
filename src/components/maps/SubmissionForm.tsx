@@ -5,6 +5,28 @@ import { extractGpsFromImage } from '#/lib/exif'
 import { getSupabaseBrowserClient } from '#/lib/supabase'
 import { mapLocationsQueryOptions, pendingMapSubmissionsQueryOptions } from '#/lib/queries'
 
+function isHeicFile(file: File) {
+  const name = file.name.toLowerCase()
+  return (
+    file.type === 'image/heic' ||
+    file.type === 'image/heif' ||
+    name.endsWith('.heic') ||
+    name.endsWith('.heif')
+  )
+}
+
+async function convertHeicToJpeg(file: File) {
+  const { default: heic2any } = await import('heic2any')
+  const converted = await heic2any({
+    blob: file,
+    toType: 'image/jpeg',
+    quality: 0.9,
+  })
+  const jpegBlob = Array.isArray(converted) ? converted[0] : converted
+  const newName = file.name.replace(/\.(heic|heif)$/i, '.jpg')
+  return new File([jpegBlob as BlobPart], newName, { type: 'image/jpeg' })
+}
+
 export function SubmissionForm({
   mapSlug,
   onClose,
@@ -30,6 +52,7 @@ export function SubmissionForm({
   const [previews, setPreviews] = useState<string[]>([])
   const previewsRef = useRef<string[]>([])
   const [uploading, setUploading] = useState(false)
+  const [converting, setConverting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -83,11 +106,33 @@ export function SubmissionForm({
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files ?? [])
-    setFiles(selected)
+
+    // Convert HEIC/HEIF to JPEG so photos render in all browsers.
+    setConverting(true)
+    const processed: File[] = []
+    try {
+      for (const file of selected) {
+        if (isHeicFile(file)) {
+          try {
+            processed.push(await convertHeicToJpeg(file))
+          } catch {
+            // If conversion fails, keep the original and show an error so the user can retry.
+            processed.push(file)
+            setError('Could not convert a HEIC photo to JPEG. Try a different photo or browser.')
+          }
+        } else {
+          processed.push(file)
+        }
+      }
+    } finally {
+      setConverting(false)
+    }
+
+    setFiles(processed)
 
     // Generate preview URLs (revoke old ones via ref to avoid stale closure)
     previewsRef.current.forEach((url) => URL.revokeObjectURL(url))
-    const newPreviews = selected.map((f) => URL.createObjectURL(f))
+    const newPreviews = processed.map((f) => URL.createObjectURL(f))
     previewsRef.current = newPreviews
     setPreviews(newPreviews)
 
@@ -230,6 +275,11 @@ export function SubmissionForm({
             onChange={handleFileChange}
             className="w-full text-sm text-[var(--text)]"
           />
+          {converting && (
+            <p className="mt-2 text-xs text-[var(--text-muted)]">
+              Converting HEIC photos to JPEG for compatibility...
+            </p>
+          )}
           {previews.length > 0 && (
             <div className="mt-2 flex gap-2 overflow-x-auto">
               {previews.map((src, i) => (

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { mapPhotosQueryOptions } from '#/lib/queries'
 import { useState } from 'react'
+import { StorageImage } from './StorageImage'
 
 export function PhotoGallery({ locationId }: { locationId: string }) {
   const { data: photos = [], isLoading } = useQuery(mapPhotosQueryOptions(locationId))
@@ -14,12 +15,6 @@ export function PhotoGallery({ locationId }: { locationId: string }) {
     return <p className="text-sm text-[var(--text-muted)]">No photos yet.</p>
   }
 
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
-
-  function getPhotoUrl(storagePath: string) {
-    return `${supabaseUrl}/storage/v1/object/public/map-photos/${storagePath}`
-  }
-
   return (
     <>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -30,11 +25,11 @@ export function PhotoGallery({ locationId }: { locationId: string }) {
             onClick={() => setLightboxIndex(i)}
             className="group relative aspect-square overflow-hidden rounded-lg border border-[var(--border)]"
           >
-            <img
-              src={getPhotoUrl(photo.storage_path)}
+            <StorageImage
+              bucket="map-photos"
+              storagePath={photo.storage_path}
               alt={photo.caption ?? 'Lion statue photo'}
               className="h-full w-full object-cover transition group-hover:scale-105"
-              loading="lazy"
             />
           </button>
         ))}
@@ -57,9 +52,11 @@ export function PhotoGallery({ locationId }: { locationId: string }) {
           >
             &times;
           </button>
-          <img
-            src={getPhotoUrl(photos[lightboxIndex].storage_path)}
+          <StorageImage
+            bucket="map-photos"
+            storagePath={photos[lightboxIndex].storage_path}
             alt={photos[lightboxIndex].caption ?? 'Lion statue photo'}
+            loading="eager"
             className="max-h-[85vh] max-w-full rounded-lg object-contain"
             onClick={(e) => e.stopPropagation()}
           />

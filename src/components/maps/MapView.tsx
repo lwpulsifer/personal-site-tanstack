@@ -70,42 +70,45 @@ export function MapView({
   previewCoords?: { lat: number; lng: number } | null
 }) {
   return (
-    <MapContainer
-      center={SF_CENTER}
-      zoom={13}
-      className="h-full w-full"
-      data-testid="map-container"
-      scrollWheelZoom
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      <FlyToCoords coords={previewCoords} />
-      {onMapClick && <ClickHandler onClick={onMapClick} />}
-      {locations.map((loc) => (
-        <Marker
-          key={loc.id}
-          position={[loc.lat, loc.lng]}
-          icon={mapMarkerIcon}
-          eventHandlers={{
-            click: () => onSelectLocation?.(loc),
-          }}
-        >
-          <Popup>
-            <MarkerPopup
-              location={loc}
-              isSelected={selectedLocationId === loc.id}
-              onViewDetails={() => onSelectLocation?.(loc)}
-            />
-          </Popup>
-        </Marker>
-      ))}
-      {previewCoords && (
-        <Marker position={[previewCoords.lat, previewCoords.lng]} icon={previewMarkerIcon}>
-          <Popup>New sighting location</Popup>
-        </Marker>
-      )}
-    </MapContainer>
+    // react-leaflet doesn't guarantee forwarding unknown props to the underlying
+    // container element, so we wrap in a div for stable e2e selectors.
+    <div data-testid="map-container" className="h-full w-full">
+      <MapContainer
+        center={SF_CENTER}
+        zoom={13}
+        className="h-full w-full"
+        scrollWheelZoom
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <FlyToCoords coords={previewCoords} />
+        {onMapClick && <ClickHandler onClick={onMapClick} />}
+        {locations.map((loc) => (
+          <Marker
+            key={loc.id}
+            position={[loc.lat, loc.lng]}
+            icon={mapMarkerIcon}
+            eventHandlers={{
+              click: () => onSelectLocation?.(loc),
+            }}
+          >
+            <Popup>
+              <MarkerPopup
+                location={loc}
+                isSelected={selectedLocationId === loc.id}
+                onViewDetails={() => onSelectLocation?.(loc)}
+              />
+            </Popup>
+          </Marker>
+        ))}
+        {previewCoords && (
+          <Marker position={[previewCoords.lat, previewCoords.lng]} icon={previewMarkerIcon}>
+            <Popup>New sighting location</Popup>
+          </Marker>
+        )}
+      </MapContainer>
+    </div>
   )
 }
