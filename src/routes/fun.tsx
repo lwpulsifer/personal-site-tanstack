@@ -41,20 +41,32 @@ function Fun() {
         <div className="grid gap-3 sm:grid-cols-2">
           <Link
             to="/lions"
-            className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 no-underline transition hover:-translate-y-0.5 hover:border-[var(--blue)] hover:shadow-sm"
+            className="group flex items-center justify-between gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 no-underline transition hover:-translate-y-0.5 hover:border-[var(--blue)] hover:shadow-sm"
           >
-            <p className="m-0 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
-              Map
-            </p>
-            <h2 className="mt-2 text-lg font-bold text-[var(--text)]">
-              Lions of SF
-            </h2>
-            <p className="mt-2 text-sm text-[var(--text-muted)]">
-              Explore lion statues across San Francisco and report sightings.
-            </p>
-            <p className="mt-4 text-sm font-semibold text-[var(--blue-deep)] group-hover:text-[var(--blue-darker)]">
-              Open map -&gt;
-            </p>
+            <div className="min-w-0">
+              <p className="m-0 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
+                Map
+              </p>
+              <h2 className="mt-2 text-lg font-bold text-[var(--text)]">
+                Lions of SF
+              </h2>
+              <p className="mt-2 text-sm text-[var(--text-muted)]">
+                Explore lion statues across San Francisco and report sightings.
+              </p>
+              <p className="mt-4 text-sm font-semibold text-[var(--blue-deep)] group-hover:text-[var(--blue-darker)]">
+                Open map -&gt;
+              </p>
+              <p className="mt-2 text-[11px] leading-tight text-[var(--text-muted)]">
+                Photo: JCruzTheTruth (CC BY-SA 4.0)
+              </p>
+            </div>
+
+            <img
+              src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Sutro_Heights_Park_lion%2C_SF_01.jpg/640px-Sutro_Heights_Park_lion%2C_SF_01.jpg"
+              alt="Lion statue at Sutro Heights Park in San Francisco"
+              loading="lazy"
+              className="h-24 w-28 shrink-0 rounded-xl object-cover ring-1 ring-black/5 transition group-hover:scale-[1.02] sm:h-28 sm:w-32"
+            />
           </Link>
 
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
