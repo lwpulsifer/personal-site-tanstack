@@ -29,20 +29,28 @@ async function convertHeicToJpeg(file: File) {
 
 export function SubmissionForm({
   mapSlug,
+  locationId,
+  mode = 'new',
   onClose,
+  initialName,
+  initialAddress,
   initialLat,
   initialLng,
   onCoordsChange,
 }: {
   mapSlug: string
+  locationId?: string
+  mode?: 'new' | 'add-photos'
   onClose: () => void
+  initialName?: string
+  initialAddress?: string
   initialLat?: number
   initialLng?: number
   onCoordsChange?: (lat: number, lng: number) => void
 }) {
   const queryClient = useQueryClient()
-  const [name, setName] = useState('')
-  const [address, setAddress] = useState('')
+  const [name, setName] = useState(initialName ?? '')
+  const [address, setAddress] = useState(initialAddress ?? '')
   const [lat, setLat] = useState(initialLat?.toString() ?? '')
   const [lng, setLng] = useState(initialLng?.toString() ?? '')
   const [notes, setNotes] = useState('')
@@ -79,6 +87,7 @@ export function SubmissionForm({
       return submitSighting({
         data: {
           mapSlug,
+          locationId,
           proposedName: name || undefined,
           proposedLat: lat ? Number.parseFloat(lat) : undefined,
           proposedLng: lng ? Number.parseFloat(lng) : undefined,
@@ -152,7 +161,9 @@ export function SubmissionForm({
       <div className="island-shell rounded-2xl p-6" data-testid="submission-success">
         <h3 className="m-0 text-lg font-bold text-[var(--text)]">Thanks for your submission!</h3>
         <p className="mt-2 text-sm text-[var(--text-muted)]">
-          Your lion sighting has been submitted for review. It will appear on the map once approved.
+          {mode === 'add-photos'
+            ? 'Your photos were submitted for review. They will appear on the location once approved.'
+            : 'Your lion sighting has been submitted for review. It will appear on the map once approved.'}
         </p>
         <button
           type="button"
@@ -169,11 +180,19 @@ export function SubmissionForm({
   return (
     <div className="island-shell rounded-2xl p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h3 data-testid="submission-form-heading" className="m-0 text-lg font-bold text-[var(--text)]">Report a Lion Sighting</h3>
+        <h3 data-testid="submission-form-heading" className="m-0 text-lg font-bold text-[var(--text)]">
+          {mode === 'add-photos' ? 'Add Photos' : 'Report a Lion Sighting'}
+        </h3>
         <button type="button" data-testid="close-form-btn" onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text)]">
           &times;
         </button>
       </div>
+
+      {mode === 'add-photos' && (
+        <p data-testid="add-photos-hint" className="mb-4 text-sm text-[var(--text-muted)]">
+          Adding photos to: <span className="font-semibold text-[var(--text)]">{name || 'this location'}</span>. Submissions require admin approval.
+        </p>
+      )}
 
       <form
         onSubmit={(e) => {
@@ -182,86 +201,90 @@ export function SubmissionForm({
         }}
         className="space-y-3"
       >
-        <div>
-          <label htmlFor="lion-name" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
-            Name / Description
-          </label>
-          <input
-            id="lion-name"
-            data-testid="field-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Golden lion at Palace of Fine Arts"
-            className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
-          />
-        </div>
+        {mode === 'new' && (
+          <>
+            <div>
+              <label htmlFor="lion-name" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+                Name / Description
+              </label>
+              <input
+                id="lion-name"
+                data-testid="field-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Golden lion at Palace of Fine Arts"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
+              />
+            </div>
 
-        <div>
-          <label htmlFor="lion-address" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
-            Address
-          </label>
-          <input
-            id="lion-address"
-            data-testid="field-address"
-            type="text"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="e.g. 3301 Lyon St, San Francisco"
-            className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
-          />
-        </div>
+            <div>
+              <label htmlFor="lion-address" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+                Address
+              </label>
+              <input
+                id="lion-address"
+                data-testid="field-address"
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="e.g. 3301 Lyon St, San Francisco"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
+              />
+            </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="lion-lat" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
-              Latitude
-            </label>
-            <input
-              id="lion-lat"
-              data-testid="field-lat"
-              type="number"
-              step="any"
-              value={lat}
-              onChange={(e) => {
-                setLat(e.target.value)
-                const parsed = Number.parseFloat(e.target.value)
-                const lngParsed = Number.parseFloat(lng)
-                if (!Number.isNaN(parsed) && !Number.isNaN(lngParsed)) {
-                  onCoordsChange?.(parsed, lngParsed)
-                }
-              }}
-              placeholder="37.7749"
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
-            />
-          </div>
-          <div>
-            <label htmlFor="lion-lng" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
-              Longitude
-            </label>
-            <input
-              id="lion-lng"
-              data-testid="field-lng"
-              type="number"
-              step="any"
-              value={lng}
-              onChange={(e) => {
-                setLng(e.target.value)
-                const parsed = Number.parseFloat(e.target.value)
-                const latParsed = Number.parseFloat(lat)
-                if (!Number.isNaN(parsed) && !Number.isNaN(latParsed)) {
-                  onCoordsChange?.(latParsed, parsed)
-                }
-              }}
-              placeholder="-122.4194"
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
-            />
-          </div>
-        </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="lion-lat" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+                  Latitude
+                </label>
+                <input
+                  id="lion-lat"
+                  data-testid="field-lat"
+                  type="number"
+                  step="any"
+                  value={lat}
+                  onChange={(e) => {
+                    setLat(e.target.value)
+                    const parsed = Number.parseFloat(e.target.value)
+                    const lngParsed = Number.parseFloat(lng)
+                    if (!Number.isNaN(parsed) && !Number.isNaN(lngParsed)) {
+                      onCoordsChange?.(parsed, lngParsed)
+                    }
+                  }}
+                  placeholder="37.7749"
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
+                />
+              </div>
+              <div>
+                <label htmlFor="lion-lng" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+                  Longitude
+                </label>
+                <input
+                  id="lion-lng"
+                  data-testid="field-lng"
+                  type="number"
+                  step="any"
+                  value={lng}
+                  onChange={(e) => {
+                    setLng(e.target.value)
+                    const parsed = Number.parseFloat(e.target.value)
+                    const latParsed = Number.parseFloat(lat)
+                    if (!Number.isNaN(parsed) && !Number.isNaN(latParsed)) {
+                      onCoordsChange?.(latParsed, parsed)
+                    }
+                  }}
+                  placeholder="-122.4194"
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
+                />
+              </div>
+            </div>
 
-        <p className="text-xs text-[var(--text-muted)]">
-          Tip: click on the map to set coordinates, or upload a photo with GPS data.
-        </p>
+            <p className="text-xs text-[var(--text-muted)]">
+              Tip: click on the map to set coordinates, or upload a photo with GPS data.
+            </p>
+          </>
+        )}
 
         <div>
           <label htmlFor="lion-photos" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
@@ -269,6 +292,7 @@ export function SubmissionForm({
           </label>
           <input
             id="lion-photos"
+            data-testid="field-photos"
             type="file"
             accept="image/*"
             multiple
@@ -346,7 +370,7 @@ export function SubmissionForm({
           disabled={uploading}
           className="w-full rounded-full bg-[var(--blue-deep)] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
         >
-          {uploading ? 'Submitting...' : 'Submit Sighting'}
+          {uploading ? 'Submitting...' : mode === 'add-photos' ? 'Submit Photos' : 'Submit Sighting'}
         </button>
       </form>
     </div>

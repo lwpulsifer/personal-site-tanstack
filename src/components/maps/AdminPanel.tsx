@@ -26,9 +26,13 @@ export function AdminPanel({
 
 	const approveMutation = useMutation({
 		mutationFn: (submissionId: string) => approveSubmission({ data: { submissionId } }),
-		onSuccess: () => {
+		onSuccess: (result) => {
 			queryClient.invalidateQueries({ queryKey: pendingMapSubmissionsQueryOptions(mapSlug).queryKey })
 			queryClient.invalidateQueries({ queryKey: mapLocationsQueryOptions(mapSlug).queryKey })
+			if (result?.locationId) {
+				// Refresh gallery when approving submissions for an existing location.
+				queryClient.invalidateQueries({ queryKey: ['mapPhotos', result.locationId] })
+			}
 		},
 	})
 

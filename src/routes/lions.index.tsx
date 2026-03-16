@@ -51,6 +51,8 @@ function LionsPage() {
   const [selectedLocation, setSelectedLocation] = useState<MapLocation | null>(null)
   const [showSubmitForm, setShowSubmitForm] = useState(false)
   const [clickedCoords, setClickedCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [submitLocation, setSubmitLocation] = useState<MapLocation | null>(null)
+  const [submitMode, setSubmitMode] = useState<'new' | 'add-photos'>('new')
 
   const [previewCoords, setPreviewCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [selectedSubmission, setSelectedSubmission] = useState<MapSubmission | null>(null)
@@ -67,15 +69,27 @@ function LionsPage() {
     setSelectedLocation(location)
     setShowSubmitForm(false)
     setSelectedSubmission(null)
+    setSubmitLocation(null)
   }, [])
 
   const handleSelectSubmission = useCallback((submission: MapSubmission) => {
     setSelectedSubmission(submission)
     setSelectedLocation(null)
     setShowSubmitForm(false)
+    setSubmitLocation(null)
     if (submission.proposed_lat && submission.proposed_lng) {
       setPreviewCoords({ lat: submission.proposed_lat, lng: submission.proposed_lng })
     }
+  }, [])
+
+  const handleAddPhotos = useCallback((location: MapLocation) => {
+    setSubmitMode('add-photos')
+    setSubmitLocation(location)
+    setShowSubmitForm(true)
+    setSelectedLocation(null)
+    setSelectedSubmission(null)
+    setClickedCoords(null)
+    setPreviewCoords({ lat: location.lat, lng: location.lng })
   }, [])
 
   return (
@@ -97,6 +111,8 @@ function LionsPage() {
           type="button"
           data-testid="report-sighting-btn"
           onClick={() => {
+            setSubmitMode('new')
+            setSubmitLocation(null)
             setShowSubmitForm(true)
             setSelectedLocation(null)
             setSelectedSubmission(null)
@@ -134,8 +150,14 @@ function LionsPage() {
           {showSubmitForm ? (
             <SubmissionForm
               mapSlug="lions"
+              mode={submitMode}
+              locationId={submitMode === 'add-photos' ? submitLocation?.id : undefined}
+              initialName={submitMode === 'add-photos' ? submitLocation?.name : undefined}
+              initialAddress={submitMode === 'add-photos' ? submitLocation?.address ?? undefined : undefined}
               onClose={() => {
                 setShowSubmitForm(false)
+                setSubmitLocation(null)
+                setSubmitMode('new')
                 setPreviewCoords(null)
               }}
               initialLat={clickedCoords?.lat}
@@ -146,6 +168,7 @@ function LionsPage() {
             <LocationDetail
               location={selectedLocation}
               onClose={() => setSelectedLocation(null)}
+              onAddPhotos={handleAddPhotos}
             />
           ) : (
             <div className="island-shell rounded-2xl p-5">

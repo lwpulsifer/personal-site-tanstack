@@ -3,6 +3,12 @@ import { test as adminTest, expect as adminExpect } from '../fixtures/auth'
 
 // ── Smoke (unauthenticated) ───────────────────────────────────────────────────
 
+const tinyPng = Buffer.from(
+  // 1x1 transparent PNG
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMB/ax0f4YAAAAASUVORK5CYII=',
+  'base64',
+)
+
 test('lions page loads with heading and map', async ({ page }) => {
   await page.goto('/lions')
   await expect(page.getByTestId('lions-heading')).toBeVisible()
@@ -55,6 +61,24 @@ test('submission form close button returns to sidebar', async ({ page }) => {
   // Close the form via the × button
   await page.getByTestId('close-form-btn').click()
   await expect(page.getByTestId('submission-form-heading')).not.toBeVisible()
+})
+
+test('can submit additional photos for an existing location (multiple files)', async ({ page }) => {
+  await page.goto('/lions')
+  await page.getByTestId('location-btn-city-hall-lions').click()
+  await expect(page.getByTestId('location-detail')).toBeVisible()
+
+  await page.getByTestId('add-photos-btn').click()
+  await expect(page.getByTestId('submission-form-heading')).toHaveText('Add Photos')
+  await expect(page.getByTestId('add-photos-hint')).toBeVisible()
+
+  await page.getByTestId('field-photos').setInputFiles([
+    { name: 'a.png', mimeType: 'image/png', buffer: tinyPng },
+    { name: 'b.png', mimeType: 'image/png', buffer: tinyPng },
+  ])
+
+  await page.getByTestId('submit-sighting-btn').click()
+  await expect(page.getByTestId('submission-success')).toBeVisible({ timeout: 10_000 })
 })
 
 // ── Admin (authenticated) ─────────────────────────────────────────────────────

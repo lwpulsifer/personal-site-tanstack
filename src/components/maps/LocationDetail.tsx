@@ -4,9 +4,11 @@ import { PhotoGallery } from './PhotoGallery'
 export function LocationDetail({
   location,
   onClose,
+  onAddPhotos,
 }: {
   location: MapLocation
   onClose: () => void
+  onAddPhotos?: (location: MapLocation) => void
 }) {
   return (
     <div data-testid="location-detail" className="island-shell flex h-full flex-col overflow-y-auto rounded-2xl p-5">
@@ -28,6 +30,17 @@ export function LocationDetail({
           </svg>
         </button>
       </div>
+
+      {onAddPhotos && (
+        <button
+          type="button"
+          data-testid="add-photos-btn"
+          onClick={() => onAddPhotos(location)}
+          className="mb-4 w-full rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--text)] transition hover:border-[var(--blue)]"
+        >
+          + Add photos
+        </button>
+      )}
 
       {location.description && (
         <p className="mb-4 text-sm text-[var(--text-muted)]">{location.description}</p>

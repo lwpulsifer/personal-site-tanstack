@@ -62,4 +62,28 @@ describe('SubmissionForm', () => {
     expect(latInput.value).toBe('37.78')
     expect(lngInput.value).toBe('-122.42')
   })
+
+  it('renders add-photos mode without location fields', () => {
+    renderWithProvider(
+      <SubmissionForm
+        mapSlug="lions"
+        mode="add-photos"
+        locationId="loc-1"
+        initialName="City Hall Lions"
+        onClose={() => {}}
+      />,
+    )
+
+    expect(screen.getByTestId('submission-form-heading').textContent).toBe('Add Photos')
+    expect(screen.getByTestId('add-photos-hint')).toBeTruthy()
+
+    // Location fields should be hidden in add-photos mode.
+    expect(screen.queryByTestId('field-name')).toBeNull()
+    expect(screen.queryByTestId('field-address')).toBeNull()
+    expect(screen.queryByTestId('field-lat')).toBeNull()
+    expect(screen.queryByTestId('field-lng')).toBeNull()
+
+    // Photos input remains.
+    expect(screen.getByTestId('field-photos')).toBeTruthy()
+  })
 })
