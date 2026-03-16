@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-vi.mock('#/server/lions', () => ({
-  submitLionSighting: vi.fn(),
+vi.mock('#/server/maps', () => ({
+  submitSighting: vi.fn(),
   getApprovedLocations: vi.fn(),
   getLocationPhotos: vi.fn(),
   getPendingSubmissions: vi.fn(),
@@ -26,7 +26,7 @@ vi.mock('#/lib/supabase', () => ({
   }),
 }))
 
-const { LionSubmissionForm } = await import('#/components/lions/LionSubmissionForm')
+const { SubmissionForm } = await import('#/components/maps/SubmissionForm')
 
 function renderWithProvider(ui: React.ReactNode) {
   const queryClient = new QueryClient({
@@ -37,9 +37,9 @@ function renderWithProvider(ui: React.ReactNode) {
   )
 }
 
-describe('LionSubmissionForm', () => {
+describe('SubmissionForm', () => {
   it('renders the form with all fields', () => {
-    renderWithProvider(<LionSubmissionForm onClose={() => {}} />)
+    renderWithProvider(<SubmissionForm mapSlug="lions" onClose={() => {}} />)
 
     expect(screen.getByText('Report a Lion Sighting')).toBeTruthy()
     expect(screen.getByLabelText(/name.*description/i)).toBeTruthy()
@@ -53,7 +53,7 @@ describe('LionSubmissionForm', () => {
 
   it('pre-fills lat/lng when provided', () => {
     renderWithProvider(
-      <LionSubmissionForm onClose={() => {}} initialLat={37.78} initialLng={-122.42} />,
+      <SubmissionForm mapSlug="lions" onClose={() => {}} initialLat={37.78} initialLng={-122.42} />,
     )
 
     const latInput = screen.getByLabelText(/latitude/i) as HTMLInputElement

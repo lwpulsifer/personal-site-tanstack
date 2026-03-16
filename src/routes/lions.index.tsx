@@ -2,25 +2,25 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { lazy, Suspense, useState, useCallback } from 'react'
 import { SITE_TITLE, SITE_URL } from '#/lib/site'
-import { getApprovedLocations } from '#/server/lions'
-import { lionLocationsQueryOptions } from '#/lib/queries'
+import { getApprovedLocations } from '#/server/maps'
+import { mapLocationsQueryOptions } from '#/lib/queries'
 import { useAuth } from '#/lib/auth'
-import { LionLocationDetail } from '#/components/lions/LionLocationDetail'
-import { LionSubmissionForm } from '#/components/lions/LionSubmissionForm'
-import { LionAdminPanel } from '#/components/lions/LionAdminPanel'
-import type { LionLocation } from '#/lib/lion-types'
+import { LocationDetail } from '#/components/maps/LocationDetail'
+import { SubmissionForm } from '#/components/maps/SubmissionForm'
+import { AdminPanel } from '#/components/maps/AdminPanel'
+import type { MapLocation } from '#/lib/map-types'
 
 import leafletCss from 'leaflet/dist/leaflet.css?url'
 
-const LionMap = lazy(() =>
-  import('#/components/lions/LionMap').then((m) => ({ default: m.LionMap })),
+const MapView = lazy(() =>
+  import('#/components/maps/MapView').then((m) => ({ default: m.MapView })),
 )
 
 const canonical = `${SITE_URL}/lions`
 const pageTitle = `Lions of SF | ${SITE_TITLE}`
 
 export const Route = createFileRoute('/lions/')({
-  loader: async () => getApprovedLocations(),
+  loader: async () => getApprovedLocations({ data: { mapSlug: 'lions' } }),
   head: () => ({
     links: [
       { rel: 'canonical', href: canonical },
@@ -38,11 +38,11 @@ function LionsPage() {
   const initialLocations = Route.useLoaderData()
   const { isAuthenticated } = useAuth()
   const { data: locations = initialLocations } = useQuery({
-    ...lionLocationsQueryOptions,
+    ...mapLocationsQueryOptions('lions'),
     initialData: initialLocations,
   })
 
-  const [selectedLocation, setSelectedLocation] = useState<LionLocation | null>(null)
+  const [selectedLocation, setSelectedLocation] = useState<MapLocation | null>(null)
   const [showSubmitForm, setShowSubmitForm] = useState(false)
   const [clickedCoords, setClickedCoords] = useState<{ lat: number; lng: number } | null>(null)
 
@@ -52,7 +52,7 @@ function LionsPage() {
     setSelectedLocation(null)
   }, [])
 
-  const handleSelectLocation = useCallback((location: LionLocation) => {
+  const handleSelectLocation = useCallback((location: MapLocation) => {
     setSelectedLocation(location)
     setShowSubmitForm(false)
   }, [])
@@ -92,7 +92,7 @@ function LionsPage() {
               </div>
             }
           >
-            <LionMap
+            <MapView
               locations={locations}
               onSelectLocation={handleSelectLocation}
               onMapClick={handleMapClick}
@@ -104,13 +104,14 @@ function LionsPage() {
         {/* Sidebar */}
         <div className="w-full shrink-0 lg:w-80">
           {showSubmitForm ? (
-            <LionSubmissionForm
+            <SubmissionForm
+              mapSlug="lions"
               onClose={() => setShowSubmitForm(false)}
               initialLat={clickedCoords?.lat}
               initialLng={clickedCoords?.lng}
             />
           ) : selectedLocation ? (
-            <LionLocationDetail
+            <LocationDetail
               location={selectedLocation}
               onClose={() => setSelectedLocation(null)}
             />
@@ -146,7 +147,7 @@ function LionsPage() {
 
           {isAuthenticated && (
             <div className="mt-4">
-              <LionAdminPanel />
+              <AdminPanel mapSlug="lions" />
             </div>
           )}
         </div>

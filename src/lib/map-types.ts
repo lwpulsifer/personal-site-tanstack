@@ -1,5 +1,6 @@
-export type LionLocation = {
+export type MapLocation = {
   id: string
+  map_slug: string
   name: string
   description: string | null
   address: string | null
@@ -11,10 +12,11 @@ export type LionLocation = {
   photo_count: number
 }
 
-export type LionSubmissionStatus = 'pending' | 'approved' | 'rejected'
+export type MapSubmissionStatus = 'pending' | 'approved' | 'rejected'
 
-export type LionSubmission = {
+export type MapSubmission = {
   id: string
+  map_slug: string
   location_id: string | null
   proposed_name: string | null
   proposed_lat: number | null
@@ -23,14 +25,14 @@ export type LionSubmission = {
   notes: string | null
   submitter_name: string | null
   submitter_email: string | null
-  status: LionSubmissionStatus
+  status: MapSubmissionStatus
   reviewed_at: string | null
   reviewed_by: string | null
   created_at: string
-  photos: LionPhoto[]
+  photos: MapPhoto[]
 }
 
-export type LionPhoto = {
+export type MapPhoto = {
   id: string
   location_id: string
   submission_id: string | null

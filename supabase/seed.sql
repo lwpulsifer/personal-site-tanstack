@@ -68,9 +68,9 @@ VALUES (
   now(), now()
 );
 
--- ── Sample lion locations ─────────────────────────────────────────────────────
+-- ── Sample map locations ─────────────────────────────────────────────────────
 
-INSERT INTO public.lion_locations (id, name, description, address, lat, lng)
+INSERT INTO public.map_locations (id, map_slug, name, description, address, lat, lng)
 VALUES
-  ('b0000000-0000-0000-0000-000000000001', 'Palace of Fine Arts Lions', 'Pair of golden lions flanking the entrance', '3301 Lyon St, San Francisco', 37.8029, -122.4484),
-  ('b0000000-0000-0000-0000-000000000002', 'City Hall Lions', 'Stone lions guarding the main steps', '1 Dr Carlton B Goodlett Pl, San Francisco', 37.7793, -122.4193);
+  ('b0000000-0000-0000-0000-000000000001', 'lions', 'Palace of Fine Arts Lions', 'Pair of golden lions flanking the entrance', '3301 Lyon St, San Francisco', 37.8029, -122.4484),
+  ('b0000000-0000-0000-0000-000000000002', 'lions', 'City Hall Lions', 'Stone lions guarding the main steps', '1 Dr Carlton B Goodlett Pl, San Francisco', 37.7793, -122.4193);

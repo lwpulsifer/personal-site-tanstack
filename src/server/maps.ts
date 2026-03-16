@@ -2,24 +2,30 @@ import { createServerFn } from '@tanstack/react-start'
 import { getSupabaseClient } from '#/lib/supabase'
 import { requireAuth } from '#/server/auth.server'
 import { z } from 'zod'
-import type { LionLocation, LionPhoto, LionSubmission } from '#/lib/lion-types'
+import type { MapLocation, MapPhoto, MapSubmission } from '#/lib/map-types'
 
 // ── Public ────────────────────────────────────────────────────────────────────
 
-export const getApprovedLocations = createServerFn({ method: 'GET' }).handler(
-  async () => {
+export const getApprovedLocations = createServerFn({ method: 'GET' })
+  .inputValidator(z.object({ mapSlug: z.string() }))
+  .handler(async ({ data }) => {
     const supabase = getSupabaseClient()
     const { data: locations, error } = await supabase
-      .from('lion_locations')
+      .from('map_locations')
       .select('*')
+      .eq('map_slug', data.mapSlug)
       .order('created_at', { ascending: false })
 
     if (error) throw new Error(error.message)
 
     // Get photo counts per location
-    const { data: photos } = await supabase
-      .from('lion_photos')
-      .select('location_id')
+    const locationIds = (locations ?? []).map((l) => l.id)
+    const { data: photos } = locationIds.length > 0
+      ? await supabase
+          .from('map_photos')
+          .select('location_id')
+          .in('location_id', locationIds)
+      : { data: [] }
 
     const countMap = new Map<string, number>()
     for (const p of photos ?? []) {
@@ -29,27 +35,27 @@ export const getApprovedLocations = createServerFn({ method: 'GET' }).handler(
     return (locations ?? []).map((loc) => ({
       ...loc,
       photo_count: countMap.get(loc.id) ?? 0,
-    })) as LionLocation[]
-  },
-)
+    })) as MapLocation[]
+  })
 
 export const getLocationPhotos = createServerFn({ method: 'GET' })
   .inputValidator(z.object({ locationId: z.string() }))
   .handler(async ({ data }) => {
     const supabase = getSupabaseClient()
     const { data: photos, error } = await supabase
-      .from('lion_photos')
+      .from('map_photos')
       .select('*')
       .eq('location_id', data.locationId)
       .order('created_at', { ascending: false })
 
     if (error) throw new Error(error.message)
-    return (photos ?? []) as LionPhoto[]
+    return (photos ?? []) as MapPhoto[]
   })
 
-export const submitLionSighting = createServerFn({ method: 'POST' })
+export const submitSighting = createServerFn({ method: 'POST' })
   .inputValidator(
     z.object({
+      mapSlug: z.string(),
       locationId: z.string().optional(),
       proposedName: z.string().optional(),
       proposedLat: z.number().optional(),
@@ -65,8 +71,9 @@ export const submitLionSighting = createServerFn({ method: 'POST' })
     const supabase = getSupabaseClient()
 
     const { data: submission, error } = await supabase
-      .from('lion_submissions')
+      .from('map_submissions')
       .insert({
+        map_slug: data.mapSlug,
         location_id: data.locationId ?? null,
         proposed_name: data.proposedName ?? null,
         proposed_lat: data.proposedLat ?? null,
@@ -89,7 +96,7 @@ export const submitLionSighting = createServerFn({ method: 'POST' })
         submission_id: submission.id,
         storage_path: path,
       }))
-      await supabase.from('lion_photos').insert(photoRows)
+      await supabase.from('map_photos').insert(photoRows)
     }
 
     return submission
@@ -97,16 +104,23 @@ export const submitLionSighting = createServerFn({ method: 'POST' })
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
-export const getPendingSubmissions = createServerFn({ method: 'GET' }).handler(
-  async () => {
+export const getPendingSubmissions = createServerFn({ method: 'GET' })
+  .inputValidator(z.object({ mapSlug: z.string().optional() }).optional())
+  .handler(async ({ data }) => {
     await requireAuth()
     const supabase = getSupabaseClient()
 
-    const { data: submissions, error } = await supabase
-      .from('lion_submissions')
+    let query = supabase
+      .from('map_submissions')
       .select('*')
       .eq('status', 'pending')
       .order('created_at', { ascending: true })
+
+    if (data?.mapSlug) {
+      query = query.eq('map_slug', data.mapSlug)
+    }
+
+    const { data: submissions, error } = await query
 
     if (error) throw new Error(error.message)
 
@@ -114,25 +128,24 @@ export const getPendingSubmissions = createServerFn({ method: 'GET' }).handler(
     const submissionIds = (submissions ?? []).map((s) => s.id)
     const { data: photos } = submissionIds.length > 0
       ? await supabase
-          .from('lion_photos')
+          .from('map_photos')
           .select('*')
           .in('submission_id', submissionIds)
       : { data: [] }
 
-    const photosBySubmission = new Map<string, LionPhoto[]>()
+    const photosBySubmission = new Map<string, MapPhoto[]>()
     for (const p of photos ?? []) {
       if (!p.submission_id) continue
       const existing = photosBySubmission.get(p.submission_id) ?? []
-      existing.push(p as LionPhoto)
+      existing.push(p as MapPhoto)
       photosBySubmission.set(p.submission_id, existing)
     }
 
     return (submissions ?? []).map((s) => ({
       ...s,
       photos: photosBySubmission.get(s.id) ?? [],
-    })) as LionSubmission[]
-  },
-)
+    })) as MapSubmission[]
+  })
 
 export const approveSubmission = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ submissionId: z.string() }))
@@ -142,7 +155,7 @@ export const approveSubmission = createServerFn({ method: 'POST' })
 
     // Fetch the submission
     const { data: submission, error: fetchError } = await supabase
-      .from('lion_submissions')
+      .from('map_submissions')
       .select('*')
       .eq('id', data.submissionId)
       .single()
@@ -157,9 +170,10 @@ export const approveSubmission = createServerFn({ method: 'POST' })
         throw new Error('Submission has no coordinates')
       }
       const { data: newLoc, error: locError } = await supabase
-        .from('lion_locations')
+        .from('map_locations')
         .insert({
-          name: submission.proposed_name ?? 'Unnamed Lion',
+          map_slug: submission.map_slug,
+          name: submission.proposed_name ?? 'Unnamed Location',
           lat: submission.proposed_lat,
           lng: submission.proposed_lng,
           address: submission.proposed_address ?? null,
@@ -174,13 +188,13 @@ export const approveSubmission = createServerFn({ method: 'POST' })
 
     // Link any photos from this submission to the location
     await supabase
-      .from('lion_photos')
+      .from('map_photos')
       .update({ location_id: locationId })
       .eq('submission_id', data.submissionId)
 
     // Mark submission as approved
     const { error: updateError } = await supabase
-      .from('lion_submissions')
+      .from('map_submissions')
       .update({
         status: 'approved',
         location_id: locationId,
@@ -201,7 +215,7 @@ export const rejectSubmission = createServerFn({ method: 'POST' })
     const supabase = getSupabaseClient()
 
     const { error } = await supabase
-      .from('lion_submissions')
+      .from('map_submissions')
       .update({
         status: 'rejected',
         reviewed_at: new Date().toISOString(),
@@ -220,7 +234,7 @@ export const deleteLocation = createServerFn({ method: 'POST' })
     const supabase = getSupabaseClient()
 
     const { error } = await supabase
-      .from('lion_locations')
+      .from('map_locations')
       .delete()
       .eq('id', data.id)
 
