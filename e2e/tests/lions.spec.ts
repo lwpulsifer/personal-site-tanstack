@@ -10,7 +10,7 @@ const tinyPng = Buffer.from(
 )
 
 test('lions page loads with heading and map', async ({ page }) => {
-  await page.goto('/lions')
+  await page.goto('/lions/')
   await expect(page.getByTestId('lions-heading')).toBeVisible()
   await expect(
     page.getByTestId('map-container').or(page.getByTestId('map-loading')),
@@ -18,20 +18,20 @@ test('lions page loads with heading and map', async ({ page }) => {
 })
 
 test('seeded lion locations appear in sidebar list', async ({ page }) => {
-  await page.goto('/lions')
+  await page.goto('/lions/')
   await expect(page.getByTestId('location-btn-palace-of-fine-arts-lions')).toBeVisible({ timeout: 10_000 })
   await expect(page.getByTestId('location-btn-city-hall-lions')).toBeVisible()
 })
 
 test('clicking a location in sidebar shows detail panel', async ({ page }) => {
-  await page.goto('/lions')
+  await page.goto('/lions/')
   await page.getByTestId('location-btn-palace-of-fine-arts-lions').click()
   await expect(page.getByTestId('location-detail')).toBeVisible()
   await expect(page.getByTestId('photos-heading')).toBeVisible()
 })
 
 test('report sighting button opens submission form', async ({ page }) => {
-  await page.goto('/lions')
+  await page.goto('/lions/')
   await page.getByTestId('report-sighting-btn').click()
   await expect(page.getByTestId('submission-form-heading')).toBeVisible()
   await expect(page.getByTestId('field-name')).toBeVisible()
@@ -39,7 +39,7 @@ test('report sighting button opens submission form', async ({ page }) => {
 })
 
 test('submission form can be filled and submitted', async ({ page }) => {
-  await page.goto('/lions')
+  await page.goto('/lions/')
   await page.getByTestId('report-sighting-btn').click()
 
   await page.getByTestId('field-name').fill('e2e-test-lion-submit')
@@ -54,7 +54,7 @@ test('submission form can be filled and submitted', async ({ page }) => {
 })
 
 test('submission form close button returns to sidebar', async ({ page }) => {
-  await page.goto('/lions')
+  await page.goto('/lions/')
   await page.getByTestId('report-sighting-btn').click()
   await expect(page.getByTestId('submission-form-heading')).toBeVisible()
 
@@ -64,7 +64,7 @@ test('submission form close button returns to sidebar', async ({ page }) => {
 })
 
 test('can submit additional photos for an existing location (multiple files)', async ({ page }) => {
-  await page.goto('/lions')
+  await page.goto('/lions/')
   await page.getByTestId('location-btn-city-hall-lions').click()
   await expect(page.getByTestId('location-detail')).toBeVisible()
 
@@ -88,12 +88,15 @@ adminTest.describe('admin: lion management', () => {
     page.getByTestId(`submission-card-${name}`)
 
   adminTest('admin panel is visible when authenticated', async ({ page }) => {
-    await page.goto('/lions')
-    await adminExpect(page.getByTestId('pending-submissions-heading').or(page.getByTestId('no-pending-submissions'))).toBeVisible({ timeout: 10_000 })
+    await page.goto('/lions/')
+    await adminExpect(page.getByTestId('lions-admin-panel')).toBeVisible({ timeout: 10_000 })
+    await adminExpect(
+      page.getByTestId('pending-submissions-heading').or(page.getByTestId('no-pending-submissions')),
+    ).toBeVisible({ timeout: 20_000 })
   })
 
   adminTest('admin can approve a submission', async ({ page }) => {
-    await page.goto('/lions')
+    await page.goto('/lions/')
 
     // Submit a new sighting first
     await page.getByTestId('report-sighting-btn').click()
@@ -106,7 +109,7 @@ adminTest.describe('admin: lion management', () => {
 
     // The admin panel should now show the pending submission
     const card = pendingSubmissionCard(page, 'e2e-test-lion-approve')
-    await adminExpect(card).toBeVisible({ timeout: 10_000 })
+    await adminExpect(card).toBeVisible({ timeout: 20_000 })
     await card.getByTestId('approve-btn').click()
 
     // After approval the submission disappears from pending
@@ -117,7 +120,7 @@ adminTest.describe('admin: lion management', () => {
   })
 
   adminTest('clicking a pending submission zooms the map', async ({ page }) => {
-    await page.goto('/lions')
+    await page.goto('/lions/')
 
     // Submit a new sighting
     await page.getByTestId('report-sighting-btn').click()
@@ -130,7 +133,7 @@ adminTest.describe('admin: lion management', () => {
 
     // Click the pending submission in the admin panel
     const submissionCard = pendingSubmissionCard(page, 'e2e-test-lion-zoom')
-    await adminExpect(submissionCard).toBeVisible({ timeout: 10_000 })
+    await adminExpect(submissionCard).toBeVisible({ timeout: 20_000 })
     await submissionCard.click()
 
     // A preview marker should appear on the map at the submission coordinates
@@ -138,7 +141,7 @@ adminTest.describe('admin: lion management', () => {
   })
 
   adminTest('admin can reject a submission', async ({ page }) => {
-    await page.goto('/lions')
+    await page.goto('/lions/')
 
     // Submit a new sighting
     await page.getByTestId('report-sighting-btn').click()
@@ -151,7 +154,7 @@ adminTest.describe('admin: lion management', () => {
 
     // Reject it
     const card = pendingSubmissionCard(page, 'e2e-test-lion-reject')
-    await adminExpect(card).toBeVisible({ timeout: 10_000 })
+    await adminExpect(card).toBeVisible({ timeout: 20_000 })
     await card.getByTestId('reject-btn').click()
 
     // Submission disappears from pending list

@@ -44,7 +44,7 @@ export function AdminPanel({
 	})
 
 	if (isLoading) {
-		return <p className="text-sm text-[var(--text-muted)]">Loading submissions...</p>
+		return <p data-testid="pending-submissions-loading" className="text-sm text-[var(--text-muted)]">Loading submissions...</p>
 	}
 
 	if (submissions.length === 0) {

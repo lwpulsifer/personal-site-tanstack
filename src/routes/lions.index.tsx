@@ -202,7 +202,7 @@ function LionsPage() {
           )}
 
           {isAuthenticated && (
-            <div className="mt-4">
+            <div data-testid="lions-admin-panel" className="mt-4">
               <AdminPanel
                 mapSlug="lions"
                 onSelectSubmission={handleSelectSubmission}
