@@ -1,23 +1,23 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { pendingLionSubmissionsQueryOptions, lionLocationsQueryOptions } from '#/lib/queries'
-import { approveSubmission, rejectSubmission } from '#/server/lions'
+import { pendingMapSubmissionsQueryOptions, mapLocationsQueryOptions } from '#/lib/queries'
+import { approveSubmission, rejectSubmission } from '#/server/maps'
 
-export function LionAdminPanel() {
+export function AdminPanel({ mapSlug }: { mapSlug: string }) {
   const queryClient = useQueryClient()
-  const { data: submissions = [], isLoading } = useQuery(pendingLionSubmissionsQueryOptions)
+  const { data: submissions = [], isLoading } = useQuery(pendingMapSubmissionsQueryOptions(mapSlug))
 
   const approveMutation = useMutation({
     mutationFn: (submissionId: string) => approveSubmission({ data: { submissionId } }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: pendingLionSubmissionsQueryOptions.queryKey })
-      queryClient.invalidateQueries({ queryKey: lionLocationsQueryOptions.queryKey })
+      queryClient.invalidateQueries({ queryKey: pendingMapSubmissionsQueryOptions(mapSlug).queryKey })
+      queryClient.invalidateQueries({ queryKey: mapLocationsQueryOptions(mapSlug).queryKey })
     },
   })
 
   const rejectMutation = useMutation({
     mutationFn: (submissionId: string) => rejectSubmission({ data: { submissionId } }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: pendingLionSubmissionsQueryOptions.queryKey })
+      queryClient.invalidateQueries({ queryKey: pendingMapSubmissionsQueryOptions(mapSlug).queryKey })
     },
   })
 
@@ -92,7 +92,7 @@ export function LionAdminPanel() {
               {sub.photos.map((photo) => (
                 <img
                   key={photo.id}
-                  src={`${supabaseUrl}/storage/v1/object/public/lion-photos/${photo.storage_path}`}
+                  src={`${supabaseUrl}/storage/v1/object/public/map-photos/${photo.storage_path}`}
                   alt="Submission photo"
                   className="h-16 w-16 shrink-0 rounded-lg object-cover"
                   loading="lazy"

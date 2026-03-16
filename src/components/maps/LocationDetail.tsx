@@ -1,11 +1,11 @@
-import type { LionLocation } from '#/lib/lion-types'
-import { LionPhotoGallery } from './LionPhotoGallery'
+import type { MapLocation } from '#/lib/map-types'
+import { PhotoGallery } from './PhotoGallery'
 
-export function LionLocationDetail({
+export function LocationDetail({
   location,
   onClose,
 }: {
-  location: LionLocation
+  location: MapLocation
   onClose: () => void
 }) {
   return (
@@ -38,7 +38,7 @@ export function LionLocationDetail({
 
       <div className="flex-1">
         <h3 className="mb-2 text-sm font-semibold text-[var(--text)]">Photos</h3>
-        <LionPhotoGallery locationId={location.id} />
+        <PhotoGallery locationId={location.id} />
       </div>
     </div>
   )

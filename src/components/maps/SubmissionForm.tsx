@@ -1,15 +1,17 @@
 import { useState, useCallback } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { submitLionSighting } from '#/server/lions'
+import { submitSighting } from '#/server/maps'
 import { extractGpsFromImage } from '#/lib/exif'
 import { getSupabaseBrowserClient } from '#/lib/supabase'
-import { lionLocationsQueryOptions } from '#/lib/queries'
+import { mapLocationsQueryOptions } from '#/lib/queries'
 
-export function LionSubmissionForm({
+export function SubmissionForm({
+  mapSlug,
   onClose,
   initialLat,
   initialLng,
 }: {
+  mapSlug: string
   onClose: () => void
   initialLat?: number
   initialLng?: number
@@ -40,15 +42,16 @@ export function LionSubmissionForm({
           const ext = file.name.split('.').pop() ?? 'jpg'
           const path = `submissions/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
           const { error: uploadError } = await supabase.storage
-            .from('lion-photos')
+            .from('map-photos')
             .upload(path, file, { contentType: file.type })
           if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`)
           storagePaths.push(path)
         }
       }
 
-      return submitLionSighting({
+      return submitSighting({
         data: {
+          mapSlug,
           proposedName: name || undefined,
           proposedLat: lat ? Number.parseFloat(lat) : undefined,
           proposedLng: lng ? Number.parseFloat(lng) : undefined,
@@ -63,7 +66,7 @@ export function LionSubmissionForm({
     onSuccess: () => {
       setSuccess(true)
       setUploading(false)
-      queryClient.invalidateQueries({ queryKey: lionLocationsQueryOptions.queryKey })
+      queryClient.invalidateQueries({ queryKey: mapLocationsQueryOptions(mapSlug).queryKey })
     },
     onError: (err) => {
       setError(err instanceof Error ? err.message : 'Something went wrong')

@@ -1,7 +1,7 @@
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
-import type { LionLocation } from '#/lib/lion-types'
-import { LionMarkerPopup } from './LionMarkerPopup'
+import type { MapLocation } from '#/lib/map-types'
+import { MarkerPopup } from './MarkerPopup'
 
 // Fix default Leaflet marker icons (they break with bundlers)
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
@@ -16,9 +16,9 @@ L.Icon.Default.mergeOptions({
 
 const SF_CENTER: [number, number] = [37.7749, -122.4194]
 
-const lionIcon = new L.DivIcon({
+const mapMarkerIcon = new L.DivIcon({
   html: '<span style="font-size:28px;line-height:1">🦁</span>',
-  className: 'lion-marker-icon',
+  className: 'map-marker-icon',
   iconSize: [32, 32],
   iconAnchor: [16, 32],
   popupAnchor: [0, -32],
@@ -33,14 +33,14 @@ function ClickHandler({ onClick }: { onClick?: (lat: number, lng: number) => voi
   return null
 }
 
-export function LionMap({
+export function MapView({
   locations,
   onSelectLocation,
   onMapClick,
   selectedLocationId,
 }: {
-  locations: LionLocation[]
-  onSelectLocation?: (location: LionLocation) => void
+  locations: MapLocation[]
+  onSelectLocation?: (location: MapLocation) => void
   onMapClick?: (lat: number, lng: number) => void
   selectedLocationId?: string | null
 }) {
@@ -60,13 +60,13 @@ export function LionMap({
         <Marker
           key={loc.id}
           position={[loc.lat, loc.lng]}
-          icon={lionIcon}
+          icon={mapMarkerIcon}
           eventHandlers={{
             click: () => onSelectLocation?.(loc),
           }}
         >
           <Popup>
-            <LionMarkerPopup
+            <MarkerPopup
               location={loc}
               isSelected={selectedLocationId === loc.id}
               onViewDetails={() => onSelectLocation?.(loc)}

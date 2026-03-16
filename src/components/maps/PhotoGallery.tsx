@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
-import { lionPhotosQueryOptions } from '#/lib/queries'
+import { mapPhotosQueryOptions } from '#/lib/queries'
 import { useState } from 'react'
 
-export function LionPhotoGallery({ locationId }: { locationId: string }) {
-  const { data: photos = [], isLoading } = useQuery(lionPhotosQueryOptions(locationId))
+export function PhotoGallery({ locationId }: { locationId: string }) {
+  const { data: photos = [], isLoading } = useQuery(mapPhotosQueryOptions(locationId))
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   if (isLoading) {
@@ -17,7 +17,7 @@ export function LionPhotoGallery({ locationId }: { locationId: string }) {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
   function getPhotoUrl(storagePath: string) {
-    return `${supabaseUrl}/storage/v1/object/public/lion-photos/${storagePath}`
+    return `${supabaseUrl}/storage/v1/object/public/map-photos/${storagePath}`
   }
 
   return (

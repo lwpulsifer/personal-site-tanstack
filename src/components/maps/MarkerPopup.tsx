@@ -1,10 +1,10 @@
-import type { LionLocation } from '#/lib/lion-types'
+import type { MapLocation } from '#/lib/map-types'
 
-export function LionMarkerPopup({
+export function MarkerPopup({
   location,
   onViewDetails,
 }: {
-  location: LionLocation
+  location: MapLocation
   isSelected?: boolean
   onViewDetails?: () => void
 }) {

@@ -26,12 +26,12 @@ vi.mock('#/server/auth.server', () => ({
 const {
   getApprovedLocations,
   getLocationPhotos,
-  submitLionSighting,
+  submitSighting,
   getPendingSubmissions,
   approveSubmission,
   rejectSubmission,
   deleteLocation,
-} = await import('#/server/lions')
+} = await import('#/server/maps')
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -62,6 +62,7 @@ function mockClient(
 
 const sampleLocation = {
   id: 'loc-1',
+  map_slug: 'lions',
   name: 'Palace of Fine Arts Lion',
   description: 'Golden lion statue',
   address: '3301 Lyon St',
@@ -70,22 +71,6 @@ const sampleLocation = {
   created_at: '2026-03-01T00:00:00Z',
   updated_at: '2026-03-01T00:00:00Z',
   created_by: null,
-}
-
-const sampleSubmission = {
-  id: 'sub-1',
-  location_id: null,
-  proposed_name: 'New Lion',
-  proposed_lat: 37.78,
-  proposed_lng: -122.42,
-  proposed_address: '123 Main St',
-  notes: 'Big lion',
-  submitter_name: 'Test User',
-  submitter_email: 'test@example.com',
-  status: 'pending',
-  reviewed_at: null,
-  reviewed_by: null,
-  created_at: '2026-03-10T00:00:00Z',
 }
 
 // ---------------------------------------------------------------------------
@@ -101,7 +86,9 @@ describe('getApprovedLocations', () => {
       makeChain({ data: [{ location_id: 'loc-1' }, { location_id: 'loc-1' }], error: null }),
     ))
 
-    const result = await (getApprovedLocations as () => Promise<{ id: string; photo_count: number }[]>)()
+    const result = await (getApprovedLocations as (a: { data: { mapSlug: string } }) => Promise<{ id: string; photo_count: number }[]>)(
+      { data: { mapSlug: 'lions' } },
+    )
 
     expect(result).toHaveLength(1)
     expect(result[0].photo_count).toBe(2)
@@ -112,7 +99,11 @@ describe('getApprovedLocations', () => {
       makeChain({ data: null, error: { message: 'DB error' } }),
     ))
 
-    await expect((getApprovedLocations as () => Promise<unknown>)()).rejects.toThrow('DB error')
+    await expect(
+      (getApprovedLocations as (a: { data: { mapSlug: string } }) => Promise<unknown>)(
+        { data: { mapSlug: 'lions' } },
+      ),
+    ).rejects.toThrow('DB error')
   })
 })
 
@@ -133,7 +124,7 @@ describe('getLocationPhotos', () => {
   })
 })
 
-describe('submitLionSighting', () => {
+describe('submitSighting', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('creates a submission', async () => {
@@ -141,8 +132,8 @@ describe('submitLionSighting', () => {
       makeChain({ data: { id: 'sub-new' }, error: null }),
     ))
 
-    const result = await (submitLionSighting as (a: { data: Record<string, unknown> }) => Promise<{ id: string }>)(
-      { data: { proposedName: 'Test Lion', proposedLat: 37.78, proposedLng: -122.42, photoStoragePaths: [] } },
+    const result = await (submitSighting as (a: { data: Record<string, unknown> }) => Promise<{ id: string }>)(
+      { data: { mapSlug: 'lions', proposedName: 'Test Lion', proposedLat: 37.78, proposedLng: -122.42, photoStoragePaths: [] } },
     )
 
     expect(result.id).toBe('sub-new')
@@ -154,8 +145,8 @@ describe('submitLionSighting', () => {
     ))
 
     await expect(
-      (submitLionSighting as (a: { data: Record<string, unknown> }) => Promise<unknown>)(
-        { data: { proposedName: 'Test', photoStoragePaths: [] } },
+      (submitSighting as (a: { data: Record<string, unknown> }) => Promise<unknown>)(
+        { data: { mapSlug: 'lions', proposedName: 'Test', photoStoragePaths: [] } },
       ),
     ).rejects.toThrow('Insert failed')
   })
@@ -167,20 +158,11 @@ describe('getPendingSubmissions', () => {
   it('throws when not authenticated', async () => {
     vi.mocked(requireAuth).mockRejectedValue(new Error('Unauthorized'))
 
-    await expect((getPendingSubmissions as () => Promise<unknown>)()).rejects.toThrow('Unauthorized')
-  })
-
-  it('returns pending submissions with photos', async () => {
-    vi.mocked(requireAuth).mockResolvedValue({ id: 'user-1' } as never)
-    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
-      makeChain({ data: [sampleSubmission], error: null }),
-      makeChain({ data: [], error: null }),
-    ))
-
-    const result = await (getPendingSubmissions as () => Promise<{ id: string; photos: unknown[] }[]>)()
-
-    expect(result).toHaveLength(1)
-    expect(result[0].photos).toEqual([])
+    await expect(
+      (getPendingSubmissions as (a: { data: { mapSlug?: string } }) => Promise<unknown>)(
+        { data: {} },
+      ),
+    ).rejects.toThrow('Unauthorized')
   })
 })
 

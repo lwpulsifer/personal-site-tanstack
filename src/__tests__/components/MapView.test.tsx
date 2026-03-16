@@ -31,12 +31,13 @@ vi.mock('leaflet/dist/images/marker-icon-2x.png', () => ({ default: '' }))
 vi.mock('leaflet/dist/images/marker-icon.png', () => ({ default: '' }))
 vi.mock('leaflet/dist/images/marker-shadow.png', () => ({ default: '' }))
 
-const { LionMap } = await import('#/components/lions/LionMap')
+const { MapView } = await import('#/components/maps/MapView')
 
-describe('LionMap', () => {
+describe('MapView', () => {
   const locations = [
     {
       id: 'loc-1',
+      map_slug: 'lions',
       name: 'Test Lion',
       description: null,
       address: '123 Main St',
@@ -49,6 +50,7 @@ describe('LionMap', () => {
     },
     {
       id: 'loc-2',
+      map_slug: 'lions',
       name: 'Another Lion',
       description: 'Big one',
       address: null,
@@ -62,17 +64,17 @@ describe('LionMap', () => {
   ]
 
   it('renders the map container', () => {
-    render(<LionMap locations={locations} />)
+    render(<MapView locations={locations} />)
     expect(screen.getByTestId('map-container')).toBeTruthy()
   })
 
   it('renders a marker for each location', () => {
-    render(<LionMap locations={locations} />)
+    render(<MapView locations={locations} />)
     expect(screen.getAllByTestId('map-marker')).toHaveLength(2)
   })
 
   it('shows location names in popups', () => {
-    render(<LionMap locations={locations} />)
+    render(<MapView locations={locations} />)
     expect(screen.getByText('Test Lion')).toBeTruthy()
     expect(screen.getByText('Another Lion')).toBeTruthy()
   })

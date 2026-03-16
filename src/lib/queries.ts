@@ -2,7 +2,7 @@ import { queryOptions } from '@tanstack/react-query'
 import { getAdminPosts, getAllTags } from '#/server/posts'
 import { getNowPlaying } from '#/server/spotify'
 import { getPageViews } from '#/server/pageViews'
-import { getApprovedLocations, getLocationPhotos, getPendingSubmissions } from '#/server/lions'
+import { getApprovedLocations, getLocationPhotos, getPendingSubmissions } from '#/server/maps'
 
 export const adminPostsQueryOptions = queryOptions({
   queryKey: ['adminPosts'],
@@ -27,20 +27,22 @@ export const pageViewsQueryOptions = (key: string) =>
     queryFn: () => getPageViews({ data: { url: key } }),
   })
 
-// ── Lions ─────────────────────────────────────────────────────────────────────
+// ── Maps ─────────────────────────────────────────────────────────────────────
 
-export const lionLocationsQueryOptions = queryOptions({
-  queryKey: ['lionLocations'],
-  queryFn: () => getApprovedLocations(),
-})
-
-export const lionPhotosQueryOptions = (locationId: string) =>
+export const mapLocationsQueryOptions = (mapSlug: string) =>
   queryOptions({
-    queryKey: ['lionPhotos', locationId],
+    queryKey: ['mapLocations', mapSlug],
+    queryFn: () => getApprovedLocations({ data: { mapSlug } }),
+  })
+
+export const mapPhotosQueryOptions = (locationId: string) =>
+  queryOptions({
+    queryKey: ['mapPhotos', locationId],
     queryFn: () => getLocationPhotos({ data: { locationId } }),
   })
 
-export const pendingLionSubmissionsQueryOptions = queryOptions({
-  queryKey: ['pendingLionSubmissions'],
-  queryFn: () => getPendingSubmissions(),
-})
+export const pendingMapSubmissionsQueryOptions = (mapSlug?: string) =>
+  queryOptions({
+    queryKey: ['pendingMapSubmissions', mapSlug],
+    queryFn: () => getPendingSubmissions({ data: { mapSlug } }),
+  })
