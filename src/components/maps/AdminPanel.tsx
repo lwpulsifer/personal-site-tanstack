@@ -50,11 +50,18 @@ export function AdminPanel({
 				Pending Submissions ({submissions.length})
 			</h3>
 			{submissions.map((sub) => (
-				<button
+				<div
 					key={sub.id}
-					type="button"
 					onClick={() => onSelectSubmission?.(sub)}
-					className={`w-full rounded-xl border bg-[var(--surface)] p-4 text-left transition hover:border-[var(--blue)] ${
+					onKeyDown={(e) => {
+						if (e.key === "Enter" || e.key === " ") {
+							e.preventDefault()
+							onSelectSubmission?.(sub)
+						}
+					}}
+					role="button"
+					tabIndex={0}
+					className={`w-full cursor-pointer rounded-xl border bg-[var(--surface)] p-4 text-left transition hover:border-[var(--blue)] ${
 						selectedSubmissionId === sub.id
 							? "border-[var(--blue)] ring-1 ring-[var(--blue)]"
 							: "border-[var(--border)]"
@@ -121,7 +128,7 @@ export function AdminPanel({
 							))}
 						</div>
 					)}
-				</button>
+				</div>
 			))}
 		</div>
 	)

@@ -88,6 +88,27 @@ adminTest.describe('admin: lion management', () => {
     await adminExpect(page.getByRole('button', { name: /e2e-test-lion-approve/ })).toBeVisible({ timeout: 10_000 })
   })
 
+  adminTest('clicking a pending submission zooms the map', async ({ page }) => {
+    await page.goto('/lions')
+
+    // Submit a new sighting
+    await page.getByRole('button', { name: /Report Sighting/i }).click()
+    await page.getByLabel(/Name/i).fill('e2e-test-lion-zoom')
+    await page.getByLabel(/Latitude/i).fill('37.80')
+    await page.getByLabel(/Longitude/i).fill('-122.45')
+    await page.getByRole('button', { name: /Submit Sighting/i }).click()
+    await adminExpect(page.getByText(/Thanks for your submission/i)).toBeVisible({ timeout: 10_000 })
+    await page.getByRole('button', { name: 'Close' }).click()
+
+    // Click the pending submission in the admin panel
+    const submissionCard = page.getByRole('button', { name: /e2e-test-lion-zoom/ })
+    await adminExpect(submissionCard).toBeVisible({ timeout: 10_000 })
+    await submissionCard.click()
+
+    // A preview marker should appear on the map at the submission coordinates
+    await adminExpect(page.locator('.leaflet-marker-icon').filter({ hasText: '📍' })).toBeVisible({ timeout: 5_000 })
+  })
+
   adminTest('admin can reject a submission', async ({ page }) => {
     await page.goto('/lions')
 
