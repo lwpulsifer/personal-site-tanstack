@@ -1,21 +1,56 @@
 import { chromium } from '@playwright/test'
 import { createClient } from '@supabase/supabase-js'
 import { mkdirSync } from 'node:fs'
+import fs from 'node:fs'
+import dotenv from 'dotenv'
+import { ADMIN_EMAIL, ADMIN_PASSWORD, AUTH_EMAIL, AUTH_PASSWORD } from './utils/credentials'
+
+// Make local runs "just work" after `npm run supabase:env`.
+dotenv.config({ path: '.env.local' })
+if (fs.existsSync('.env.supabase')) {
+  dotenv.config({ path: '.env.supabase', override: true })
+}
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321'
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
 
-export const TEST_EMAIL = 'e2e-admin@example.com'
-export const TEST_PASSWORD = 'e2e-test-password-123!'
-
 const AUTH_STATE_PATH = 'e2e/.auth/admin.json'
 const BASE_URL = 'http://localhost:3000'
+
+async function waitForAuthCookie(page: import('@playwright/test').Page, timeoutMs = 20_000) {
+  const start = Date.now()
+  while (Date.now() - start < timeoutMs) {
+    const cookies = await page.context().cookies()
+    // Supabase auth cookies are typically `sb-*-auth-token` (and may be chunked: `.0`, `.1`, ...).
+    if (cookies.some((c) => /^sb-.*-auth-token(\.\d+)?$/.test(c.name))) {
+      return
+    }
+    await page.waitForTimeout(100)
+  }
+  throw new Error('Timed out waiting for Supabase auth cookie to be set')
+}
+
+async function fillStable(
+  locator: import('@playwright/test').Locator,
+  value: string,
+  timeoutMs = 10_000,
+) {
+  const start = Date.now()
+  while (Date.now() - start < timeoutMs) {
+    await locator.fill(value)
+    // Give hydration a moment; if React wasn't hydrated yet, it can overwrite.
+    await locator.page().waitForTimeout(100)
+    const current = await locator.inputValue().catch(() => '')
+    if (current === value) return
+  }
+  throw new Error('Timed out waiting for input value to stick (hydration?)')
+}
 
 export default async function globalSetup() {
   if (!SERVICE_ROLE_KEY) {
     throw new Error(
       'SUPABASE_SERVICE_ROLE_KEY is not set. In CI it is extracted from `supabase status`. ' +
-        'Locally, run `supabase status` and export SUPABASE_SERVICE_ROLE_KEY.',
+        'Locally, run `npm run supabase:env` (or `npm run e2e:local`) to generate `.env.supabase`.',
     )
   }
 
@@ -25,16 +60,25 @@ export default async function globalSetup() {
 
   // Remove any stale test user from a previous run
   const { data } = await supabase.auth.admin.listUsers()
-  const existing = data?.users.find((u) => u.email === TEST_EMAIL)
-  if (existing) await supabase.auth.admin.deleteUser(existing.id)
+  for (const email of [ADMIN_EMAIL, AUTH_EMAIL]) {
+    const existing = data?.users.find((u) => u.email === email)
+    if (existing) await supabase.auth.admin.deleteUser(existing.id)
+  }
 
-  // Create a fresh test admin user
-  const { error } = await supabase.auth.admin.createUser({
-    email: TEST_EMAIL,
-    password: TEST_PASSWORD,
+  // Create fresh test users
+  const { error: adminUserError } = await supabase.auth.admin.createUser({
+    email: ADMIN_EMAIL,
+    password: ADMIN_PASSWORD,
     email_confirm: true,
   })
-  if (error) throw new Error(`Failed to create e2e test user: ${error.message}`)
+  if (adminUserError) throw new Error(`Failed to create e2e admin user: ${adminUserError.message}`)
+
+  const { error: authUserError } = await supabase.auth.admin.createUser({
+    email: AUTH_EMAIL,
+    password: AUTH_PASSWORD,
+    email_confirm: true,
+  })
+  if (authUserError) throw new Error(`Failed to create e2e auth user: ${authUserError.message}`)
 
   // Log in via browser and save session state (cookies + localStorage)
   mkdirSync('e2e/.auth', { recursive: true })
@@ -42,10 +86,27 @@ export default async function globalSetup() {
   const page = await browser.newPage()
 
   await page.goto(`${BASE_URL}/login`)
-  await page.getByLabel('Email').fill(TEST_EMAIL)
-  await page.getByLabel('Password').fill(TEST_PASSWORD)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await page.waitForURL(`${BASE_URL}/`)
+  await page.waitForLoadState('networkidle')
+  // Wait for React hydration marker (see src/routes/__root.tsx).
+  await page.waitForSelector('body[data-hydrated="true"]', { timeout: 30_000 })
+  await fillStable(page.getByTestId('login-email'), ADMIN_EMAIL, 15_000)
+  await fillStable(page.getByTestId('login-password'), ADMIN_PASSWORD, 15_000)
+  await page.getByTestId('login-submit').click()
+
+  // TanStack Start navigation may not trigger a full page load; prefer URL predicate and cookie.
+  try {
+    await page.waitForURL((url) => url.origin === BASE_URL && url.pathname === '/', { timeout: 60_000 })
+  } catch {
+    // If login failed, the login page renders a testable error.
+    const errVisible = await page.getByTestId('login-error').isVisible().catch(() => false)
+    if (errVisible) {
+      const msg = await page.getByTestId('login-error').textContent()
+      throw new Error(`Login failed during e2e global setup: ${msg ?? '(no message)'}`)
+    }
+    throw new Error('Login did not redirect to / during e2e global setup')
+  }
+
+  await waitForAuthCookie(page, 30_000)
 
   await page.context().storageState({ path: AUTH_STATE_PATH })
   await browser.close()

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { ensureHydrated } from '../utils/ui'
 
 test('home page loads', async ({ page }) => {
   await page.goto('/')
@@ -7,10 +8,12 @@ test('home page loads', async ({ page }) => {
 
 test('blog listing loads', async ({ page }) => {
   await page.goto('/blog')
-  await expect(page.getByRole('heading', { name: 'Blog', level: 1 })).toBeVisible()
+  await ensureHydrated(page)
+  await expect(page.getByTestId('blog-heading')).toBeVisible()
 })
 
 test('individual blog post loads', async ({ page }) => {
   await page.goto('/blog/hello-world')
-  await expect(page.getByRole('heading', { name: 'Hello World' }).first()).toBeVisible()
+  await ensureHydrated(page)
+  await expect(page.getByTestId('post-title')).toBeVisible()
 })

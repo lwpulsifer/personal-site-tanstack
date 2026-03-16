@@ -103,7 +103,10 @@ function BlogIndex() {
         <section className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="island-kicker mb-2">Latest Dispatches</p>
-            <h1 className="display-title m-0 text-4xl font-bold tracking-tight text-[var(--text)] sm:text-5xl">
+            <h1
+              data-testid="blog-heading"
+              className="display-title m-0 text-4xl font-bold tracking-tight text-[var(--text)] sm:text-5xl"
+            >
               Blog
             </h1>
           </div>
@@ -113,6 +116,7 @@ function BlogIndex() {
             {isAuthenticated && (
               <button
                 type="button"
+                data-testid="new-post-btn"
                 onClick={() => setEditingPost('new')}
                 className="rounded-full bg-[var(--blue-deep)] px-4 py-1.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)]"
               >
@@ -123,6 +127,7 @@ function BlogIndex() {
             {allTags.length > 0 && (
               <div className="flex items-center gap-2">
                 <input
+                  data-testid="tag-filter-input"
                   type="search"
                   list="tag-options"
                   value={tagFilter}
@@ -138,6 +143,7 @@ function BlogIndex() {
                 {tagFilter && (
                   <button
                     type="button"
+                    data-testid="tag-filter-clear"
                     onClick={() => setTagFilter('')}
                     className="text-sm text-[var(--text-muted)] underline"
                   >
@@ -177,7 +183,10 @@ function BlogIndex() {
 
         {isAuthenticated && archivedPosts.length > 0 && (
           <details className="group mt-12">
-            <summary className="island-kicker mb-3 cursor-pointer select-none list-none">
+            <summary
+              data-testid="archived-posts-summary"
+              className="island-kicker mb-3 cursor-pointer select-none list-none"
+            >
               <span>Archived ({archivedPosts.length})</span>
               <span className="ml-1 inline-block transition-transform group-open:rotate-90">›</span>
             </summary>

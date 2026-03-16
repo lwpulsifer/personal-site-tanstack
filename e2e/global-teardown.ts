@@ -1,8 +1,15 @@
 import { createClient } from '@supabase/supabase-js'
+import fs from 'node:fs'
+import dotenv from 'dotenv'
+import { ADMIN_EMAIL, AUTH_EMAIL } from './utils/credentials'
+
+dotenv.config({ path: '.env.local' })
+if (fs.existsSync('.env.supabase')) {
+  dotenv.config({ path: '.env.supabase', override: true })
+}
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321'
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
-const TEST_EMAIL = 'e2e-admin@example.com'
 
 export default async function globalTeardown() {
   if (!SERVICE_ROLE_KEY) return // nothing to clean up if we can't connect
@@ -16,6 +23,8 @@ export default async function globalTeardown() {
 
   // Delete the test admin user
   const { data } = await supabase.auth.admin.listUsers()
-  const user = data?.users.find((u) => u.email === TEST_EMAIL)
-  if (user) await supabase.auth.admin.deleteUser(user.id)
+  for (const email of [ADMIN_EMAIL, AUTH_EMAIL]) {
+    const user = data?.users.find((u) => u.email === email)
+    if (user) await supabase.auth.admin.deleteUser(user.id)
+  }
 }

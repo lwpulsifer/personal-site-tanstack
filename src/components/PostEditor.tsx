@@ -334,12 +334,13 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
   const isActing = statusMutation.isPending
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)]">
+    <div data-testid="post-editor" className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)]">
       {/* ── Toolbar ─────────────────────────────────────────────────────── */}
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
         <div className="flex items-center gap-2">
           <button
             type="button"
+            data-testid="post-editor-close"
             onClick={onClose}
             className="rounded-lg px-2.5 py-1.5 text-sm text-[var(--text-muted)] transition hover:bg-[var(--hover-bg)] hover:text-[var(--text)]"
             aria-label="Close editor"
@@ -405,6 +406,7 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
 
           <button
             type="button"
+            data-testid="post-editor-save"
             onClick={() => saveMutation.mutate()}
             disabled={isSaving || !fields.title || !fields.slug || !fields.content}
             className="rounded-full bg-[var(--blue-deep)] px-4 py-1.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50 disabled:hover:translate-y-0"
@@ -422,6 +424,7 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
               Title
             </label>
             <input
+              data-testid="post-editor-title"
               type="text"
               value={fields.title}
               onChange={(e) => setField('title', e.target.value)}
@@ -435,6 +438,7 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
               Slug
             </label>
             <input
+              data-testid="post-editor-slug"
               type="text"
               value={fields.slug}
               onChange={(e) => {
@@ -581,6 +585,7 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
       <div className="flex flex-1 overflow-hidden">
         {tab === 'write' ? (
           <textarea
+            data-testid="post-editor-content"
             ref={textareaRef}
             value={fields.content}
             onChange={(e) => setField('content', e.target.value)}

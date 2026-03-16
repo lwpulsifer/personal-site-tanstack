@@ -48,6 +48,7 @@ function LoginPage() {
             </label>
             <input
               id="email"
+              data-testid="login-email"
               type="email"
               autoComplete="email"
               required
@@ -63,6 +64,7 @@ function LoginPage() {
             </label>
             <input
               id="password"
+              data-testid="login-password"
               type="password"
               autoComplete="current-password"
               required
@@ -73,13 +75,17 @@ function LoginPage() {
           </div>
 
           {error && (
-            <p className="rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400">
+            <p
+              data-testid="login-error"
+              className="rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400"
+            >
               {error}
             </p>
           )}
 
           <button
             type="submit"
+            data-testid="login-submit"
             disabled={loading}
             className="mt-2 rounded-full bg-[var(--blue-deep)] px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50 disabled:hover:translate-y-0"
           >

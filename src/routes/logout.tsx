@@ -20,7 +20,10 @@ function LogoutPage() {
         {done ? (
           <>
             <p className="island-kicker mb-3">See you later</p>
-            <h1 className="display-title mb-4 text-2xl font-bold text-[var(--text)]">
+            <h1
+              data-testid="logout-heading"
+              className="display-title mb-4 text-2xl font-bold text-[var(--text)]"
+            >
               You're signed out
             </h1>
             <p className="mb-8 text-sm text-[var(--text-muted)]">
