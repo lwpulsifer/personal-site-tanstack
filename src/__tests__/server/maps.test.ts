@@ -157,6 +157,22 @@ describe('submitSighting', () => {
     ])
   })
 
+  it('inserts photo rows with locationId when provided', async () => {
+    const photosChain = makeChain({ data: null, error: null })
+    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
+      makeChain({ data: { id: 'sub-with-loc' }, error: null }),
+      photosChain,
+    ))
+
+    await (submitSighting as (a: { data: Record<string, unknown> }) => Promise<{ id: string }>)(
+      { data: { mapSlug: 'lions', locationId: 'loc-1', photoStoragePaths: ['photo.jpg'] } },
+    )
+
+    expect(photosChain.insert).toHaveBeenCalledWith([
+      { location_id: 'loc-1', submission_id: 'sub-with-loc', storage_path: 'photo.jpg' },
+    ])
+  })
+
   it('throws when insert fails', async () => {
     vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
       makeChain({ data: null, error: { message: 'Insert failed' } }),
@@ -195,6 +211,80 @@ describe('approveSubmission', () => {
         { data: { submissionId: 'sub-1' } },
       ),
     ).rejects.toThrow('Unauthorized')
+  })
+
+  it('creates a new location and links photos when no location_id', async () => {
+    vi.mocked(requireAuth).mockResolvedValue({ id: 'admin-1', email: 'admin@test.com' } as never)
+
+    const submission = {
+      id: 'sub-1',
+      map_slug: 'lions',
+      location_id: null,
+      proposed_name: 'New Lion',
+      proposed_lat: 37.78,
+      proposed_lng: -122.42,
+      proposed_address: '123 Test St',
+    }
+
+    const fetchChain = makeChain({ data: submission, error: null })
+    const insertLocationChain = makeChain({ data: { id: 'new-loc-1' }, error: null })
+    const updatePhotosChain = makeChain({ data: null, error: null })
+    const updateSubmissionChain = makeChain({ data: null, error: null })
+
+    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
+      fetchChain,
+      insertLocationChain,
+      updatePhotosChain,
+      updateSubmissionChain,
+    ))
+
+    const result = await (approveSubmission as (a: { data: { submissionId: string } }) => Promise<{ ok: boolean; locationId: string }>)(
+      { data: { submissionId: 'sub-1' } },
+    )
+
+    expect(result.ok).toBe(true)
+    expect(result.locationId).toBe('new-loc-1')
+    // Should have created a location with the proposed fields
+    expect(insertLocationChain.insert).toHaveBeenCalledWith({
+      map_slug: 'lions',
+      name: 'New Lion',
+      lat: 37.78,
+      lng: -122.42,
+      address: '123 Test St',
+      created_by: 'admin-1',
+    })
+  })
+
+  it('uses existing location_id when present', async () => {
+    vi.mocked(requireAuth).mockResolvedValue({ id: 'admin-1', email: 'admin@test.com' } as never)
+
+    const submission = {
+      id: 'sub-2',
+      map_slug: 'lions',
+      location_id: 'existing-loc',
+      proposed_name: null,
+      proposed_lat: null,
+      proposed_lng: null,
+      proposed_address: null,
+    }
+
+    const fetchChain = makeChain({ data: submission, error: null })
+    // No insert location chain needed — skips to update photos
+    const updatePhotosChain = makeChain({ data: null, error: null })
+    const updateSubmissionChain = makeChain({ data: null, error: null })
+
+    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
+      fetchChain,
+      updatePhotosChain,
+      updateSubmissionChain,
+    ))
+
+    const result = await (approveSubmission as (a: { data: { submissionId: string } }) => Promise<{ ok: boolean; locationId: string }>)(
+      { data: { submissionId: 'sub-2' } },
+    )
+
+    expect(result.ok).toBe(true)
+    expect(result.locationId).toBe('existing-loc')
   })
 })
 
