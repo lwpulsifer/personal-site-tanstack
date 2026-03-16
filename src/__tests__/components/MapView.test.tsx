@@ -13,7 +13,7 @@ vi.mock('react-leaflet', () => ({
     <div data-testid="map-popup">{children}</div>
   ),
   useMapEvents: () => null,
-  useMap: () => ({ flyTo: flyToMock, getZoom: () => 13 }),
+  useMap: () => ({ flyTo: flyToMock, getZoom: () => 13, setView: vi.fn(), invalidateSize: vi.fn() }),
 }))
 
 vi.mock('leaflet', () => {

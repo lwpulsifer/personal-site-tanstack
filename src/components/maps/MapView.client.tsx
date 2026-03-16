@@ -48,6 +48,22 @@ function FlyToCoords({ coords }: { coords: { lat: number; lng: number } | null |
   return null
 }
 
+function EnsureSfCentered() {
+  const map = useMap()
+  const didInit = useRef(false)
+
+  useEffect(() => {
+    if (didInit.current) return
+    didInit.current = true
+    // Leaflet can render slightly off-center when mounted into a flex layout
+    // that is still settling. Force a known-good initial view and size.
+    map.setView(SF_CENTER, 13, { animate: false })
+    requestAnimationFrame(() => map.invalidateSize())
+  }, [map])
+
+  return null
+}
+
 function ClickHandler({ onClick }: { onClick?: (lat: number, lng: number) => void }) {
   useMapEvents({
     click(e) {
@@ -87,6 +103,7 @@ export function MapView({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        <EnsureSfCentered />
         {/* Visual geofence: red mask outside the Bay Area bounds + red outline */}
         <Rectangle
           interactive={false}
