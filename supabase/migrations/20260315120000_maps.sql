@@ -77,7 +77,7 @@ grant all            on public.map_submissions to service_role;
 -- ── map_photos ────────────────────────────────────────────────────────────
 create table public.map_photos (
   id            uuid             primary key default gen_random_uuid(),
-  location_id   uuid             not null references public.map_locations(id) on delete cascade,
+  location_id   uuid             references public.map_locations(id) on delete cascade,
   submission_id uuid             references public.map_submissions(id) on delete set null,
   storage_path  text             not null,
   caption       text,

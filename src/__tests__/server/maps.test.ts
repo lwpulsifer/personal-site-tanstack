@@ -139,6 +139,24 @@ describe('submitSighting', () => {
     expect(result.id).toBe('sub-new')
   })
 
+  it('inserts photo rows without a locationId', async () => {
+    const photosChain = makeChain({ data: null, error: null })
+    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
+      makeChain({ data: { id: 'sub-photos' }, error: null }),
+      photosChain,
+    ))
+
+    const result = await (submitSighting as (a: { data: Record<string, unknown> }) => Promise<{ id: string }>)(
+      { data: { mapSlug: 'lions', proposedName: 'Test', photoStoragePaths: ['img1.jpg', 'img2.jpg'] } },
+    )
+
+    expect(result.id).toBe('sub-photos')
+    expect(photosChain.insert).toHaveBeenCalledWith([
+      { location_id: null, submission_id: 'sub-photos', storage_path: 'img1.jpg' },
+      { location_id: null, submission_id: 'sub-photos', storage_path: 'img2.jpg' },
+    ])
+  })
+
   it('throws when insert fails', async () => {
     vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
       makeChain({ data: null, error: { message: 'Insert failed' } }),

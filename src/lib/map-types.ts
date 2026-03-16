@@ -34,7 +34,7 @@ export type MapSubmission = {
 
 export type MapPhoto = {
   id: string
-  location_id: string
+  location_id: string | null
   submission_id: string | null
   storage_path: string
   caption: string | null

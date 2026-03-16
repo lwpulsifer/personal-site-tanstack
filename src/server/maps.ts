@@ -88,11 +88,10 @@ export const submitSighting = createServerFn({ method: 'POST' })
 
     if (error) throw new Error(error.message)
 
-    // Link photos to submission (they need a location_id, use the existing one
-    // or a placeholder — photos get re-linked on approval)
-    if (data.photoStoragePaths.length > 0 && data.locationId) {
+    // Link photos to submission — location_id is null until approval
+    if (data.photoStoragePaths.length > 0) {
       const photoRows = data.photoStoragePaths.map((path) => ({
-        location_id: data.locationId!,
+        location_id: data.locationId ?? null,
         submission_id: submission.id,
         storage_path: path,
       }))
