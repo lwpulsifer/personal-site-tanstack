@@ -4,11 +4,14 @@ export type LatLng = { lat: number; lng: number }
 // - users can't accidentally submit far outside the region
 // - we don't need any expensive geofencing logic
 // This can be refined later if needed.
+// San Francisco city proper (rough bounding box).
+// Note: This is intentionally approximate and slightly conservative to keep
+// submissions within SF without needing complex polygon checks.
 export const BAY_AREA_BOUNDS = {
-  minLat: 36.8,
-  maxLat: 38.9,
-  minLng: -123.3,
-  maxLng: -121.2,
+  minLat: 37.70,
+  maxLat: 37.84,
+  minLng: -122.52,
+  maxLng: -122.35,
 } as const
 
 export function isWithinBayArea(lat: number, lng: number) {
@@ -19,4 +22,3 @@ export function isWithinBayArea(lat: number, lng: number) {
     lng <= BAY_AREA_BOUNDS.maxLng
   )
 }
-
