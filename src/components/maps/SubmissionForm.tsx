@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { submitSighting } from '#/server/maps'
 import { extractGpsFromImage } from '#/lib/exif'
 import { getSupabaseBrowserClient } from '#/lib/supabase'
-import { mapLocationsQueryOptions } from '#/lib/queries'
+import { mapLocationsQueryOptions, pendingMapSubmissionsQueryOptions } from '#/lib/queries'
 
 export function SubmissionForm({
   mapSlug,
@@ -71,6 +71,9 @@ export function SubmissionForm({
       setSuccess(true)
       setUploading(false)
       queryClient.invalidateQueries({ queryKey: mapLocationsQueryOptions(mapSlug).queryKey })
+      // If an authenticated user is viewing the map (admin panel visible), refresh
+      // pending submissions so the new item appears immediately.
+      queryClient.invalidateQueries({ queryKey: pendingMapSubmissionsQueryOptions(mapSlug).queryKey })
     },
     onError: (err) => {
       setError(err instanceof Error ? err.message : 'Something went wrong')
@@ -108,6 +111,7 @@ export function SubmissionForm({
         </p>
         <button
           type="button"
+          data-testid="submission-close-btn"
           onClick={onClose}
           className="mt-4 rounded-full bg-[var(--blue-deep)] px-4 py-1.5 text-sm font-semibold text-white transition hover:-translate-y-0.5"
         >
@@ -120,8 +124,8 @@ export function SubmissionForm({
   return (
     <div className="island-shell rounded-2xl p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="m-0 text-lg font-bold text-[var(--text)]">Report a Lion Sighting</h3>
-        <button type="button" onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text)]">
+        <h3 data-testid="submission-form-heading" className="m-0 text-lg font-bold text-[var(--text)]">Report a Lion Sighting</h3>
+        <button type="button" data-testid="close-form-btn" onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text)]">
           &times;
         </button>
       </div>
@@ -139,6 +143,7 @@ export function SubmissionForm({
           </label>
           <input
             id="lion-name"
+            data-testid="field-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -153,6 +158,7 @@ export function SubmissionForm({
           </label>
           <input
             id="lion-address"
+            data-testid="field-address"
             type="text"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
@@ -168,6 +174,7 @@ export function SubmissionForm({
             </label>
             <input
               id="lion-lat"
+              data-testid="field-lat"
               type="number"
               step="any"
               value={lat}
@@ -189,6 +196,7 @@ export function SubmissionForm({
             </label>
             <input
               id="lion-lng"
+              data-testid="field-lng"
               type="number"
               step="any"
               value={lng}
@@ -242,6 +250,7 @@ export function SubmissionForm({
           </label>
           <textarea
             id="lion-notes"
+            data-testid="field-notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={2}
@@ -283,6 +292,7 @@ export function SubmissionForm({
 
         <button
           type="submit"
+          data-testid="submit-sighting-btn"
           disabled={uploading}
           className="w-full rounded-full bg-[var(--blue-deep)] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
         >

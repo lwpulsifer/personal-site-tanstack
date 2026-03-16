@@ -18,6 +18,9 @@ export function getSupabaseServerClient() {
     throw new Error('VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set')
   }
   return createServerClient(url, key, {
+    // Keep in sync with getSupabaseBrowserClient() so server-fns can read the
+    // same auth cookies the browser writes.
+    cookieOptions: { name: 'sb-personal-site-auth' },
     cookies: {
       getAll() {
         const cookies = getCookies()

@@ -84,6 +84,7 @@ function LionsPage() {
         </div>
         <button
           type="button"
+          data-testid="report-sighting-btn"
           onClick={() => {
             setShowSubmitForm(true)
             setSelectedLocation(null)

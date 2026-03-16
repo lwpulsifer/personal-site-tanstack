@@ -17,7 +17,7 @@ const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
 const AUTH_STATE_PATH = 'e2e/.auth/admin.json'
 const BASE_URL = 'http://localhost:3000'
 
-async function waitForAuthCookie(page: import('@playwright/test').Page, timeoutMs = 20_000) {
+async function waitForAuthCookie(page: import('@playwright/test').Page, timeoutMs = 10_000) {
   const start = Date.now()
   while (Date.now() - start < timeoutMs) {
     const cookies = await page.context().cookies()

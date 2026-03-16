@@ -127,8 +127,8 @@ function BlogIndex() {
             {allTags.length > 0 && (
               <div className="flex items-center gap-2">
                 <input
-                  data-testid="tag-filter-input"
                   type="search"
+                  data-testid="tag-filter-input"
                   list="tag-options"
                   value={tagFilter}
                   onChange={(e) => setTagFilter(e.target.value)}

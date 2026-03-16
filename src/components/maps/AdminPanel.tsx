@@ -37,7 +37,7 @@ export function AdminPanel({
 	if (submissions.length === 0) {
 		return (
 			<div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-				<p className="text-sm text-[var(--text-muted)]">No pending submissions.</p>
+				<p data-testid="no-pending-submissions" className="text-sm text-[var(--text-muted)]">No pending submissions.</p>
 			</div>
 		)
 	}
@@ -46,12 +46,13 @@ export function AdminPanel({
 
 	return (
 		<div className="space-y-3">
-			<h3 className="text-sm font-semibold text-[var(--text)]">
+			<h3 data-testid="pending-submissions-heading" className="text-sm font-semibold text-[var(--text)]">
 				Pending Submissions ({submissions.length})
 			</h3>
 			{submissions.map((sub) => (
 				<div
 					key={sub.id}
+					data-testid={`submission-card-${sub.id}`}
 					onClick={() => onSelectSubmission?.(sub)}
 					onKeyDown={(e) => {
 						if (e.key === "Enter" || e.key === " ") {
@@ -92,6 +93,7 @@ export function AdminPanel({
 						<div className="flex shrink-0 gap-2">
 							<button
 								type="button"
+								data-testid="approve-btn"
 								onClick={(e) => {
 									e.stopPropagation()
 									approveMutation.mutate(sub.id)
@@ -103,6 +105,7 @@ export function AdminPanel({
 							</button>
 							<button
 								type="button"
+								data-testid="reject-btn"
 								onClick={(e) => {
 									e.stopPropagation()
 									rejectMutation.mutate(sub.id)

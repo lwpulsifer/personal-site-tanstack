@@ -26,7 +26,10 @@ export function getSupabaseBrowserClient() {
   if (!url || !key) {
     throw new Error('VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set')
   }
-  return createBrowserClient(url, key)
+  // Use an explicit storage/cookie key so browser + server always agree, even if
+  // the Supabase URL differs slightly between build/runtime (localhost vs 127.0.0.1).
+  return createBrowserClient(url, key, {
+    cookieOptions: { name: 'sb-personal-site-auth' },
+  })
 }
-
 

@@ -37,7 +37,7 @@ export function LocationDetail({
       </p>
 
       <div className="flex-1">
-        <h3 className="mb-2 text-sm font-semibold text-[var(--text)]">Photos</h3>
+        <h3 data-testid="photos-heading" className="mb-2 text-sm font-semibold text-[var(--text)]">Photos</h3>
         <PhotoGallery locationId={location.id} />
       </div>
     </div>
