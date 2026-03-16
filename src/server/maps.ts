@@ -5,6 +5,7 @@ import { z } from 'zod'
 import type { MapLocation, MapPhoto, MapSubmission } from '#/lib/map-types'
 import { DateTime } from 'luxon'
 import tzLookup from 'tz-lookup'
+import { isWithinBayArea } from '#/lib/geo'
 
 const DEFAULT_TIME_ZONE = 'America/Los_Angeles'
 const LOCATION_MERGE_RADIUS_METERS = 10
@@ -164,6 +165,13 @@ export const submitSighting = createServerFn({ method: 'POST' })
           : null
 
     const submissionTz = inferTimeZoneFromCoords(inferredCoords)
+
+    // Enforce a basic geofence for new sightings. (Adding photos to an existing
+    // location is allowed even if EXIF data is missing/odd.)
+    if (!data.locationId && inferredCoords && !isWithinBayArea(inferredCoords.lat, inferredCoords.lng)) {
+      throw new Error('Please submit sightings within the San Francisco Bay Area.')
+    }
+
     const occurredAtLocal =
       data.occurredAtLocal ??
       data.photos.find((p) => typeof p.takenAtLocal === 'string')?.takenAtLocal ??
@@ -284,6 +292,9 @@ export const approveSubmission = createServerFn({ method: 'POST' })
     if (!locationId) {
       if (!submission.proposed_lat || !submission.proposed_lng) {
         throw new Error('Submission has no coordinates')
+      }
+      if (!isWithinBayArea(submission.proposed_lat, submission.proposed_lng)) {
+        throw new Error('Submission coordinates are outside of the San Francisco Bay Area.')
       }
 
       const existingLocationId = await findExistingLocationWithinRadius({

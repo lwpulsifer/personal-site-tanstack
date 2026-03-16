@@ -10,6 +10,7 @@ import { SubmissionForm } from '#/components/maps/SubmissionForm'
 import { AdminPanel } from '#/components/maps/AdminPanel'
 import type { MapLocation, MapSubmission } from '#/lib/map-types'
 import { MapSkeleton } from '#/components/maps/MapSkeleton'
+import { isWithinBayArea } from '#/lib/geo'
 
 const MapView = lazy(() =>
   import('#/components/maps/MapView').then((m) => ({ default: m.MapView })),
@@ -57,8 +58,14 @@ function LionsPage() {
 
   const [previewCoords, setPreviewCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [selectedSubmission, setSelectedSubmission] = useState<MapSubmission | null>(null)
+  const [mapBoundsError, setMapBoundsError] = useState<string | null>(null)
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
+    if (!isWithinBayArea(lat, lng)) {
+      setMapBoundsError('Please add sightings within the San Francisco Bay Area.')
+      return
+    }
+    setMapBoundsError(null)
     setClickedCoords({ lat, lng })
     setPreviewCoords({ lat, lng })
     setShowSubmitForm(true)
@@ -67,6 +74,7 @@ function LionsPage() {
   }, [])
 
   const handleSelectLocation = useCallback((location: MapLocation) => {
+    setMapBoundsError(null)
     setSelectedLocation(location)
     setShowSubmitForm(false)
     setSelectedSubmission(null)
@@ -74,6 +82,7 @@ function LionsPage() {
   }, [])
 
   const handleSelectSubmission = useCallback((submission: MapSubmission) => {
+    setMapBoundsError(null)
     setSelectedSubmission(submission)
     setSelectedLocation(null)
     setShowSubmitForm(false)
@@ -84,6 +93,7 @@ function LionsPage() {
   }, [])
 
   const handleAddPhotos = useCallback((location: MapLocation) => {
+    setMapBoundsError(null)
     setSubmitMode('add-photos')
     setSubmitLocation(location)
     setShowSubmitForm(true)
@@ -129,6 +139,14 @@ function LionsPage() {
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 lg:flex-row">
         {/* Map */}
         <div className="island-shell relative h-[55dvh] min-h-[420px] flex-1 overflow-hidden rounded-2xl lg:h-[calc(100dvh-14rem)] lg:min-h-[720px]">
+          {mapBoundsError && (
+            <div
+              data-testid="map-bounds-error"
+              className="pointer-events-none absolute left-3 right-3 top-3 z-10 rounded-xl border border-red-500/20 bg-white/80 px-3 py-2 text-sm font-semibold text-red-700 shadow-sm backdrop-blur-sm"
+            >
+              {mapBoundsError}
+            </div>
+          )}
           <Suspense
             fallback={
               <MapSkeleton />

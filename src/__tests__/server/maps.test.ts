@@ -184,6 +184,22 @@ describe('submitSighting', () => {
       ),
     ).rejects.toThrow('Insert failed')
   })
+
+  it('rejects out-of-bounds coordinates for new sightings', async () => {
+    const chain = makeChain({ data: { id: 'sub-oob' }, error: null })
+    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(chain))
+
+    await expect(
+      (submitSighting as (a: { data: Record<string, unknown> }) => Promise<unknown>)({
+        data: {
+          mapSlug: 'lions',
+          proposedLat: 34.05,
+          proposedLng: -118.25,
+          photos: [],
+        },
+      }),
+    ).rejects.toThrow('Please submit sightings within the San Francisco Bay Area.')
+  })
 })
 
 describe('getPendingSubmissions', () => {
