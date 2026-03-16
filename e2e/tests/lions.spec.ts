@@ -43,6 +43,30 @@ test('report sighting button opens submission form', async ({ page }) => {
   await expect(page.getByTestId('field-lat')).toBeVisible()
 })
 
+test('address search populates lat/lng', async ({ page }) => {
+  await page.route('https://nominatim.openstreetmap.org/search**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        { display_name: 'City Hall, San Francisco', lat: '37.7793', lon: '-122.4193' },
+      ]),
+    })
+  })
+
+  await page.goto('/lions/')
+  await ensureHydrated(page)
+  await page.getByTestId('report-sighting-btn').click()
+
+  await fillStable(page.getByTestId('address-search-input'), 'City Hall')
+  await page.getByTestId('address-search-submit').click()
+  await expect(page.getByTestId('address-search-results')).toBeVisible({ timeout: 10_000 })
+
+  await page.getByTestId('address-result-0').click()
+  await expect(page.getByTestId('field-lat')).toHaveValue(/37\.7793/)
+  await expect(page.getByTestId('field-lng')).toHaveValue(/-122\.4193/)
+})
+
 test('submission form can be filled and submitted', async ({ page }) => {
   await page.goto('/lions/')
   await ensureHydrated(page)

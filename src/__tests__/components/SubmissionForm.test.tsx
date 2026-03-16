@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import userEvent from '@testing-library/user-event'
 
 vi.mock('#/server/maps', () => ({
   submitSighting: vi.fn(),
@@ -15,6 +16,14 @@ vi.mock('#/server/maps', () => ({
 vi.mock('#/lib/exif', () => ({
   extractExifFromImage: vi.fn().mockResolvedValue({ coords: null, takenAtLocal: null }),
 }))
+
+vi.mock('#/lib/geo', async () => {
+  const actual = await vi.importActual<typeof import('#/lib/geo')>('#/lib/geo')
+  return {
+    ...actual,
+    isWithinBayArea: vi.fn().mockReturnValue(true),
+  }
+})
 
 vi.mock('#/lib/supabase', () => ({
   getSupabaseBrowserClient: vi.fn().mockReturnValue({
@@ -43,7 +52,8 @@ describe('SubmissionForm', () => {
 
     expect(screen.getByText('Report a Lion Sighting')).toBeTruthy()
     expect(screen.getByLabelText(/name.*description/i)).toBeTruthy()
-    expect(screen.getByLabelText(/address/i)).toBeTruthy()
+    expect(screen.getByTestId('address-search-input')).toBeTruthy()
+    expect(screen.getByTestId('field-address')).toBeTruthy()
     expect(screen.getByLabelText(/latitude/i)).toBeTruthy()
     expect(screen.getByLabelText(/longitude/i)).toBeTruthy()
     expect(screen.getByLabelText(/photos/i)).toBeTruthy()
@@ -85,5 +95,27 @@ describe('SubmissionForm', () => {
 
     // Photos input remains.
     expect(screen.getByTestId('field-photos')).toBeTruthy()
+  })
+
+  it('can search an address and populate lat/lng', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ([
+        { display_name: 'City Hall, San Francisco', lat: '37.7793', lon: '-122.4193' },
+      ]),
+    }))
+
+    renderWithProvider(<SubmissionForm mapSlug="lions" onClose={() => {}} />)
+
+    await userEvent.type(screen.getByTestId('address-search-input'), 'City Hall')
+    await userEvent.click(screen.getByTestId('address-search-submit'))
+
+    const result = await screen.findByTestId('address-result-0')
+    await userEvent.click(result)
+
+    const latInput = screen.getByTestId('field-lat') as HTMLInputElement
+    const lngInput = screen.getByTestId('field-lng') as HTMLInputElement
+    expect(latInput.value).toContain('37.7793')
+    expect(lngInput.value).toContain('-122.4193')
   })
 })

@@ -4,6 +4,7 @@ import { submitSighting } from '#/server/maps'
 import { extractExifFromImage } from '#/lib/exif'
 import { getSupabaseBrowserClient } from '#/lib/supabase'
 import { mapLocationsQueryOptions, pendingMapSubmissionsQueryOptions } from '#/lib/queries'
+import { isWithinBayArea } from '#/lib/geo'
 
 function isHeicFile(file: File) {
   const name = file.name.toLowerCase()
@@ -53,6 +54,10 @@ export function SubmissionForm({
   const [address, setAddress] = useState(initialAddress ?? '')
   const [lat, setLat] = useState(initialLat?.toString() ?? '')
   const [lng, setLng] = useState(initialLng?.toString() ?? '')
+  const [addressQuery, setAddressQuery] = useState('')
+  const [addressResults, setAddressResults] = useState<Array<{ label: string; lat: number; lng: number }>>([])
+  const [addressSearching, setAddressSearching] = useState(false)
+  const [addressSearchError, setAddressSearchError] = useState<string | null>(null)
   const [notes, setNotes] = useState('')
   const [submitterName, setSubmitterName] = useState('')
   const [submitterEmail, setSubmitterEmail] = useState('')
@@ -124,6 +129,45 @@ export function SubmissionForm({
       setUploading(false)
     },
   })
+
+  const searchAddress = useCallback(async () => {
+    const q = addressQuery.trim()
+    if (!q) return
+    setAddressSearching(true)
+    setAddressSearchError(null)
+    try {
+      const url = new URL('https://nominatim.openstreetmap.org/search')
+      url.searchParams.set('format', 'jsonv2')
+      url.searchParams.set('q', q)
+      url.searchParams.set('limit', '8')
+      url.searchParams.set('addressdetails', '1')
+      url.searchParams.set('countrycodes', 'us')
+
+      const res = await fetch(url.toString(), {
+        headers: { accept: 'application/json' },
+      })
+      if (!res.ok) throw new Error(`Address search failed (${res.status})`)
+      const json = (await res.json()) as Array<{ display_name?: string; lat?: string; lon?: string }>
+      const results = (json ?? [])
+        .map((r) => ({
+          label: r.display_name ?? 'Unknown address',
+          lat: Number.parseFloat(r.lat ?? ''),
+          lng: Number.parseFloat(r.lon ?? ''),
+        }))
+        .filter((r) => Number.isFinite(r.lat) && Number.isFinite(r.lng))
+        .filter((r) => isWithinBayArea(r.lat, r.lng))
+        .slice(0, 5)
+
+      setAddressResults(results)
+      if (results.length === 0) {
+        setAddressSearchError('No matching SF addresses found. Try a more specific query.')
+      }
+    } catch (err) {
+      setAddressSearchError(err instanceof Error ? err.message : 'Address search failed')
+    } finally {
+      setAddressSearching(false)
+    }
+  }, [addressQuery])
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files ?? [])
@@ -233,6 +277,58 @@ export function SubmissionForm({
                 placeholder="e.g. Golden lion at Palace of Fine Arts"
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
               />
+            </div>
+
+            <div>
+              <label htmlFor="lion-address-search" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+                Search Address
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="lion-address-search"
+                  data-testid="address-search-input"
+                  type="text"
+                  value={addressQuery}
+                  onChange={(e) => setAddressQuery(e.target.value)}
+                  placeholder="Search an SF address or place..."
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
+                />
+                <button
+                  type="button"
+                  data-testid="address-search-submit"
+                  onClick={searchAddress}
+                  disabled={addressSearching}
+                  className="shrink-0 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--text)] transition hover:border-[var(--blue)] disabled:opacity-50"
+                >
+                  {addressSearching ? 'Searching...' : 'Search'}
+                </button>
+              </div>
+              {addressSearchError && (
+                <p data-testid="address-search-error" className="mt-2 text-xs text-[var(--text-muted)]">
+                  {addressSearchError}
+                </p>
+              )}
+              {addressResults.length > 0 && (
+                <div data-testid="address-search-results" className="mt-2 space-y-2">
+                  {addressResults.map((r, i) => (
+                    <button
+                      key={`${r.lat}-${r.lng}-${i}`}
+                      type="button"
+                      data-testid={`address-result-${i}`}
+                      onClick={() => {
+                        setAddress(r.label)
+                        setLat(r.lat.toString())
+                        setLng(r.lng.toString())
+                        onCoordsChange?.(r.lat, r.lng)
+                        setAddressResults([])
+                      }}
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left text-xs text-[var(--text)] transition hover:border-[var(--blue)]"
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div>
