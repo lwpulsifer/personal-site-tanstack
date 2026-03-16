@@ -4,6 +4,20 @@ import { fireEvent, render, screen } from '@testing-library/react'
 const { StorageImage } = await import('#/components/maps/StorageImage')
 
 describe('StorageImage', () => {
+  it('prefers a cached JPEG URL for HEIC paths', () => {
+    render(
+      <StorageImage
+        bucket="map-photos"
+        storagePath="submissions/foo.heic"
+        alt="Heic image"
+        className="h-16 w-16 object-cover"
+      />,
+    )
+
+    const img = screen.getByRole('img', { name: 'Heic image' }) as HTMLImageElement
+    expect(img.getAttribute('src')).toContain('submissions/foo.jpg')
+  })
+
   it('shows a loading state until the image loads', async () => {
     render(
       <StorageImage
@@ -39,4 +53,3 @@ describe('StorageImage', () => {
     expect(await screen.findByTestId('storage-image-error')).toBeTruthy()
   })
 })
-
