@@ -56,7 +56,7 @@ export function PhotoGallery({ locationId }: { locationId: string }) {
           ref={overlayRef}
           tabIndex={-1}
           data-testid="photo-carousel-modal"
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90"
           onClick={() => setLightboxIndex(null)}
           onKeyDown={(e) => {
             if (e.key === 'Escape') setLightboxIndex(null)
@@ -69,7 +69,7 @@ export function PhotoGallery({ locationId }: { locationId: string }) {
             onClick={() => setLightboxIndex(null)}
             data-testid="carousel-close"
             aria-label="Close"
-            className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-black/40 text-2xl text-white hover:bg-black/55"
+            className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-black/45 text-3xl text-white hover:bg-black/60"
           >
             &times;
           </button>
@@ -83,7 +83,7 @@ export function PhotoGallery({ locationId }: { locationId: string }) {
               e.stopPropagation()
               setLightboxIndex((i) => (i !== null ? Math.max(i - 1, 0) : null))
             }}
-            className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/40 px-3 py-2 text-sm font-semibold text-white hover:bg-black/55 disabled:opacity-40"
+            className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/45 px-4 py-2 text-sm font-semibold text-white hover:bg-black/60 disabled:opacity-40"
           >
             Prev
           </button>
@@ -97,7 +97,7 @@ export function PhotoGallery({ locationId }: { locationId: string }) {
               e.stopPropagation()
               setLightboxIndex((i) => (i !== null ? Math.min(i + 1, photos.length - 1) : null))
             }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/40 px-3 py-2 text-sm font-semibold text-white hover:bg-black/55 disabled:opacity-40"
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/45 px-4 py-2 text-sm font-semibold text-white hover:bg-black/60 disabled:opacity-40"
           >
             Next
           </button>
@@ -106,14 +106,18 @@ export function PhotoGallery({ locationId }: { locationId: string }) {
             {lightboxIndex + 1} / {photos.length}
           </div>
 
-          <StorageImage
-            bucket="map-photos"
-            storagePath={photos[lightboxIndex].storage_path}
-            alt={photos[lightboxIndex].caption ?? 'Lion statue photo'}
-            loading="eager"
-            className="max-h-[85vh] max-w-full rounded-xl object-contain"
+          <div
+            className="h-full w-full px-4 pb-10 pt-16 sm:px-16"
             onClick={(e) => e.stopPropagation()}
-          />
+          >
+            <StorageImage
+              bucket="map-photos"
+              storagePath={photos[lightboxIndex].storage_path}
+              alt={photos[lightboxIndex].caption ?? 'Lion statue photo'}
+              loading="eager"
+              className="h-full w-full rounded-xl object-contain"
+            />
+          </div>
           {photos[lightboxIndex].caption && (
             <p className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-lg bg-black/60 px-4 py-2 text-sm text-white">
               {photos[lightboxIndex].caption}
