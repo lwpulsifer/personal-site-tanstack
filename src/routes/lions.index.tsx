@@ -8,7 +8,7 @@ import { useAuth } from '#/lib/auth'
 import { LocationDetail } from '#/components/maps/LocationDetail'
 import { SubmissionForm } from '#/components/maps/SubmissionForm'
 import { AdminPanel } from '#/components/maps/AdminPanel'
-import type { MapLocation } from '#/lib/map-types'
+import type { MapLocation, MapSubmission } from '#/lib/map-types'
 
 import leafletCss from 'leaflet/dist/leaflet.css?url'
 
@@ -47,17 +47,29 @@ function LionsPage() {
   const [clickedCoords, setClickedCoords] = useState<{ lat: number; lng: number } | null>(null)
 
   const [previewCoords, setPreviewCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [selectedSubmission, setSelectedSubmission] = useState<MapSubmission | null>(null)
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
     setClickedCoords({ lat, lng })
     setPreviewCoords({ lat, lng })
     setShowSubmitForm(true)
     setSelectedLocation(null)
+    setSelectedSubmission(null)
   }, [])
 
   const handleSelectLocation = useCallback((location: MapLocation) => {
     setSelectedLocation(location)
     setShowSubmitForm(false)
+    setSelectedSubmission(null)
+  }, [])
+
+  const handleSelectSubmission = useCallback((submission: MapSubmission) => {
+    setSelectedSubmission(submission)
+    setSelectedLocation(null)
+    setShowSubmitForm(false)
+    if (submission.proposed_lat && submission.proposed_lng) {
+      setPreviewCoords({ lat: submission.proposed_lat, lng: submission.proposed_lng })
+    }
   }, [])
 
   return (
@@ -77,6 +89,7 @@ function LionsPage() {
           onClick={() => {
             setShowSubmitForm(true)
             setSelectedLocation(null)
+            setSelectedSubmission(null)
             setClickedCoords(null)
             setPreviewCoords(null)
           }}
@@ -101,7 +114,7 @@ function LionsPage() {
               onSelectLocation={handleSelectLocation}
               onMapClick={handleMapClick}
               selectedLocationId={selectedLocation?.id}
-              previewCoords={showSubmitForm ? previewCoords : null}
+              previewCoords={showSubmitForm || selectedSubmission ? previewCoords : null}
             />
           </Suspense>
         </div>
@@ -156,7 +169,11 @@ function LionsPage() {
 
           {isAuthenticated && (
             <div className="mt-4">
-              <AdminPanel mapSlug="lions" />
+              <AdminPanel
+                mapSlug="lions"
+                onSelectSubmission={handleSelectSubmission}
+                selectedSubmissionId={selectedSubmission?.id}
+              />
             </div>
           )}
         </div>
