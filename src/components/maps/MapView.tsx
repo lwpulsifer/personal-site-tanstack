@@ -1,4 +1,5 @@
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet'
+import { useEffect, useRef } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import type { MapLocation } from '#/lib/map-types'
 import { MarkerPopup } from './MarkerPopup'
@@ -24,6 +25,28 @@ const mapMarkerIcon = new L.DivIcon({
   popupAnchor: [0, -32],
 })
 
+const previewMarkerIcon = new L.DivIcon({
+  html: '<span style="font-size:28px;line-height:1;opacity:0.7">📍</span>',
+  className: 'map-marker-icon',
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+  popupAnchor: [0, -32],
+})
+
+function FlyToCoords({ coords }: { coords: { lat: number; lng: number } | null | undefined }) {
+  const map = useMap()
+  const prevCoords = useRef<{ lat: number; lng: number } | null>(null)
+
+  useEffect(() => {
+    if (coords && (coords.lat !== prevCoords.current?.lat || coords.lng !== prevCoords.current?.lng)) {
+      map.flyTo([coords.lat, coords.lng], Math.max(map.getZoom(), 16), { duration: 0.8 })
+      prevCoords.current = coords
+    }
+  }, [coords, map])
+
+  return null
+}
+
 function ClickHandler({ onClick }: { onClick?: (lat: number, lng: number) => void }) {
   useMapEvents({
     click(e) {
@@ -38,11 +61,13 @@ export function MapView({
   onSelectLocation,
   onMapClick,
   selectedLocationId,
+  previewCoords,
 }: {
   locations: MapLocation[]
   onSelectLocation?: (location: MapLocation) => void
   onMapClick?: (lat: number, lng: number) => void
   selectedLocationId?: string | null
+  previewCoords?: { lat: number; lng: number } | null
 }) {
   return (
     <MapContainer
@@ -55,6 +80,7 @@ export function MapView({
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      <FlyToCoords coords={previewCoords} />
       {onMapClick && <ClickHandler onClick={onMapClick} />}
       {locations.map((loc) => (
         <Marker
@@ -74,6 +100,11 @@ export function MapView({
           </Popup>
         </Marker>
       ))}
+      {previewCoords && (
+        <Marker position={[previewCoords.lat, previewCoords.lng]} icon={previewMarkerIcon}>
+          <Popup>New sighting location</Popup>
+        </Marker>
+      )}
     </MapContainer>
   )
 }

@@ -46,8 +46,11 @@ function LionsPage() {
   const [showSubmitForm, setShowSubmitForm] = useState(false)
   const [clickedCoords, setClickedCoords] = useState<{ lat: number; lng: number } | null>(null)
 
+  const [previewCoords, setPreviewCoords] = useState<{ lat: number; lng: number } | null>(null)
+
   const handleMapClick = useCallback((lat: number, lng: number) => {
     setClickedCoords({ lat, lng })
+    setPreviewCoords({ lat, lng })
     setShowSubmitForm(true)
     setSelectedLocation(null)
   }, [])
@@ -75,6 +78,7 @@ function LionsPage() {
             setShowSubmitForm(true)
             setSelectedLocation(null)
             setClickedCoords(null)
+            setPreviewCoords(null)
           }}
           className="rounded-full bg-[var(--blue-deep)] px-4 py-1.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)]"
         >
@@ -97,6 +101,7 @@ function LionsPage() {
               onSelectLocation={handleSelectLocation}
               onMapClick={handleMapClick}
               selectedLocationId={selectedLocation?.id}
+              previewCoords={showSubmitForm ? previewCoords : null}
             />
           </Suspense>
         </div>
@@ -106,9 +111,13 @@ function LionsPage() {
           {showSubmitForm ? (
             <SubmissionForm
               mapSlug="lions"
-              onClose={() => setShowSubmitForm(false)}
+              onClose={() => {
+                setShowSubmitForm(false)
+                setPreviewCoords(null)
+              }}
               initialLat={clickedCoords?.lat}
               initialLng={clickedCoords?.lng}
+              onCoordsChange={(lat, lng) => setPreviewCoords({ lat, lng })}
             />
           ) : selectedLocation ? (
             <LocationDetail

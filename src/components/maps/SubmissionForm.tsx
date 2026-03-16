@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { submitSighting } from '#/server/maps'
 import { extractGpsFromImage } from '#/lib/exif'
@@ -10,11 +10,13 @@ export function SubmissionForm({
   onClose,
   initialLat,
   initialLng,
+  onCoordsChange,
 }: {
   mapSlug: string
   onClose: () => void
   initialLat?: number
   initialLng?: number
+  onCoordsChange?: (lat: number, lng: number) => void
 }) {
   const queryClient = useQueryClient()
   const [name, setName] = useState('')
@@ -25,6 +27,8 @@ export function SubmissionForm({
   const [submitterName, setSubmitterName] = useState('')
   const [submitterEmail, setSubmitterEmail] = useState('')
   const [files, setFiles] = useState<File[]>([])
+  const [previews, setPreviews] = useState<string[]>([])
+  const previewsRef = useRef<string[]>([])
   const [uploading, setUploading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -78,15 +82,22 @@ export function SubmissionForm({
     const selected = Array.from(e.target.files ?? [])
     setFiles(selected)
 
+    // Generate preview URLs (revoke old ones via ref to avoid stale closure)
+    previewsRef.current.forEach((url) => URL.revokeObjectURL(url))
+    const newPreviews = selected.map((f) => URL.createObjectURL(f))
+    previewsRef.current = newPreviews
+    setPreviews(newPreviews)
+
     // Try to extract GPS from first image
     if (selected.length > 0 && !lat && !lng) {
       const coords = await extractGpsFromImage(selected[0])
       if (coords) {
         setLat(coords.lat.toString())
         setLng(coords.lng.toString())
+        onCoordsChange?.(coords.lat, coords.lng)
       }
     }
-  }, [lat, lng])
+  }, [lat, lng, onCoordsChange])
 
   if (success) {
     return (
@@ -160,7 +171,14 @@ export function SubmissionForm({
               type="number"
               step="any"
               value={lat}
-              onChange={(e) => setLat(e.target.value)}
+              onChange={(e) => {
+                setLat(e.target.value)
+                const parsed = Number.parseFloat(e.target.value)
+                const lngParsed = Number.parseFloat(lng)
+                if (!Number.isNaN(parsed) && !Number.isNaN(lngParsed)) {
+                  onCoordsChange?.(parsed, lngParsed)
+                }
+              }}
               placeholder="37.7749"
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
             />
@@ -174,7 +192,14 @@ export function SubmissionForm({
               type="number"
               step="any"
               value={lng}
-              onChange={(e) => setLng(e.target.value)}
+              onChange={(e) => {
+                setLng(e.target.value)
+                const parsed = Number.parseFloat(e.target.value)
+                const latParsed = Number.parseFloat(lat)
+                if (!Number.isNaN(parsed) && !Number.isNaN(latParsed)) {
+                  onCoordsChange?.(latParsed, parsed)
+                }
+              }}
               placeholder="-122.4194"
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
             />
@@ -197,6 +222,18 @@ export function SubmissionForm({
             onChange={handleFileChange}
             className="w-full text-sm text-[var(--text)]"
           />
+          {previews.length > 0 && (
+            <div className="mt-2 flex gap-2 overflow-x-auto">
+              {previews.map((src, i) => (
+                <img
+                  key={src}
+                  src={src}
+                  alt={`Upload preview ${i + 1}`}
+                  className="h-20 w-20 shrink-0 rounded-lg object-cover border border-[var(--border)]"
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         <div>
