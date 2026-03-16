@@ -13,7 +13,7 @@ vi.mock('#/server/maps', () => ({
 }))
 
 vi.mock('#/lib/exif', () => ({
-  extractGpsFromImage: vi.fn().mockResolvedValue(null),
+  extractExifFromImage: vi.fn().mockResolvedValue({ coords: null, takenAtLocal: null }),
 }))
 
 vi.mock('#/lib/supabase', () => ({

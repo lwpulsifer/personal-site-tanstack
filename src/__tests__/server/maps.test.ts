@@ -40,7 +40,7 @@ const {
 function makeChain(resolved: { data: unknown; error: unknown }) {
   const chain: Record<string, unknown> = {}
   for (const method of [
-    'select', 'order', 'eq', 'single', 'insert', 'update', 'is', 'upsert', 'delete', 'in',
+    'select', 'order', 'eq', 'single', 'insert', 'update', 'is', 'upsert', 'delete', 'in', 'gte', 'lte',
   ]) {
     chain[method] = vi.fn(() => chain)
   }
@@ -133,7 +133,7 @@ describe('submitSighting', () => {
     ))
 
     const result = await (submitSighting as (a: { data: Record<string, unknown> }) => Promise<{ id: string }>)(
-      { data: { mapSlug: 'lions', proposedName: 'Test Lion', proposedLat: 37.78, proposedLng: -122.42, photoStoragePaths: [] } },
+      { data: { mapSlug: 'lions', proposedName: 'Test Lion', proposedLat: 37.78, proposedLng: -122.42, photos: [] } },
     )
 
     expect(result.id).toBe('sub-new')
@@ -147,13 +147,13 @@ describe('submitSighting', () => {
     ))
 
     const result = await (submitSighting as (a: { data: Record<string, unknown> }) => Promise<{ id: string }>)(
-      { data: { mapSlug: 'lions', proposedName: 'Test', photoStoragePaths: ['img1.jpg', 'img2.jpg'] } },
+      { data: { mapSlug: 'lions', proposedName: 'Test', photos: [{ storagePath: 'img1.jpg' }, { storagePath: 'img2.jpg' }] } },
     )
 
     expect(result.id).toBe('sub-photos')
     expect(photosChain.insert).toHaveBeenCalledWith([
-      { location_id: null, submission_id: 'sub-photos', storage_path: 'img1.jpg' },
-      { location_id: null, submission_id: 'sub-photos', storage_path: 'img2.jpg' },
+      expect.objectContaining({ location_id: null, submission_id: 'sub-photos', storage_path: 'img1.jpg', event_id: null }),
+      expect.objectContaining({ location_id: null, submission_id: 'sub-photos', storage_path: 'img2.jpg', event_id: null }),
     ])
   })
 
@@ -165,11 +165,11 @@ describe('submitSighting', () => {
     ))
 
     await (submitSighting as (a: { data: Record<string, unknown> }) => Promise<{ id: string }>)(
-      { data: { mapSlug: 'lions', locationId: 'loc-1', photoStoragePaths: ['photo.jpg'] } },
+      { data: { mapSlug: 'lions', locationId: 'loc-1', photos: [{ storagePath: 'photo.jpg' }] } },
     )
 
     expect(photosChain.insert).toHaveBeenCalledWith([
-      { location_id: 'loc-1', submission_id: 'sub-with-loc', storage_path: 'photo.jpg' },
+      expect.objectContaining({ location_id: 'loc-1', submission_id: 'sub-with-loc', storage_path: 'photo.jpg' }),
     ])
   })
 
@@ -180,7 +180,7 @@ describe('submitSighting', () => {
 
     await expect(
       (submitSighting as (a: { data: Record<string, unknown> }) => Promise<unknown>)(
-        { data: { mapSlug: 'lions', proposedName: 'Test', photoStoragePaths: [] } },
+        { data: { mapSlug: 'lions', proposedName: 'Test', photos: [] } },
       ),
     ).rejects.toThrow('Insert failed')
   })
@@ -224,26 +224,37 @@ describe('approveSubmission', () => {
       proposed_lat: 37.78,
       proposed_lng: -122.42,
       proposed_address: '123 Test St',
+      occurred_at: null,
+      time_zone: null,
+      notes: null,
+      submitter_name: null,
+      submitter_email: null,
+      created_at: '2026-03-15T12:00:00Z',
     }
 
     const fetchChain = makeChain({ data: submission, error: null })
+    const findExistingChain = makeChain({ data: [], error: null })
     const insertLocationChain = makeChain({ data: { id: 'new-loc-1' }, error: null })
+    const insertEventChain = makeChain({ data: { id: 'event-1' }, error: null })
     const updatePhotosChain = makeChain({ data: null, error: null })
     const updateSubmissionChain = makeChain({ data: null, error: null })
 
     vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
       fetchChain,
+      findExistingChain,
       insertLocationChain,
+      insertEventChain,
       updatePhotosChain,
       updateSubmissionChain,
     ))
 
-    const result = await (approveSubmission as (a: { data: { submissionId: string } }) => Promise<{ ok: boolean; locationId: string }>)(
+    const result = await (approveSubmission as (a: { data: { submissionId: string } }) => Promise<{ ok: boolean; locationId: string; eventId: string }>)(
       { data: { submissionId: 'sub-1' } },
     )
 
     expect(result.ok).toBe(true)
     expect(result.locationId).toBe('new-loc-1')
+    expect(result.eventId).toBe('event-1')
     // Should have created a location with the proposed fields
     expect(insertLocationChain.insert).toHaveBeenCalledWith({
       map_slug: 'lions',
@@ -253,6 +264,11 @@ describe('approveSubmission', () => {
       address: '123 Test St',
       created_by: 'admin-1',
     })
+    expect(insertEventChain.insert).toHaveBeenCalledWith(expect.objectContaining({
+      map_slug: 'lions',
+      location_id: 'new-loc-1',
+      created_by: 'admin-1',
+    }))
   })
 
   it('uses existing location_id when present', async () => {
@@ -266,25 +282,33 @@ describe('approveSubmission', () => {
       proposed_lat: null,
       proposed_lng: null,
       proposed_address: null,
+      occurred_at: null,
+      time_zone: null,
+      notes: null,
+      submitter_name: null,
+      submitter_email: null,
+      created_at: '2026-03-15T12:00:00Z',
     }
 
     const fetchChain = makeChain({ data: submission, error: null })
-    // No insert location chain needed — skips to update photos
+    const insertEventChain = makeChain({ data: { id: 'event-2' }, error: null })
     const updatePhotosChain = makeChain({ data: null, error: null })
     const updateSubmissionChain = makeChain({ data: null, error: null })
 
     vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
       fetchChain,
+      insertEventChain,
       updatePhotosChain,
       updateSubmissionChain,
     ))
 
-    const result = await (approveSubmission as (a: { data: { submissionId: string } }) => Promise<{ ok: boolean; locationId: string }>)(
+    const result = await (approveSubmission as (a: { data: { submissionId: string } }) => Promise<{ ok: boolean; locationId: string; eventId: string }>)(
       { data: { submissionId: 'sub-2' } },
     )
 
     expect(result.ok).toBe(true)
     expect(result.locationId).toBe('existing-loc')
+    expect(result.eventId).toBe('event-2')
   })
 })
 

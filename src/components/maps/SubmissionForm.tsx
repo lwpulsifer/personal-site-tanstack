@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { submitSighting } from '#/server/maps'
-import { extractGpsFromImage } from '#/lib/exif'
+import { extractExifFromImage } from '#/lib/exif'
 import { getSupabaseBrowserClient } from '#/lib/supabase'
 import { mapLocationsQueryOptions, pendingMapSubmissionsQueryOptions } from '#/lib/queries'
 
@@ -57,6 +57,9 @@ export function SubmissionForm({
   const [submitterName, setSubmitterName] = useState('')
   const [submitterEmail, setSubmitterEmail] = useState('')
   const [files, setFiles] = useState<File[]>([])
+  const [fileMeta, setFileMeta] = useState<
+    { takenAtLocal: string | null; exifLat: number | null; exifLng: number | null }[]
+  >([])
   const [previews, setPreviews] = useState<string[]>([])
   const previewsRef = useRef<string[]>([])
   const [uploading, setUploading] = useState(false)
@@ -84,18 +87,27 @@ export function SubmissionForm({
         }
       }
 
+      const isNew = mode === 'new'
+      const occurredAtLocal = fileMeta[0]?.takenAtLocal ?? undefined
+
       return submitSighting({
         data: {
           mapSlug,
           locationId,
-          proposedName: name || undefined,
-          proposedLat: lat ? Number.parseFloat(lat) : undefined,
-          proposedLng: lng ? Number.parseFloat(lng) : undefined,
-          proposedAddress: address || undefined,
+          proposedName: isNew ? (name || undefined) : undefined,
+          proposedLat: isNew && lat ? Number.parseFloat(lat) : undefined,
+          proposedLng: isNew && lng ? Number.parseFloat(lng) : undefined,
+          proposedAddress: isNew ? (address || undefined) : undefined,
+          occurredAtLocal,
           notes: notes || undefined,
           submitterName: submitterName || undefined,
           submitterEmail: submitterEmail || undefined,
-          photoStoragePaths: storagePaths,
+          photos: storagePaths.map((storagePath, i) => ({
+            storagePath,
+            takenAtLocal: fileMeta[i]?.takenAtLocal ?? undefined,
+            exifLat: fileMeta[i]?.exifLat ?? undefined,
+            exifLng: fileMeta[i]?.exifLng ?? undefined,
+          })),
         },
       })
     },
@@ -119,8 +131,15 @@ export function SubmissionForm({
     // Convert HEIC/HEIF to JPEG so photos render in all browsers.
     setConverting(true)
     const processed: File[] = []
+    const meta: { takenAtLocal: string | null; exifLat: number | null; exifLng: number | null }[] = []
     try {
       for (const file of selected) {
+        const exif = await extractExifFromImage(file)
+        meta.push({
+          takenAtLocal: exif.takenAtLocal,
+          exifLat: exif.coords?.lat ?? null,
+          exifLng: exif.coords?.lng ?? null,
+        })
         if (isHeicFile(file)) {
           try {
             processed.push(await convertHeicToJpeg(file))
@@ -138,6 +157,7 @@ export function SubmissionForm({
     }
 
     setFiles(processed)
+    setFileMeta(meta)
 
     // Generate preview URLs (revoke old ones via ref to avoid stale closure)
     previewsRef.current.forEach((url) => URL.revokeObjectURL(url))
@@ -146,13 +166,10 @@ export function SubmissionForm({
     setPreviews(newPreviews)
 
     // Try to extract GPS from first image
-    if (selected.length > 0 && !lat && !lng) {
-      const coords = await extractGpsFromImage(selected[0])
-      if (coords) {
-        setLat(coords.lat.toString())
-        setLng(coords.lng.toString())
-        onCoordsChange?.(coords.lat, coords.lng)
-      }
+    if (selected.length > 0 && !lat && !lng && meta[0]?.exifLat != null && meta[0]?.exifLng != null) {
+      setLat(meta[0].exifLat.toString())
+      setLng(meta[0].exifLng.toString())
+      onCoordsChange?.(meta[0].exifLat, meta[0].exifLng)
     }
   }, [lat, lng, onCoordsChange])
 
