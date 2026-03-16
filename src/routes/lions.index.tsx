@@ -10,8 +10,6 @@ import { SubmissionForm } from '#/components/maps/SubmissionForm'
 import { AdminPanel } from '#/components/maps/AdminPanel'
 import type { MapLocation, MapSubmission } from '#/lib/map-types'
 
-import leafletCss from 'leaflet/dist/leaflet.css?url'
-
 const MapView = lazy(() =>
   import('#/components/maps/MapView').then((m) => ({ default: m.MapView })),
 )
@@ -24,7 +22,7 @@ export const Route = createFileRoute('/lions/')({
   head: () => ({
     links: [
       { rel: 'canonical', href: canonical },
-      { rel: 'stylesheet', href: leafletCss },
+      { rel: 'stylesheet', href: '/leaflet.css' },
     ],
     meta: [
       { title: pageTitle },

@@ -21,26 +21,26 @@ test('clicking a location in sidebar shows detail panel', async ({ page }) => {
   await page.goto('/lions')
   await page.getByRole('button', { name: /Palace of Fine Arts Lions/ }).click()
   await expect(page.getByRole('heading', { name: 'Palace of Fine Arts Lions' })).toBeVisible()
-  await expect(page.getByText('Photos')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Photos' })).toBeVisible()
 })
 
 test('report sighting button opens submission form', async ({ page }) => {
   await page.goto('/lions')
   await page.getByRole('button', { name: /Report Sighting/i }).click()
   await expect(page.getByText('Report a Lion Sighting')).toBeVisible()
-  await expect(page.getByLabel(/Name/i)).toBeVisible()
-  await expect(page.getByLabel(/Latitude/i)).toBeVisible()
+  await expect(page.getByLabel('Name / Description')).toBeVisible()
+  await expect(page.getByLabel('Latitude')).toBeVisible()
 })
 
 test('submission form can be filled and submitted', async ({ page }) => {
   await page.goto('/lions')
   await page.getByRole('button', { name: /Report Sighting/i }).click()
 
-  await page.getByLabel(/Name/i).fill('e2e-test-lion-submit')
-  await page.getByLabel(/Address/i).fill('123 Test St')
-  await page.getByLabel(/Latitude/i).fill('37.78')
-  await page.getByLabel(/Longitude/i).fill('-122.42')
-  await page.getByLabel(/Notes/i).fill('E2E test submission')
+  await page.getByLabel('Name / Description').fill('e2e-test-lion-submit')
+  await page.getByLabel('Address').fill('123 Test St')
+  await page.getByLabel('Latitude').fill('37.78')
+  await page.getByLabel('Longitude').fill('-122.42')
+  await page.getByLabel('Notes').fill('E2E test submission')
 
   await page.getByRole('button', { name: /Submit Sighting/i }).click()
 
@@ -70,9 +70,9 @@ adminTest.describe('admin: lion management', () => {
 
     // Submit a new sighting first
     await page.getByRole('button', { name: /Report Sighting/i }).click()
-    await page.getByLabel(/Name/i).fill('e2e-test-lion-approve')
-    await page.getByLabel(/Latitude/i).fill('37.76')
-    await page.getByLabel(/Longitude/i).fill('-122.43')
+    await page.getByLabel('Name / Description').fill('e2e-test-lion-approve')
+    await page.getByLabel('Latitude').fill('37.76')
+    await page.getByLabel('Longitude').fill('-122.43')
     await page.getByRole('button', { name: /Submit Sighting/i }).click()
     await adminExpect(page.getByText(/Thanks for your submission/i)).toBeVisible({ timeout: 10_000 })
     await page.getByRole('button', { name: 'Close' }).click()
@@ -93,9 +93,9 @@ adminTest.describe('admin: lion management', () => {
 
     // Submit a new sighting
     await page.getByRole('button', { name: /Report Sighting/i }).click()
-    await page.getByLabel(/Name/i).fill('e2e-test-lion-zoom')
-    await page.getByLabel(/Latitude/i).fill('37.80')
-    await page.getByLabel(/Longitude/i).fill('-122.45')
+    await page.getByLabel('Name / Description').fill('e2e-test-lion-zoom')
+    await page.getByLabel('Latitude').fill('37.80')
+    await page.getByLabel('Longitude').fill('-122.45')
     await page.getByRole('button', { name: /Submit Sighting/i }).click()
     await adminExpect(page.getByText(/Thanks for your submission/i)).toBeVisible({ timeout: 10_000 })
     await page.getByRole('button', { name: 'Close' }).click()
@@ -114,9 +114,9 @@ adminTest.describe('admin: lion management', () => {
 
     // Submit a new sighting
     await page.getByRole('button', { name: /Report Sighting/i }).click()
-    await page.getByLabel(/Name/i).fill('e2e-test-lion-reject')
-    await page.getByLabel(/Latitude/i).fill('37.75')
-    await page.getByLabel(/Longitude/i).fill('-122.44')
+    await page.getByLabel('Name / Description').fill('e2e-test-lion-reject')
+    await page.getByLabel('Latitude').fill('37.75')
+    await page.getByLabel('Longitude').fill('-122.44')
     await page.getByRole('button', { name: /Submit Sighting/i }).click()
     await adminExpect(page.getByText(/Thanks for your submission/i)).toBeVisible({ timeout: 10_000 })
     await page.getByRole('button', { name: 'Close' }).click()
