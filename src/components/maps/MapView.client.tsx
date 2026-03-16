@@ -69,6 +69,12 @@ export function MapView({
   selectedLocationId?: string | null
   previewCoords?: { lat: number; lng: number } | null
 }) {
+  const selected = selectedLocationId
+    ? locations.find((l) => l.id === selectedLocationId)
+    : null
+  const focusCoords = selected ? { lat: selected.lat, lng: selected.lng } : null
+  const flyToCoords = previewCoords ?? focusCoords
+
   return (
     // react-leaflet doesn't guarantee forwarding unknown props to the underlying
     // container element, so we wrap in a div for stable e2e selectors.
@@ -78,7 +84,7 @@ export function MapView({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <FlyToCoords coords={previewCoords} />
+        <FlyToCoords coords={flyToCoords} />
         {onMapClick && <ClickHandler onClick={onMapClick} />}
         {locations.map((loc) => (
           <Marker
@@ -107,4 +113,3 @@ export function MapView({
     </div>
   )
 }
-

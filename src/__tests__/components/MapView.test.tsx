@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 
+const flyToMock = vi.fn()
 vi.mock('react-leaflet', () => ({
   MapContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   TileLayer: () => <div data-testid="tile-layer" />,
@@ -11,7 +12,7 @@ vi.mock('react-leaflet', () => ({
     <div data-testid="map-popup">{children}</div>
   ),
   useMapEvents: () => null,
-  useMap: () => ({ flyTo: vi.fn(), getZoom: () => 13 }),
+  useMap: () => ({ flyTo: flyToMock, getZoom: () => 13 }),
 }))
 
 vi.mock('leaflet', () => {
@@ -78,5 +79,19 @@ describe('MapView', () => {
     await screen.findByTestId('map-container')
     expect(await screen.findByText('Test Lion')).toBeTruthy()
     expect(await screen.findByText('Another Lion')).toBeTruthy()
+  })
+
+  it('flies to the selected location', async () => {
+    flyToMock.mockClear()
+    render(<MapView locations={locations} selectedLocationId="loc-2" />)
+    await screen.findByTestId('map-container')
+
+    await waitFor(() => {
+      expect(flyToMock).toHaveBeenCalled()
+    })
+
+    const firstCall = flyToMock.mock.calls[0]
+    // [lat, lng], zoom, options
+    expect(firstCall[0]).toEqual([37.79, -122.41])
   })
 })
