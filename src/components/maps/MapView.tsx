@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { createClientOnlyFn } from '@tanstack/react-start'
 import type { MapLocation } from '#/lib/map-types'
+import { MapSkeleton } from './MapSkeleton'
 
 const importMapViewClient = createClientOnlyFn(() => import('./MapView.client'))
 const MapViewClient = lazy(async () => {
@@ -24,11 +25,7 @@ export function MapView({
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
-  const fallback = (
-    <div data-testid="map-loading" className="h-full w-full text-sm text-[var(--text-muted)]">
-      Loading map...
-    </div>
-  )
+  const fallback = <MapSkeleton />
 
   // Leaflet depends on `window`, so we only render the real map on the client.
   if (!mounted) return fallback

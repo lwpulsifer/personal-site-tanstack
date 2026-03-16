@@ -41,23 +41,23 @@ function Fun() {
         <div className="space-y-3">
           <Link
             to="/lions"
-            className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 no-underline transition hover:shadow-sm"
+            className="group block rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 no-underline transition hover:shadow-sm"
           >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-              <p className="m-0 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
-                Map
-              </p>
-              <h2 className="mt-2 text-lg font-bold text-[var(--text)]">
-                Lions of SF <span aria-hidden>🦁</span>
-              </h2>
-              <p className="mt-2 text-sm text-[var(--text-muted)]">
-                Explore lion statues across San Francisco and report sightings.
-              </p>
-              <p className="mt-4 text-sm font-semibold text-[var(--blue-deep)] group-hover:text-[var(--blue-darker)]">
-                Open map -&gt;
-              </p>
-            </div>
+                <p className="m-0 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
+                  Map
+                </p>
+                <h2 className="mt-2 text-lg font-bold text-[var(--text)]">
+                  Lions of SF <span aria-hidden>🦁</span>
+                </h2>
+                <p className="mt-2 text-sm text-[var(--text-muted)]">
+                  Explore lion statues across San Francisco and report sightings.
+                </p>
+                <p className="mt-4 text-sm font-semibold text-[var(--blue-deep)] group-hover:text-[var(--blue-darker)]">
+                  Open map -&gt;
+                </p>
+              </div>
               <div
                 aria-hidden
                 className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--surface),var(--text)_2%)] text-2xl"

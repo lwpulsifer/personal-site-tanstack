@@ -9,6 +9,7 @@ import { LocationDetail } from '#/components/maps/LocationDetail'
 import { SubmissionForm } from '#/components/maps/SubmissionForm'
 import { AdminPanel } from '#/components/maps/AdminPanel'
 import type { MapLocation, MapSubmission } from '#/lib/map-types'
+import { MapSkeleton } from '#/components/maps/MapSkeleton'
 
 const MapView = lazy(() =>
   import('#/components/maps/MapView').then((m) => ({ default: m.MapView })),
@@ -130,9 +131,7 @@ function LionsPage() {
         <div className="island-shell relative h-[55dvh] min-h-[420px] flex-1 overflow-hidden rounded-2xl lg:h-[calc(100dvh-14rem)] lg:min-h-[720px]">
           <Suspense
             fallback={
-              <div className="flex h-full min-h-[400px] items-center justify-center">
-                <p data-testid="map-loading" className="text-[var(--text-muted)]">Loading map...</p>
-              </div>
+              <MapSkeleton />
             }
           >
             <MapView
