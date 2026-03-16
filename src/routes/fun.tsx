@@ -1,34 +1,34 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { Link } from '@tanstack/react-router'
-import { getTopTracks } from '#/server/spotify'
-import type { TopTrack } from '#/lib/spotify'
-import { SITE_TITLE } from '#/lib/site'
+import { createFileRoute } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
+import { getTopTracks } from "#/server/spotify";
+import type { TopTrack } from "#/lib/spotify";
+import { SITE_TITLE } from "#/lib/site";
 
-export const Route = createFileRoute('/fun')({
+export const Route = createFileRoute("/fun")({
   head: () => ({
     meta: [{ title: `Fun | ${SITE_TITLE}` }],
   }),
   loader: async () => {
     try {
-      return await getTopTracks()
+      return await getTopTracks();
     } catch {
-      return [] as TopTrack[]
+      return [] as TopTrack[];
     }
   },
   component: Fun,
-})
+});
 
 function Fun() {
-  const tracks = Route.useLoaderData()
+  const tracks = Route.useLoaderData();
 
   // Easter egg: if one artist makes up more than half the list
-  const artistCounts: Record<string, number> = {}
+  const artistCounts: Record<string, number> = {};
   for (const t of tracks) {
-    artistCounts[t.artist] = (artistCounts[t.artist] ?? 0) + 1
+    artistCounts[t.artist] = (artistCounts[t.artist] ?? 0) + 1;
   }
   const dominantArtist = Object.entries(artistCounts).find(
     ([, count]) => count / tracks.length > 0.5,
-  )?.[0]
+  )?.[0];
 
   return (
     <main className="page-wrap px-4 pb-12 pt-14">
@@ -49,10 +49,11 @@ function Fun() {
                   Map
                 </p>
                 <h2 className="mt-2 text-lg font-bold text-[var(--text)]">
-                  Lions of SF <span aria-hidden>🦁</span>
+                  Lions of SF Map
                 </h2>
                 <p className="mt-2 text-sm text-[var(--text-muted)]">
-                  Explore lion statues across San Francisco and report sightings.
+                  Explore lion statues across San Francisco and report
+                  sightings.
                 </p>
                 <p className="mt-4 text-sm font-semibold text-[var(--blue-deep)] group-hover:text-[var(--blue-darker)]">
                   Open map -&gt;
@@ -77,7 +78,8 @@ function Fun() {
 
             {tracks.length === 0 ? (
               <p className="mt-3 text-sm text-[var(--text-muted)]">
-                Couldn't load tracks right now — Spotify credentials may not be configured.
+                Couldn't load tracks right now — Spotify credentials may not be
+                configured.
               </p>
             ) : (
               <ol className="mt-4 space-y-2">
@@ -121,11 +123,11 @@ function Fun() {
 
         {dominantArtist && tracks.length > 0 && (
           <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
-            Yeah, I know it's a little embarrassing to have more than half my top ten be{' '}
-            <span className="italic">{dominantArtist}</span>.
+            Yeah, I know it's a little embarrassing to have more than half my
+            top ten be <span className="italic">{dominantArtist}</span>.
           </p>
         )}
       </section>
     </main>
-  )
+  );
 }
