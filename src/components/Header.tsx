@@ -55,13 +55,6 @@ export default function Header() {
           >
             Fun
           </Link>
-          <Link
-            to="/lions"
-            className="nav-link"
-            activeProps={{ className: 'nav-link is-active' }}
-          >
-            Lions
-          </Link>
         </div>
       </nav>
     </header>
