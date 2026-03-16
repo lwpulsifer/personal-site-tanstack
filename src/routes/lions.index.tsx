@@ -93,8 +93,8 @@ function LionsPage() {
   }, [])
 
   return (
-    <main className="page-wrap px-4 pb-8 pt-14">
-      <section className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <main className="px-4 pb-8 pt-14">
+      <section className="mx-auto mb-6 flex w-full max-w-[1080px] flex-wrap items-end justify-between gap-4">
         <div>
           <p className="island-kicker mb-2">Explore</p>
           <h1
@@ -125,9 +125,9 @@ function LionsPage() {
         </button>
       </section>
 
-      <div className="flex flex-col gap-4 lg:flex-row">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 lg:flex-row">
         {/* Map */}
-        <div className="island-shell relative min-h-[400px] flex-1 overflow-hidden rounded-2xl lg:min-h-[600px]">
+        <div className="island-shell relative h-[55dvh] min-h-[420px] flex-1 overflow-hidden rounded-2xl lg:h-[calc(100dvh-14rem)] lg:min-h-[720px]">
           <Suspense
             fallback={
               <div className="flex h-full min-h-[400px] items-center justify-center">
