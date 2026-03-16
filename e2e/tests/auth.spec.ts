@@ -54,11 +54,10 @@ test.describe('logout', () => {
 
     // Wait for the async signOut() to finish before navigating away
     await page.goto('/logout')
-    await ensureHydrated(page)
-    await expect(page.getByTestId('logout-heading')).toBeVisible()
+    await expect(page.getByTestId('signed-out-msg')).toBeVisible()
 
     await page.goto('/blog')
     await ensureHydrated(page)
-    await expect(page.getByTestId('new-post-btn')).not.toBeVisible()
+    await expect(page.getByTestId('new-post-btn')).toHaveCount(0)
   })
 })

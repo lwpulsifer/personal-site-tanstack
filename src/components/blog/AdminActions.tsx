@@ -21,7 +21,7 @@ export function AdminActions({
     <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-dashed border-[var(--border)] pt-3">
       <button
         type="button"
-        data-testid={`post-edit-btn-${post.slug}`}
+        data-testid="post-edit"
         onClick={() => onEdit(post)}
         className="rounded-full border border-[var(--blue-deep)] px-2.5 py-0.5 text-xs font-semibold text-[var(--blue-deep)] transition hover:bg-[var(--blue-deep)] hover:text-white"
       >
@@ -31,7 +31,7 @@ export function AdminActions({
       {post.status !== 'PUBLISHED' && (
         <button
           type="button"
-          data-testid={`post-publish-btn-${post.slug}`}
+          data-testid="post-publish"
           onClick={() => mutate('PUBLISHED')}
           disabled={isPending}
           className="rounded-full bg-emerald-600 px-2.5 py-0.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
@@ -42,7 +42,7 @@ export function AdminActions({
       {post.status === 'PUBLISHED' && (
         <button
           type="button"
-          data-testid={`post-archive-btn-${post.slug}`}
+          data-testid="post-archive"
           onClick={() => mutate('ARCHIVED')}
           disabled={isPending}
           className="rounded-full bg-gray-500 px-2.5 py-0.5 text-xs font-semibold text-white transition hover:bg-gray-600 disabled:opacity-50"
@@ -53,7 +53,7 @@ export function AdminActions({
       {post.status === 'ARCHIVED' && (
         <button
           type="button"
-          data-testid={`post-restore-btn-${post.slug}`}
+          data-testid="post-restore"
           onClick={() => mutate('PENDING')}
           disabled={isPending}
           className="rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-semibold text-white transition hover:bg-amber-600 disabled:opacity-50"

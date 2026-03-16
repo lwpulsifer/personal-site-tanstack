@@ -16,13 +16,23 @@ const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
 
 const AUTH_STATE_PATH = 'e2e/.auth/admin.json'
 const BASE_URL = 'http://localhost:3000'
+const AUTH_COOKIE_PREFIX = 'sb-personal-site-auth'
 
-async function waitForAuthCookie(page: import('@playwright/test').Page, timeoutMs = 20_000) {
+async function waitForAuthCookie(page: import('@playwright/test').Page, timeoutMs = 10_000) {
   const start = Date.now()
   while (Date.now() - start < timeoutMs) {
     const cookies = await page.context().cookies()
-    // Supabase auth cookies are typically `sb-*-auth-token` (and may be chunked: `.0`, `.1`, ...).
-    if (cookies.some((c) => /^sb-.*-auth-token(\.\d+)?$/.test(c.name))) {
+    // Auth cookies may be either:
+    // - custom cookieOptions.name (we use `sb-personal-site-auth`, possibly chunked)
+    // - default Supabase cookie `sb-*-auth-token` (also possibly chunked)
+    if (
+      cookies.some(
+        (c) =>
+          c.name === AUTH_COOKIE_PREFIX ||
+          c.name.startsWith(`${AUTH_COOKIE_PREFIX}.`) ||
+          /^sb-.*-auth-token(\.\d+)?$/.test(c.name),
+      )
+    ) {
       return
     }
     await page.waitForTimeout(100)

@@ -15,5 +15,5 @@ test('blog listing loads', async ({ page }) => {
 test('individual blog post loads', async ({ page }) => {
   await page.goto('/blog/hello-world')
   await ensureHydrated(page)
-  await expect(page.getByTestId('post-title')).toBeVisible()
+  await expect(page.getByTestId('post-heading')).toBeVisible()
 })

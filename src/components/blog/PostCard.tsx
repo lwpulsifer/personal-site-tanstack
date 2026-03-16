@@ -71,7 +71,10 @@ export function PostCard({
         )}
       </div>
 
-      <h2 className={`m-0 font-semibold text-[var(--text)] ${compact ? 'text-xl' : 'text-2xl'}`}>
+      <h2
+        data-testid={`post-title-${post.slug}`}
+        className={`m-0 font-semibold text-[var(--text)] ${compact ? 'text-xl' : 'text-2xl'}`}
+      >
         {title}
       </h2>
 

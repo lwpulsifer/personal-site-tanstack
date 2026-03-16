@@ -84,6 +84,7 @@ function BlogPost() {
           <div className="mb-6 border-b border-[var(--border)] pb-4">
             <Link
               to="/blog"
+              data-testid="post-back-link"
               className="text-sm font-semibold text-[var(--blue-deep)] no-underline hover:underline"
             >
               ← Back to all posts
@@ -103,10 +104,7 @@ function BlogPost() {
           )}
 
           <div className="mb-3 flex items-start justify-between gap-4">
-            <h1
-              data-testid="post-title"
-              className="display-title text-4xl font-bold text-[var(--text)] sm:text-5xl"
-            >
+            <h1 data-testid="post-heading" className="display-title text-4xl font-bold text-[var(--text)] sm:text-5xl">
               {post.title}
             </h1>
 
@@ -139,7 +137,7 @@ function BlogPost() {
           </div>
 
           <div
-            data-testid="post-body"
+            data-testid="post-content"
             // biome-ignore lint/security/noDangerouslySetInnerHtml: rendered from trusted DB content
             dangerouslySetInnerHTML={{ __html: renderedHtml }}
             className="prose prose-slate prose-headings:text-[var(--text)] prose-p:text-[var(--text-muted)] prose-li:text-[var(--text-muted)] prose-ul:text-[var(--text-muted)] prose-ol:text-[var(--text-muted)] prose-strong:text-[var(--text)] prose-a:text-[var(--blue-deep)] max-w-none"
@@ -148,6 +146,7 @@ function BlogPost() {
           <div className="mt-8 border-t border-[var(--border)] pt-6">
             <Link
               to="/blog"
+              data-testid="post-back-link-bottom"
               className="text-sm font-semibold text-[var(--blue-deep)] no-underline hover:underline"
             >
               ← Back to all posts

@@ -1,4 +1,16 @@
--- E2E test seed data — deterministic slugs and UUIDs so tests can assert on known content.
+-- LOCAL-ONLY seed data. Guard: abort if the JWT secret doesn't match the well-known
+-- local dev value. Production will never have this secret.
+DO $$
+BEGIN
+  IF current_setting('app.settings.jwt_secret', true) IS DISTINCT FROM
+     'super-secret-jwt-token-with-at-least-32-characters-long'
+  THEN
+    RAISE EXCEPTION 'seed.sql refusing to run — not a local Supabase instance';
+  END IF;
+END
+$$;
+
+-- ── Test posts ────────────────────────────────────────────────────────────────
 
 INSERT INTO public.posts (id, slug, title, description, content, tags, published_at)
 VALUES
@@ -35,3 +47,30 @@ VALUES
   ('00000000-0000-0000-0000-000000000001', 'PUBLISHED'),
   ('00000000-0000-0000-0000-000000000002', 'PUBLISHED'),
   ('00000000-0000-0000-0000-000000000003', 'PENDING');
+
+-- ── Local dev admin user (admin@local.dev / password123) ──────────────────────
+
+INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, created_at, updated_at, aud, role)
+VALUES (
+  'a0000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000000',
+  'admin@local.dev',
+  crypt('password123', gen_salt('bf')),
+  now(), now(), now(), 'authenticated', 'authenticated'
+);
+
+INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, created_at, updated_at)
+VALUES (
+  'a0000000-0000-0000-0000-000000000001',
+  'a0000000-0000-0000-0000-000000000001',
+  jsonb_build_object('sub', 'a0000000-0000-0000-0000-000000000001', 'email', 'admin@local.dev'),
+  'email', 'a0000000-0000-0000-0000-000000000001',
+  now(), now()
+);
+
+-- ── Sample map locations ─────────────────────────────────────────────────────
+
+INSERT INTO public.map_locations (id, map_slug, name, description, address, lat, lng)
+VALUES
+  ('b0000000-0000-0000-0000-000000000001', 'lions', 'Palace of Fine Arts Lions', 'Pair of golden lions flanking the entrance', '3301 Lyon St, San Francisco', 37.8029, -122.4484),
+  ('b0000000-0000-0000-0000-000000000002', 'lions', 'City Hall Lions', 'Stone lions guarding the main steps', '1 Dr Carlton B Goodlett Pl, San Francisco', 37.7793, -122.4193);
