@@ -123,7 +123,7 @@ export function PhotoGallery({ locationId }: { locationId: string }) {
           </div>
 
           <div
-            className="h-full w-full px-4 pb-10 pt-16 sm:px-16"
+            className="mx-auto flex w-[92vw] max-w-[1100px] items-center justify-center px-4 pb-10 pt-16"
             onClick={(e) => e.stopPropagation()}
           >
             <StorageImage
@@ -131,7 +131,7 @@ export function PhotoGallery({ locationId }: { locationId: string }) {
               storagePath={photos[lightboxIndex].storage_path}
               alt={photos[lightboxIndex].caption ?? 'Lion statue photo'}
               loading="eager"
-              className="h-full w-full rounded-xl object-contain"
+              className="h-auto w-auto max-h-[78vh] max-w-full rounded-xl object-contain"
             />
           </div>
           {photos[lightboxIndex].caption && (
