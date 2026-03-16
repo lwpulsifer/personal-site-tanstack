@@ -57,46 +57,57 @@ function Fun() {
             </p>
           </Link>
 
-          {tracks.map((track, i) => (
-            <a
-              key={track.id}
-              href={track.songUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 no-underline transition hover:-translate-y-0.5 hover:border-[var(--blue)] hover:shadow-sm"
-            >
-              <div className="flex items-start gap-4">
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--surface),var(--text)_3%)] text-sm font-bold text-[var(--text-muted)]">
-                  {i + 1}
-                </div>
-                {track.albumImageUrl && (
-                  <img
-                    src={track.albumImageUrl}
-                    alt={track.album}
-                    className="h-12 w-12 shrink-0 rounded-xl object-cover"
-                  />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="m-0 truncate text-sm font-semibold text-[var(--text)] group-hover:text-[var(--blue-deep)]">
-                    {track.title}
-                  </p>
-                  <p className="m-0 mt-1 truncate text-sm italic text-[var(--text-muted)]">
-                    {track.artist}
-                  </p>
-                  <p className="m-0 mt-2 truncate text-xs text-[var(--text-muted)]">
-                    {track.album}
-                  </p>
-                </div>
-              </div>
-            </a>
-          ))}
-        </div>
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+            <p className="m-0 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
+              Spotify
+            </p>
+            <h2 className="mt-2 text-lg font-bold text-[var(--text)]">
+              My Top Tracks
+            </h2>
 
-        {tracks.length === 0 && (
-          <p className="mt-6 text-sm text-[var(--text-muted)]">
-            Couldn't load tracks right now — Spotify credentials may not be configured.
-          </p>
-        )}
+            {tracks.length === 0 ? (
+              <p className="mt-3 text-sm text-[var(--text-muted)]">
+                Couldn't load tracks right now — Spotify credentials may not be configured.
+              </p>
+            ) : (
+              <ol className="mt-4 space-y-2">
+                {tracks.map((track, i) => (
+                  <li
+                    key={track.id}
+                    className="flex items-center gap-4 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--surface),var(--text)_2%)] px-4 py-3 transition hover:border-[var(--blue)]"
+                  >
+                    <span className="w-6 shrink-0 text-right text-sm font-semibold text-[var(--text-muted)]">
+                      {i + 1}
+                    </span>
+                    {track.albumImageUrl && (
+                      <img
+                        src={track.albumImageUrl}
+                        alt={track.album}
+                        className="h-10 w-10 shrink-0 rounded-md object-cover"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <a
+                        href={track.songUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block truncate font-semibold text-[var(--text)] no-underline hover:text-[var(--blue-deep)]"
+                      >
+                        {track.title}
+                      </a>
+                      <p className="m-0 truncate text-sm italic text-[var(--text-muted)]">
+                        {track.artist}
+                      </p>
+                    </div>
+                    <span className="hidden shrink-0 text-right text-sm text-[var(--text-muted)] sm:block">
+                      {track.album}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        </div>
 
         {dominantArtist && tracks.length > 0 && (
           <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
