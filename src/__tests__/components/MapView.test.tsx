@@ -62,19 +62,21 @@ describe('MapView', () => {
     },
   ]
 
-  it('renders the map container', () => {
+  it('renders the map container', async () => {
     render(<MapView locations={locations} />)
-    expect(screen.getByTestId('map-container')).toBeTruthy()
+    expect(await screen.findByTestId('map-container')).toBeTruthy()
   })
 
-  it('renders a marker for each location', () => {
+  it('renders a marker for each location', async () => {
     render(<MapView locations={locations} />)
-    expect(screen.getAllByTestId('map-marker')).toHaveLength(2)
+    await screen.findByTestId('map-container')
+    expect(await screen.findAllByTestId('map-marker')).toHaveLength(2)
   })
 
-  it('shows location names in popups', () => {
+  it('shows location names in popups', async () => {
     render(<MapView locations={locations} />)
-    expect(screen.getByText('Test Lion')).toBeTruthy()
-    expect(screen.getByText('Another Lion')).toBeTruthy()
+    await screen.findByTestId('map-container')
+    expect(await screen.findByText('Test Lion')).toBeTruthy()
+    expect(await screen.findByText('Another Lion')).toBeTruthy()
   })
 })
