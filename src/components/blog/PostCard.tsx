@@ -38,7 +38,12 @@ export function PostCard({
 }: PostCardProps) {
   const title =
     post.status === 'PUBLISHED' ? (
-      <Link to="/blog/$slug" params={{ slug: post.slug }} className="no-underline">
+      <Link
+        to="/blog/$slug"
+        params={{ slug: post.slug }}
+        data-testid={`post-link-${post.slug}`}
+        className="no-underline"
+      >
         {post.title}
       </Link>
     ) : (
@@ -46,7 +51,11 @@ export function PostCard({
     )
 
   return (
-    <article className={`island-shell rounded-2xl p-5 ${featured ? 'sm:p-6' : ''} ${className}`} style={style}>
+    <article
+      data-testid={`post-card-${post.slug}`}
+      className={`island-shell rounded-2xl p-5 ${featured ? 'sm:p-6' : ''} ${className}`}
+      style={style}
+    >
       {!compact && post.hero_image && (
         <img
           src={post.hero_image}

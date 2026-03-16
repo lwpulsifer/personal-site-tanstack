@@ -103,13 +103,17 @@ function BlogPost() {
           )}
 
           <div className="mb-3 flex items-start justify-between gap-4">
-            <h1 className="display-title text-4xl font-bold text-[var(--text)] sm:text-5xl">
+            <h1
+              data-testid="post-title"
+              className="display-title text-4xl font-bold text-[var(--text)] sm:text-5xl"
+            >
               {post.title}
             </h1>
 
             {isAuthenticated && (
               <button
                 type="button"
+                data-testid="post-edit-btn"
                 onClick={() => setIsEditing(true)}
                 className="mt-1 shrink-0 rounded-full border border-[var(--blue-deep)] px-3 py-1 text-xs font-semibold text-[var(--blue-deep)] transition hover:bg-[var(--blue-deep)] hover:text-white"
               >
@@ -135,6 +139,7 @@ function BlogPost() {
           </div>
 
           <div
+            data-testid="post-body"
             // biome-ignore lint/security/noDangerouslySetInnerHtml: rendered from trusted DB content
             dangerouslySetInnerHTML={{ __html: renderedHtml }}
             className="prose prose-slate prose-headings:text-[var(--text)] prose-p:text-[var(--text-muted)] prose-li:text-[var(--text-muted)] prose-ul:text-[var(--text-muted)] prose-ol:text-[var(--text-muted)] prose-strong:text-[var(--text)] prose-a:text-[var(--blue-deep)] max-w-none"
