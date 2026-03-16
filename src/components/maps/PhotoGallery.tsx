@@ -2,15 +2,29 @@ import { useQuery } from '@tanstack/react-query'
 import { mapPhotosQueryOptions } from '#/lib/queries'
 import { useEffect, useRef, useState } from 'react'
 import { StorageImage } from './StorageImage'
+import { createPortal } from 'react-dom'
 
 export function PhotoGallery({ locationId }: { locationId: string }) {
   const { data: photos = [], isLoading } = useQuery(mapPhotosQueryOptions(locationId))
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const overlayRef = useRef<HTMLDivElement | null>(null)
+  const lastActiveElementRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     if (lightboxIndex !== null) {
+      lastActiveElementRef.current = document.activeElement as HTMLElement | null
       overlayRef.current?.focus()
+    }
+  }, [lightboxIndex])
+
+  useEffect(() => {
+    if (lightboxIndex === null) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prevOverflow
+      // Restore focus to whatever opened the modal (best-effort).
+      lastActiveElementRef.current?.focus?.()
     }
   }, [lightboxIndex])
 
@@ -51,7 +65,7 @@ export function PhotoGallery({ locationId }: { locationId: string }) {
         ))}
       </div>
 
-      {lightboxIndex !== null && (
+      {lightboxIndex !== null && typeof document !== 'undefined' && createPortal((
         <div
           ref={overlayRef}
           tabIndex={-1}
@@ -63,6 +77,8 @@ export function PhotoGallery({ locationId }: { locationId: string }) {
             if (e.key === 'ArrowRight') setLightboxIndex((i) => i !== null ? Math.min(i + 1, photos.length - 1) : null)
             if (e.key === 'ArrowLeft') setLightboxIndex((i) => i !== null ? Math.max(i - 1, 0) : null)
           }}
+          role="dialog"
+          aria-modal="true"
         >
           <button
             type="button"
@@ -124,7 +140,7 @@ export function PhotoGallery({ locationId }: { locationId: string }) {
             </p>
           )}
         </div>
-      )}
+      ), document.body)}
     </>
   )
 }
