@@ -10,7 +10,6 @@ import { SubmissionForm } from '#/components/maps/SubmissionForm'
 import { AdminPanel } from '#/components/maps/AdminPanel'
 import type { MapLocation, MapSubmission } from '#/lib/map-types'
 import { MapSkeleton } from '#/components/maps/MapSkeleton'
-import { isWithinBayArea } from '#/lib/geo'
 
 const MapView = lazy(() =>
   import('#/components/maps/MapView').then((m) => ({ default: m.MapView })),
@@ -61,10 +60,6 @@ function LionsPage() {
   const [mapBoundsError, setMapBoundsError] = useState<string | null>(null)
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
-    if (!isWithinBayArea(lat, lng)) {
-      setMapBoundsError('Please add sightings within the San Francisco Bay Area.')
-      return
-    }
     setMapBoundsError(null)
     setClickedCoords({ lat, lng })
     setPreviewCoords({ lat, lng })
@@ -156,6 +151,7 @@ function LionsPage() {
               locations={locations}
               onSelectLocation={handleSelectLocation}
               onMapClick={handleMapClick}
+              onMapClickOutOfBounds={() => setMapBoundsError('Please add sightings within the San Francisco Bay Area.')}
               selectedLocationId={selectedLocation?.id}
               previewCoords={showSubmitForm || selectedSubmission ? previewCoords : null}
             />

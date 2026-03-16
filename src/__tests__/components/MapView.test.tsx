@@ -5,6 +5,7 @@ const flyToMock = vi.fn()
 vi.mock('react-leaflet', () => ({
   MapContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   TileLayer: () => <div data-testid="tile-layer" />,
+  Rectangle: () => <div data-testid="map-rectangle" />,
   Marker: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="map-marker">{children}</div>
   ),

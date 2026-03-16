@@ -13,12 +13,14 @@ export function MapView({
   locations,
   onSelectLocation,
   onMapClick,
+  onMapClickOutOfBounds,
   selectedLocationId,
   previewCoords,
 }: {
   locations: MapLocation[]
   onSelectLocation?: (location: MapLocation) => void
   onMapClick?: (lat: number, lng: number) => void
+  onMapClickOutOfBounds?: (lat: number, lng: number) => void
   selectedLocationId?: string | null
   previewCoords?: { lat: number; lng: number } | null
 }) {
@@ -36,6 +38,7 @@ export function MapView({
         locations={locations}
         onSelectLocation={onSelectLocation}
         onMapClick={onMapClick}
+        onMapClickOutOfBounds={onMapClickOutOfBounds}
         selectedLocationId={selectedLocationId}
         previewCoords={previewCoords}
       />

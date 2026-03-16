@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Rectangle, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import type { MapLocation } from '#/lib/map-types'
 import { MarkerPopup } from './MarkerPopup'
+import { BAY_AREA_BOUNDS, isWithinBayArea } from '#/lib/geo'
 
 // Fix default Leaflet marker icons (they break with bundlers)
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
@@ -60,12 +61,14 @@ export function MapView({
   locations,
   onSelectLocation,
   onMapClick,
+  onMapClickOutOfBounds,
   selectedLocationId,
   previewCoords,
 }: {
   locations: MapLocation[]
   onSelectLocation?: (location: MapLocation) => void
   onMapClick?: (lat: number, lng: number) => void
+  onMapClickOutOfBounds?: (lat: number, lng: number) => void
   selectedLocationId?: string | null
   previewCoords?: { lat: number; lng: number } | null
 }) {
@@ -84,8 +87,44 @@ export function MapView({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        {/* Visual geofence: red mask outside the Bay Area bounds + red outline */}
+        <Rectangle
+          interactive={false}
+          bounds={[[BAY_AREA_BOUNDS.maxLat, -180], [90, 180]]}
+          pathOptions={{ stroke: false, fillColor: '#ef4444', fillOpacity: 0.16 }}
+        />
+        <Rectangle
+          interactive={false}
+          bounds={[[-90, -180], [BAY_AREA_BOUNDS.minLat, 180]]}
+          pathOptions={{ stroke: false, fillColor: '#ef4444', fillOpacity: 0.16 }}
+        />
+        <Rectangle
+          interactive={false}
+          bounds={[[BAY_AREA_BOUNDS.minLat, -180], [BAY_AREA_BOUNDS.maxLat, BAY_AREA_BOUNDS.minLng]]}
+          pathOptions={{ stroke: false, fillColor: '#ef4444', fillOpacity: 0.16 }}
+        />
+        <Rectangle
+          interactive={false}
+          bounds={[[BAY_AREA_BOUNDS.minLat, BAY_AREA_BOUNDS.maxLng], [BAY_AREA_BOUNDS.maxLat, 180]]}
+          pathOptions={{ stroke: false, fillColor: '#ef4444', fillOpacity: 0.16 }}
+        />
+        <Rectangle
+          interactive={false}
+          bounds={[[BAY_AREA_BOUNDS.minLat, BAY_AREA_BOUNDS.minLng], [BAY_AREA_BOUNDS.maxLat, BAY_AREA_BOUNDS.maxLng]]}
+          pathOptions={{ color: '#ef4444', weight: 2, fillOpacity: 0 }}
+        />
         <FlyToCoords coords={flyToCoords} />
-        {onMapClick && <ClickHandler onClick={onMapClick} />}
+        {(onMapClick || onMapClickOutOfBounds) && (
+          <ClickHandler
+            onClick={(lat, lng) => {
+              if (isWithinBayArea(lat, lng)) {
+                onMapClick?.(lat, lng)
+              } else {
+                onMapClickOutOfBounds?.(lat, lng)
+              }
+            }}
+          />
+        )}
         {locations.map((loc) => (
           <Marker
             key={loc.id}
