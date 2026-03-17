@@ -1,0 +1,75 @@
+name: Dependency Updates
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Every Monday at 9am UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check for outdated packages
+        id: outdated
+        run: |
+          npm outdated --json > outdated.json 2>/dev/null || true
+          if [ "$(cat outdated.json)" = "{}" ]; then
+            echo "up_to_date=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "up_to_date=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update packages
+        if: steps.outdated.outputs.up_to_date == 'false'
+        run: npm update --save
+
+      - name: Build
+        if: steps.outdated.outputs.up_to_date == 'false'
+        run: npm run build
+
+      - name: Test
+        if: steps.outdated.outputs.up_to_date == 'false'
+        run: npm test
+
+      - name: Generate PR body
+        if: steps.outdated.outputs.up_to_date == 'false'
+        run: |
+          {
+            echo "## Summary"
+            echo ""
+            echo "Automated weekly dependency update. Build and tests passed."
+            echo ""
+            echo "### Updated packages"
+            echo ""
+            echo '```'
+            node -e "
+              const data = JSON.parse(require('fs').readFileSync('outdated.json','utf8'));
+              for (const [pkg, info] of Object.entries(data)) {
+                console.log(pkg + ': ' + info.current + ' → ' + info.wanted);
+              }
+            "
+            echo '```'
+          } > pr-body.md
+
+      - name: Create Pull Request
+        if: steps.outdated.outputs.up_to_date == 'false'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: automated/dependency-updates
+          commit-message: "chore: update dependencies"
+          title: "chore: weekly dependency updates"
+          body-path: pr-body.md
+          delete-branch: true
