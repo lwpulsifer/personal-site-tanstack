@@ -55,10 +55,13 @@ function Home() {
 
           <div className="shrink-0">
             <img
-              src="/grad_cropped.jpg"
-              alt="Liam Pulsifer"
+              src="/roys_peak.webp"
+              alt="Me, at the top of Roy's Peak in Wanaka, New Zealand"
               width={384}
               height={384}
+              fetchPriority="high"
+              loading="eager"
+              decoding="async"
               className="h-48 w-48 rounded-full object-cover shadow-lg ring-2 ring-[var(--border)]"
             />
           </div>
