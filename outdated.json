@@ -1,0 +1,72 @@
+{
+  "@biomejs/biome": {
+    "current": "2.2.4",
+    "wanted": "2.2.4",
+    "latest": "2.4.7",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/@biomejs/biome"
+  },
+  "@supabase/ssr": {
+    "current": "0.8.0",
+    "wanted": "0.8.0",
+    "latest": "0.9.0",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/@supabase/ssr"
+  },
+  "@supabase/supabase-js": {
+    "current": "2.99.1",
+    "wanted": "2.99.2",
+    "latest": "2.99.2",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/@supabase/supabase-js"
+  },
+  "@types/node": {
+    "current": "22.19.15",
+    "wanted": "22.19.15",
+    "latest": "25.5.0",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/@types/node"
+  },
+  "@vitejs/plugin-react": {
+    "current": "6.0.0",
+    "wanted": "6.0.1",
+    "latest": "6.0.1",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/@vitejs/plugin-react"
+  },
+  "jsdom": {
+    "current": "27.0.1",
+    "wanted": "27.4.0",
+    "latest": "29.0.0",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/jsdom"
+  },
+  "lucide-react": {
+    "current": "0.545.0",
+    "wanted": "0.545.0",
+    "latest": "0.577.0",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/lucide-react"
+  },
+  "nitro:nitro-nightly@latest": {
+    "current": "3.0.1-20260312-093400-ba5147a5",
+    "wanted": "3.0.1-20260317-115307-5d51b7f3",
+    "latest": "3.0.1-20260317-115307-5d51b7f3",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/nitro"
+  },
+  "vite-tsconfig-paths": {
+    "current": "5.1.4",
+    "wanted": "5.1.4",
+    "latest": "6.1.1",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/vite-tsconfig-paths"
+  },
+  "vitest": {
+    "current": "3.2.4",
+    "wanted": "3.2.4",
+    "latest": "4.1.0",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/vitest"
+  }
+}
