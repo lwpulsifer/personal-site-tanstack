@@ -36,21 +36,13 @@ const UpsertPostSchema = z.object({
 export const getPublishedPosts = createServerFn({ method: 'GET' }).handler(
   async () => {
     const supabase = getSupabaseServiceClient()
-    const [{ data: posts, error }, { data: statuses }] = await Promise.all([
-      supabase
-        .from('posts')
-        .select('*')
-        .order('published_at', { ascending: false }),
-      supabase
-        .from('post_current_status')
-        .select('post_id')
-        .eq('status', 'PUBLISHED'),
-    ])
+    const { data: posts, error } = await supabase
+      .from('posts')
+      .select('*')
+      .eq('status', 'PUBLISHED')
+      .order('published_at', { ascending: false })
     if (error) throw new Error(error.message)
-    const publishedIds = new Set((statuses ?? []).map((s) => s.post_id))
-    return (posts ?? [])
-      .filter((p) => publishedIds.has(p.id))
-      .map((p) => ({ ...p, status: 'PUBLISHED' as PostStatus })) as DbPost[]
+    return (posts ?? []) as DbPost[]
   },
 )
 
@@ -62,17 +54,10 @@ export const getPublishedPost = createServerFn({ method: 'GET' })
       .from('posts')
       .select('*')
       .eq('slug', data.slug)
+      .eq('status', 'PUBLISHED')
       .single()
     if (error || !post) return null
-
-    const { data: statusRow } = await supabase
-      .from('post_current_status')
-      .select('status')
-      .eq('post_id', post.id)
-      .single()
-    if (statusRow?.status !== 'PUBLISHED') return null
-
-    return { ...post, status: 'PUBLISHED' as PostStatus } as DbPost
+    return post as DbPost
   })
 
 export const getAllTags = createServerFn({ method: 'GET' }).handler(async () => {
@@ -89,19 +74,12 @@ export const getAdminPosts = createServerFn({ method: 'GET' }).handler(
   async () => {
     await requireAuth()
     const supabase = getSupabaseServiceClient()
-    const [{ data: posts, error }, { data: statuses }] = await Promise.all([
-      supabase
-        .from('posts')
-        .select('*')
-        .order('created_at', { ascending: false }),
-      supabase.from('post_current_status').select('*'),
-    ])
+    const { data: posts, error } = await supabase
+      .from('posts')
+      .select('*')
+      .order('created_at', { ascending: false })
     if (error) throw new Error(error.message)
-    const statusById = new Map((statuses ?? []).map((s) => [s.post_id, s.status]))
-    return (posts ?? []).map((post) => ({
-      ...post,
-      status: (statusById.get(post.id) ?? 'PENDING') as PostStatus,
-    })) as DbPost[]
+    return (posts ?? []) as DbPost[]
   },
 )
 
@@ -116,12 +94,7 @@ export const getPostBySlug = createServerFn({ method: 'GET' })
       .eq('slug', data.slug)
       .single()
     if (error || !post) return null
-    const { data: statusRow } = await supabase
-      .from('post_current_status')
-      .select('status')
-      .eq('post_id', post.id)
-      .single()
-    return { ...post, status: (statusRow?.status ?? 'PENDING') as PostStatus } as DbPost
+    return post as DbPost
   })
 
 export const upsertPost = createServerFn({ method: 'POST' })
@@ -161,19 +134,25 @@ export const setPostStatus = createServerFn({ method: 'POST' })
     await requireAuth()
     const supabase = getSupabaseServiceClient()
 
-    const { error } = await supabase
-      .from('post_status_update')
-      .insert({ post_id: data.postId, status: data.status })
-    if (error) throw new Error(error.message)
+    const updates: Record<string, unknown> = { status: data.status }
 
     // Set published_at the first time a post is published
     if (data.status === 'PUBLISHED') {
-      await supabase
+      const { data: existing } = await supabase
         .from('posts')
-        .update({ published_at: new Date().toISOString() })
+        .select('published_at')
         .eq('id', data.postId)
-        .is('published_at', null)
+        .single()
+      if (!existing?.published_at) {
+        updates.published_at = new Date().toISOString()
+      }
     }
+
+    const { error } = await supabase
+      .from('posts')
+      .update(updates)
+      .eq('id', data.postId)
+    if (error) throw new Error(error.message)
 
     return { ok: true }
   })

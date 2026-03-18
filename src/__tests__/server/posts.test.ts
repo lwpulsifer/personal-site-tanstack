@@ -68,9 +68,10 @@ const publishedPost = {
   created_at: '2025-06-15T12:00:00Z',
   updated_at: '2025-06-15T12:00:00Z',
   author_id: null,
+  status: 'PUBLISHED',
 }
 
-const pendingPost = { ...publishedPost, id: 'post-2', slug: 'draft', title: 'Draft' }
+const pendingPost = { ...publishedPost, id: 'post-2', slug: 'draft', title: 'Draft', status: 'PENDING' }
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -79,10 +80,9 @@ const pendingPost = { ...publishedPost, id: 'post-2', slug: 'draft', title: 'Dra
 describe('getPublishedPosts', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('returns only posts that have PUBLISHED status', async () => {
+  it('returns published posts from a single query', async () => {
     vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
-      makeChain({ data: [publishedPost, pendingPost], error: null }),
-      makeChain({ data: [{ post_id: 'post-1' }], error: null }),
+      makeChain({ data: [publishedPost], error: null }),
     ))
 
     const result = await (getPublishedPosts as () => Promise<{ slug: string }[]>)()
@@ -94,7 +94,6 @@ describe('getPublishedPosts', () => {
   it('throws when the database returns an error', async () => {
     vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
       makeChain({ data: null, error: { message: 'DB error' } }),
-      makeChain({ data: [], error: null }),
     ))
 
     await expect((getPublishedPosts as () => Promise<unknown>)()).rejects.toThrow('DB error')
@@ -116,10 +115,10 @@ describe('getPublishedPost', () => {
     expect(result).toBeNull()
   })
 
-  it('returns null when the post exists but is not published', async () => {
+  it('returns null when the post exists but is not published (single query filters it out)', async () => {
+    // With status filter in the query, a non-published post returns no row
     vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
-      makeChain({ data: publishedPost, error: null }),
-      makeChain({ data: { status: 'PENDING' }, error: null }),
+      makeChain({ data: null, error: { message: 'PGRST116' } }),
     ))
 
     const result = await (getPublishedPost as (a: { data: { slug: string } }) => Promise<unknown>)(
@@ -132,7 +131,6 @@ describe('getPublishedPost', () => {
   it('returns the post when it exists and is published', async () => {
     vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
       makeChain({ data: publishedPost, error: null }),
-      makeChain({ data: { status: 'PUBLISHED' }, error: null }),
     ))
 
     const result = await (getPublishedPost as (a: { data: { slug: string } }) => Promise<{ slug: string }>)(
@@ -168,6 +166,19 @@ describe('getAdminPosts', () => {
 
     await expect((getAdminPosts as () => Promise<unknown>)()).rejects.toThrow('Unauthorized')
   })
+
+  it('returns all posts with their status from a single query', async () => {
+    vi.mocked(requireAuth).mockResolvedValue(undefined as never)
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
+      makeChain({ data: [publishedPost, pendingPost], error: null }),
+    ))
+
+    const result = await (getAdminPosts as () => Promise<{ slug: string; status: string }[]>)()
+
+    expect(result).toHaveLength(2)
+    expect(result[0].status).toBe('PUBLISHED')
+    expect(result[1].status).toBe('PENDING')
+  })
 })
 
 describe('setPostStatus', () => {
@@ -181,5 +192,33 @@ describe('setPostStatus', () => {
         { data: { postId: 'post-1', status: 'PENDING' } },
       ),
     ).rejects.toThrow('Unauthorized')
+  })
+
+  it('updates the status column on the posts table', async () => {
+    vi.mocked(requireAuth).mockResolvedValue(undefined as never)
+    const chain = makeChain({ data: null, error: null })
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(chain))
+
+    const result = await (setPostStatus as (a: { data: { postId: string; status: 'PENDING' } }) => Promise<{ ok: boolean }>)(
+      { data: { postId: 'post-1', status: 'PENDING' } },
+    )
+
+    expect(result).toEqual({ ok: true })
+    expect(chain['update']).toHaveBeenCalled()
+  })
+
+  it('sets published_at when publishing a post without one', async () => {
+    vi.mocked(requireAuth).mockResolvedValue(undefined as never)
+    // First chain: select published_at (returns null)
+    // Second chain: update status + published_at
+    const selectChain = makeChain({ data: { published_at: null }, error: null })
+    const updateChain = makeChain({ data: null, error: null })
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(selectChain, updateChain))
+
+    const result = await (setPostStatus as (a: { data: { postId: string; status: 'PUBLISHED' } }) => Promise<{ ok: boolean }>)(
+      { data: { postId: 'post-1', status: 'PUBLISHED' } },
+    )
+
+    expect(result).toEqual({ ok: true })
   })
 })
