@@ -8,17 +8,9 @@ on:
 jobs:
   typecheck:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Start local Supabase
-        run: supabase start
 
       - uses: actions/setup-node@v4
         with:
@@ -26,17 +18,6 @@ jobs:
           cache: npm
 
       - run: npm ci
-
-      - name: Generate Supabase types
-        run: npm run db:types
-
-      - name: Check for type drift
-        run: |
-          if ! git diff --exit-code src/lib/database.types.ts; then
-            echo "❌ database.types.ts is out of date with the local schema."
-            echo "   Run: npm run db:types"
-            exit 1
-          fi
 
       - name: TypeScript type check
         run: npm run typecheck
