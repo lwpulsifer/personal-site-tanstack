@@ -1,34 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getSupabaseBrowserClient } from '#/lib/supabase'
-
-function isHeicPath(storagePath: string) {
-  return /\.(heic|heif)$/i.test(storagePath)
-}
-
-function getCachedJpegPath(storagePath: string) {
-  // Deterministic cache path: same object key, but with `.jpg` extension.
-  // Example: `submissions/abc.heic` -> `submissions/abc.jpg`
-  return storagePath.replace(/\.(heic|heif)$/i, '.jpg')
-}
-
-async function convertHeicUrlToJpeg(url: string) {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`)
-  const blob = await res.blob()
-
-  const { default: heic2any } = await import('heic2any')
-  const converted = await heic2any({
-    blob,
-    toType: 'image/jpeg',
-    quality: 0.9,
-  })
-
-  const jpegBlob = Array.isArray(converted) ? converted[0] : converted
-  return {
-    jpegBlob: jpegBlob as Blob,
-    objectUrl: URL.createObjectURL(jpegBlob as Blob),
-  }
-}
+import { isHeicPath, getCachedJpegPath, convertHeicUrlToJpeg } from '#/lib/heic'
 
 export function StorageImage({
   bucket,

@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { getSupabaseClient } from '#/lib/supabase'
+import { getSupabaseServiceClient } from '#/lib/supabase'
 import { requireAuth } from '#/server/auth.server'
 import { z } from 'zod'
 import type { MapLocation, MapPhoto, MapSubmission } from '#/lib/map-types'
@@ -52,7 +52,7 @@ function haversineDistanceMeters(a: { lat: number; lng: number }, b: { lat: numb
 }
 
 async function findExistingLocationWithinRadius(opts: {
-  supabase: ReturnType<typeof getSupabaseClient>
+  supabase: ReturnType<typeof getSupabaseServiceClient>
   mapSlug: string
   coords: { lat: number; lng: number }
   radiusMeters: number
@@ -86,7 +86,7 @@ async function findExistingLocationWithinRadius(opts: {
 export const getApprovedLocations = createServerFn({ method: 'GET' })
   .inputValidator(z.object({ mapSlug: z.string() }))
   .handler(async ({ data }) => {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseServiceClient()
     const { data: locations, error } = await supabase
       .from('map_locations')
       .select('*')
@@ -118,7 +118,7 @@ export const getApprovedLocations = createServerFn({ method: 'GET' })
 export const getLocationPhotos = createServerFn({ method: 'GET' })
   .inputValidator(z.object({ locationId: z.string() }))
   .handler(async ({ data }) => {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseServiceClient()
     const { data: photos, error } = await supabase
       .from('map_photos')
       .select('*')
@@ -153,7 +153,7 @@ export const submitSighting = createServerFn({ method: 'POST' })
     }),
   )
   .handler(async ({ data }) => {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseServiceClient()
 
     const firstPhotoWithCoords =
       data.photos.find((p) => typeof p.exifLat === 'number' && typeof p.exifLng === 'number') ?? null
@@ -231,7 +231,7 @@ export const getPendingSubmissions = createServerFn({ method: 'GET' })
   .inputValidator(z.object({ mapSlug: z.string().optional() }).optional())
   .handler(async ({ data }) => {
     await requireAuth()
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseServiceClient()
 
     let query = supabase
       .from('map_submissions')
@@ -274,7 +274,7 @@ export const approveSubmission = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ submissionId: z.string() }))
   .handler(async ({ data }) => {
     const user = await requireAuth()
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseServiceClient()
 
     // Fetch the submission
     const { data: submission, error: fetchError } = await supabase
@@ -370,7 +370,7 @@ export const rejectSubmission = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ submissionId: z.string() }))
   .handler(async ({ data }) => {
     const user = await requireAuth()
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseServiceClient()
 
     const { error } = await supabase
       .from('map_submissions')
@@ -389,7 +389,7 @@ export const deleteLocation = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ id: z.string() }))
   .handler(async ({ data }) => {
     await requireAuth()
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseServiceClient()
 
     const { error } = await supabase
       .from('map_locations')

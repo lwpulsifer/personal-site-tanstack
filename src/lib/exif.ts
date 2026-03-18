@@ -24,53 +24,7 @@ function normalizeExifDateTime(value: unknown): string | null {
 }
 
 /**
- * Extract GPS coordinates from an image file's EXIF data.
- * Returns null if no GPS data is found.
- */
-export async function extractGpsFromImage(file: File): Promise<GpsCoords | null> {
-  try {
-    const buffer = await file.arrayBuffer()
-    const tags = ExifReader.load(buffer, { expanded: true })
-
-    const lat = tags.gps?.Latitude
-    const lng = tags.gps?.Longitude
-
-    if (typeof lat !== 'number' || typeof lng !== 'number') return null
-
-    return { lat, lng }
-  } catch {
-    return null
-  }
-}
-
-/**
- * Extract the most relevant EXIF date-time from an image file.
- * Returns a local datetime string (no timezone) or null.
- */
-export async function extractTakenAtLocalFromImage(file: File): Promise<string | null> {
-  try {
-    const buffer = await file.arrayBuffer()
-    const tags = ExifReader.load(buffer, { expanded: true })
-
-    const exif = (tags as any).exif ?? {}
-    const candidates = [
-      exif.DateTimeOriginal?.description,
-      exif.CreateDate?.description,
-      exif.ModifyDate?.description,
-      exif.DateTime?.description,
-    ]
-    for (const c of candidates) {
-      const normalized = normalizeExifDateTime(c)
-      if (normalized) return normalized
-    }
-    return null
-  } catch {
-    return null
-  }
-}
-
-/**
- * Convenience helper to extract both GPS and date-time in a single file read.
+ * Extract GPS coordinates and date-time from an image file's EXIF data.
  */
 export async function extractExifFromImage(file: File): Promise<ExifExtract> {
   try {

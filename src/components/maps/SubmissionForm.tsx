@@ -2,30 +2,9 @@ import { useState, useCallback, useRef } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { submitSighting } from '#/server/maps'
 import { extractExifFromImage } from '#/lib/exif'
+import { isHeicFile, convertHeicFileToJpeg } from '#/lib/heic'
 import { getSupabaseBrowserClient } from '#/lib/supabase'
 import { mapLocationsQueryOptions, pendingMapSubmissionsQueryOptions } from '#/lib/queries'
-
-function isHeicFile(file: File) {
-  const name = file.name.toLowerCase()
-  return (
-    file.type === 'image/heic' ||
-    file.type === 'image/heif' ||
-    name.endsWith('.heic') ||
-    name.endsWith('.heif')
-  )
-}
-
-async function convertHeicToJpeg(file: File) {
-  const { default: heic2any } = await import('heic2any')
-  const converted = await heic2any({
-    blob: file,
-    toType: 'image/jpeg',
-    quality: 0.9,
-  })
-  const jpegBlob = Array.isArray(converted) ? converted[0] : converted
-  const newName = file.name.replace(/\.(heic|heif)$/i, '.jpg')
-  return new File([jpegBlob as BlobPart], newName, { type: 'image/jpeg' })
-}
 
 export function SubmissionForm({
   mapSlug,
@@ -142,7 +121,7 @@ export function SubmissionForm({
         })
         if (isHeicFile(file)) {
           try {
-            processed.push(await convertHeicToJpeg(file))
+            processed.push(await convertHeicFileToJpeg(file))
           } catch {
             // If conversion fails, keep the original and show an error so the user can retry.
             processed.push(file)

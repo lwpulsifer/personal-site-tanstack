@@ -9,7 +9,7 @@ export type SiteView = {
 }
 
 // Server-side client (service-role key — bypasses RLS, never sent to browser).
-export function getSupabaseClient() {
+export function getSupabaseServiceClient() {
   const url = process.env.SUPABASE_URL
   const key = process.env.SUPABASE_KEY
   if (!url || !key) {

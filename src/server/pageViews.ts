@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getRequestIP } from '@tanstack/react-start/server'
-import { getSupabaseClient } from '#/lib/supabase'
+import { getSupabaseServiceClient } from '#/lib/supabase'
 import { z } from 'zod'
 
 const shouldSkip = () =>
@@ -14,7 +14,7 @@ export const logPageView = createServerFn({ method: 'POST' })
 
     const userIp = getRequestIP({ xForwardedFor: true }) ?? 'unknown'
 
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseServiceClient()
     const { error } = await supabase
       .from('site_views')
       .insert({ url: data.url, user_ip: userIp })
@@ -29,7 +29,7 @@ export const logPageView = createServerFn({ method: 'POST' })
 export const getPageViews = createServerFn({ method: 'GET' })
   .inputValidator(z.object({ url: z.string() }))
   .handler(async ({ data }) => {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseServiceClient()
     const { count, error } = await supabase
       .from('site_views')
       .select('*', { count: 'exact', head: true })

@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { lazy, Suspense, useState, useCallback } from 'react'
+import { lazy, Suspense, useCallback, useReducer } from 'react'
 import { SITE_TITLE, SITE_URL } from '#/lib/site'
 import { getApprovedLocations } from '#/server/maps'
 import { mapLocationsQueryOptions } from '#/lib/queries'
@@ -41,6 +41,85 @@ export const Route = createFileRoute('/lions/')({
   component: LionsPage,
 })
 
+// ── Sidebar state machine ─────────────────────────────────────────────────────
+
+type SidebarState = {
+  view: 'list' | 'location' | 'submit' | 'submission'
+  selectedLocation: MapLocation | null
+  selectedSubmission: MapSubmission | null
+  submitMode: 'new' | 'add-photos'
+  submitLocation: MapLocation | null
+  clickedCoords: { lat: number; lng: number } | null
+  previewCoords: { lat: number; lng: number } | null
+  mapBoundsError: string | null
+}
+
+type SidebarAction =
+  | { type: 'MAP_CLICK'; lat: number; lng: number }
+  | { type: 'SELECT_LOCATION'; location: MapLocation }
+  | { type: 'SELECT_SUBMISSION'; submission: MapSubmission }
+  | { type: 'ADD_PHOTOS'; location: MapLocation }
+  | { type: 'REPORT_SIGHTING' }
+  | { type: 'CLOSE_FORM' }
+  | { type: 'CLOSE_LOCATION' }
+  | { type: 'SET_PREVIEW_COORDS'; lat: number; lng: number }
+  | { type: 'MAP_CLICK_OUT_OF_BOUNDS' }
+
+const initialSidebarState: SidebarState = {
+  view: 'list',
+  selectedLocation: null,
+  selectedSubmission: null,
+  submitMode: 'new',
+  submitLocation: null,
+  clickedCoords: null,
+  previewCoords: null,
+  mapBoundsError: null,
+}
+
+function sidebarReducer(state: SidebarState, action: SidebarAction): SidebarState {
+  switch (action.type) {
+    case 'MAP_CLICK':
+      return {
+        ...initialSidebarState,
+        view: 'submit',
+        clickedCoords: { lat: action.lat, lng: action.lng },
+        previewCoords: { lat: action.lat, lng: action.lng },
+      }
+    case 'SELECT_LOCATION':
+      return { ...initialSidebarState, view: 'location', selectedLocation: action.location }
+    case 'SELECT_SUBMISSION':
+      return {
+        ...initialSidebarState,
+        view: 'submission',
+        selectedSubmission: action.submission,
+        previewCoords:
+          action.submission.proposed_lat && action.submission.proposed_lng
+            ? { lat: action.submission.proposed_lat, lng: action.submission.proposed_lng }
+            : null,
+      }
+    case 'ADD_PHOTOS':
+      return {
+        ...initialSidebarState,
+        view: 'submit',
+        submitMode: 'add-photos',
+        submitLocation: action.location,
+        previewCoords: { lat: action.location.lat, lng: action.location.lng },
+      }
+    case 'REPORT_SIGHTING':
+      return { ...initialSidebarState, view: 'submit' }
+    case 'CLOSE_FORM':
+      return { ...initialSidebarState }
+    case 'CLOSE_LOCATION':
+      return { ...initialSidebarState }
+    case 'SET_PREVIEW_COORDS':
+      return { ...state, previewCoords: { lat: action.lat, lng: action.lng } }
+    case 'MAP_CLICK_OUT_OF_BOUNDS':
+      return { ...state, mapBoundsError: 'Please add sightings within the San Francisco Bay Area.' }
+  }
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
 function LionsPage() {
   const initialLocations = Route.useLoaderData()
   const { isAuthenticated } = useAuth()
@@ -49,54 +128,25 @@ function LionsPage() {
     initialData: initialLocations,
   })
 
-  const [selectedLocation, setSelectedLocation] = useState<MapLocation | null>(null)
-  const [showSubmitForm, setShowSubmitForm] = useState(false)
-  const [clickedCoords, setClickedCoords] = useState<{ lat: number; lng: number } | null>(null)
-  const [submitLocation, setSubmitLocation] = useState<MapLocation | null>(null)
-  const [submitMode, setSubmitMode] = useState<'new' | 'add-photos'>('new')
-
-  const [previewCoords, setPreviewCoords] = useState<{ lat: number; lng: number } | null>(null)
-  const [selectedSubmission, setSelectedSubmission] = useState<MapSubmission | null>(null)
-  const [mapBoundsError, setMapBoundsError] = useState<string | null>(null)
+  const [state, dispatch] = useReducer(sidebarReducer, initialSidebarState)
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
-    setMapBoundsError(null)
-    setClickedCoords({ lat, lng })
-    setPreviewCoords({ lat, lng })
-    setShowSubmitForm(true)
-    setSelectedLocation(null)
-    setSelectedSubmission(null)
+    dispatch({ type: 'MAP_CLICK', lat, lng })
   }, [])
 
   const handleSelectLocation = useCallback((location: MapLocation) => {
-    setMapBoundsError(null)
-    setSelectedLocation(location)
-    setShowSubmitForm(false)
-    setSelectedSubmission(null)
-    setSubmitLocation(null)
+    dispatch({ type: 'SELECT_LOCATION', location })
   }, [])
 
   const handleSelectSubmission = useCallback((submission: MapSubmission) => {
-    setMapBoundsError(null)
-    setSelectedSubmission(submission)
-    setSelectedLocation(null)
-    setShowSubmitForm(false)
-    setSubmitLocation(null)
-    if (submission.proposed_lat && submission.proposed_lng) {
-      setPreviewCoords({ lat: submission.proposed_lat, lng: submission.proposed_lng })
-    }
+    dispatch({ type: 'SELECT_SUBMISSION', submission })
   }, [])
 
   const handleAddPhotos = useCallback((location: MapLocation) => {
-    setMapBoundsError(null)
-    setSubmitMode('add-photos')
-    setSubmitLocation(location)
-    setShowSubmitForm(true)
-    setSelectedLocation(null)
-    setSelectedSubmission(null)
-    setClickedCoords(null)
-    setPreviewCoords({ lat: location.lat, lng: location.lng })
+    dispatch({ type: 'ADD_PHOTOS', location })
   }, [])
+
+  const showPreviewCoords = state.view === 'submit' || state.view === 'submission'
 
   return (
     <main className="px-4 pb-8 pt-14">
@@ -116,15 +166,7 @@ function LionsPage() {
         <button
           type="button"
           data-testid="report-sighting-btn"
-          onClick={() => {
-            setSubmitMode('new')
-            setSubmitLocation(null)
-            setShowSubmitForm(true)
-            setSelectedLocation(null)
-            setSelectedSubmission(null)
-            setClickedCoords(null)
-            setPreviewCoords(null)
-          }}
+          onClick={() => dispatch({ type: 'REPORT_SIGHTING' })}
           className="rounded-full bg-[var(--blue-deep)] px-4 py-1.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)]"
         >
           + Report Sighting
@@ -134,53 +176,44 @@ function LionsPage() {
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 lg:flex-row">
         {/* Map */}
         <div className="island-shell relative h-[55dvh] min-h-[420px] flex-1 overflow-hidden rounded-2xl lg:h-[calc(100dvh-14rem)] lg:min-h-[720px]">
-          {mapBoundsError && (
+          {state.mapBoundsError && (
             <div
               data-testid="map-bounds-error"
               className="pointer-events-none absolute left-3 right-3 top-3 z-10 rounded-xl border border-red-500/20 bg-white/80 px-3 py-2 text-sm font-semibold text-red-700 shadow-sm backdrop-blur-sm"
             >
-              {mapBoundsError}
+              {state.mapBoundsError}
             </div>
           )}
-          <Suspense
-            fallback={
-              <MapSkeleton />
-            }
-          >
+          <Suspense fallback={<MapSkeleton />}>
             <MapView
               locations={locations}
               onSelectLocation={handleSelectLocation}
               onMapClick={handleMapClick}
-              onMapClickOutOfBounds={() => setMapBoundsError('Please add sightings within the San Francisco Bay Area.')}
-              selectedLocationId={selectedLocation?.id}
-              previewCoords={showSubmitForm || selectedSubmission ? previewCoords : null}
+              onMapClickOutOfBounds={() => dispatch({ type: 'MAP_CLICK_OUT_OF_BOUNDS' })}
+              selectedLocationId={state.selectedLocation?.id}
+              previewCoords={showPreviewCoords ? state.previewCoords : null}
             />
           </Suspense>
         </div>
 
         {/* Sidebar */}
         <div className="w-full shrink-0 lg:w-80">
-          {showSubmitForm ? (
+          {state.view === 'submit' ? (
             <SubmissionForm
               mapSlug="lions"
-              mode={submitMode}
-              locationId={submitMode === 'add-photos' ? submitLocation?.id : undefined}
-              initialName={submitMode === 'add-photos' ? submitLocation?.name : undefined}
-              initialAddress={submitMode === 'add-photos' ? submitLocation?.address ?? undefined : undefined}
-              onClose={() => {
-                setShowSubmitForm(false)
-                setSubmitLocation(null)
-                setSubmitMode('new')
-                setPreviewCoords(null)
-              }}
-              initialLat={clickedCoords?.lat}
-              initialLng={clickedCoords?.lng}
-              onCoordsChange={(lat, lng) => setPreviewCoords({ lat, lng })}
+              mode={state.submitMode}
+              locationId={state.submitMode === 'add-photos' ? state.submitLocation?.id : undefined}
+              initialName={state.submitMode === 'add-photos' ? state.submitLocation?.name : undefined}
+              initialAddress={state.submitMode === 'add-photos' ? state.submitLocation?.address ?? undefined : undefined}
+              onClose={() => dispatch({ type: 'CLOSE_FORM' })}
+              initialLat={state.clickedCoords?.lat}
+              initialLng={state.clickedCoords?.lng}
+              onCoordsChange={(lat, lng) => dispatch({ type: 'SET_PREVIEW_COORDS', lat, lng })}
             />
-          ) : selectedLocation ? (
+          ) : state.view === 'location' && state.selectedLocation ? (
             <LocationDetail
-              location={selectedLocation}
-              onClose={() => setSelectedLocation(null)}
+              location={state.selectedLocation}
+              onClose={() => dispatch({ type: 'CLOSE_LOCATION' })}
               onAddPhotos={handleAddPhotos}
             />
           ) : (
@@ -219,7 +252,7 @@ function LionsPage() {
               <AdminPanel
                 mapSlug="lions"
                 onSelectSubmission={handleSelectSubmission}
-                selectedSubmissionId={selectedSubmission?.id}
+                selectedSubmissionId={state.selectedSubmission?.id}
               />
             </div>
           )}

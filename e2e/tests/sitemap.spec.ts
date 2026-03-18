@@ -14,7 +14,6 @@ test('sitemap.xml returns valid XML with expected URLs', async ({ request }) => 
   // Static pages
   expect(body).toContain('https://liampulsifer.com/')
   expect(body).toContain('https://liampulsifer.com/blog')
-  expect(body).toContain('https://liampulsifer.com/about')
   expect(body).toContain('https://liampulsifer.com/fun')
 
   // Should include exactly the 2 published seed posts (not the draft)

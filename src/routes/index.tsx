@@ -44,12 +44,6 @@ function Home() {
               >
                 Check out my Blog
               </Link>
-              {/* <Link
-                to="/about"
-                className="rounded-full border border-[rgba(17,24,39,0.2)] bg-white/50 px-5 py-2.5 text-sm font-semibold text-[var(--text)] no-underline transition hover:-translate-y-0.5 hover:border-[rgba(17,24,39,0.35)]"
-              >
-                About Me
-              </Link> */}
             </div>
           </div>
 
