@@ -1,12 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { createBrowserClient } from '@supabase/ssr'
-
-export type SiteView = {
-  id: number
-  creation_date: string
-  user_ip: string
-  url: string
-}
+import type { Database } from '#/lib/database.types'
 
 // Server-side client (service-role key — bypasses RLS, never sent to browser).
 export function getSupabaseServiceClient() {
@@ -15,7 +9,7 @@ export function getSupabaseServiceClient() {
   if (!url || !key) {
     throw new Error('SUPABASE_URL and SUPABASE_KEY must be set')
   }
-  return createClient(url, key)
+  return createClient<Database>(url, key)
 }
 
 // Browser-side client — stores session in cookies for SSR compatibility.
@@ -28,7 +22,7 @@ export function getSupabaseBrowserClient() {
   }
   // Use an explicit storage/cookie key so browser + server always agree, even if
   // the Supabase URL differs slightly between build/runtime (localhost vs 127.0.0.1).
-  return createBrowserClient(url, key, {
+  return createBrowserClient<Database>(url, key, {
     cookieOptions: { name: 'sb-personal-site-auth' },
   })
 }
