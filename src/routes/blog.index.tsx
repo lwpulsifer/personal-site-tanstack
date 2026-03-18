@@ -8,6 +8,7 @@ import { getPublishedPosts, type DbPost } from '#/server/posts'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
+import { ErrorBoundary } from '#/components/ErrorBoundary'
 
 const canonical = `${SITE_URL}/blog`
 const pageTitle = `Blog | ${SITE_TITLE}`
@@ -78,25 +79,27 @@ function BlogIndex() {
   return (
     <>
       {editingPost && (
-        <PostEditor
-          initial={
-            editingPost === 'new'
-              ? {}
-              : {
-                  id: editingPost.id,
-                  slug: editingPost.slug,
-                  title: editingPost.title,
-                  description: editingPost.description ?? '',
-                  content: editingPost.content,
-                  tags: editingPost.tags,
-                  hero_image: editingPost.hero_image ?? '',
-                  status: editingPost.status,
-                }
-          }
-          knownTags={knownTags}
-          onClose={() => setEditingPost(null)}
-          onSaved={handleSaved}
-        />
+        <ErrorBoundary>
+          <PostEditor
+            initial={
+              editingPost === 'new'
+                ? {}
+                : {
+                    id: editingPost.id,
+                    slug: editingPost.slug,
+                    title: editingPost.title,
+                    description: editingPost.description ?? '',
+                    content: editingPost.content,
+                    tags: editingPost.tags,
+                    hero_image: editingPost.hero_image ?? '',
+                    status: editingPost.status,
+                  }
+            }
+            knownTags={knownTags}
+            onClose={() => setEditingPost(null)}
+            onSaved={handleSaved}
+          />
+        </ErrorBoundary>
       )}
 
       <main className="page-wrap px-4 pb-8 pt-14">
