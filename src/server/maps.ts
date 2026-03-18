@@ -3,6 +3,7 @@ import { getSupabaseServiceClient } from '#/lib/supabase'
 import { requireAuth } from '#/server/auth.server'
 import { z } from 'zod'
 import type { MapLocation, MapPhoto, MapSubmission } from '#/lib/map-types'
+import type { Tables } from '#/lib/database.types'
 import { DateTime } from 'luxon'
 import tzLookup from 'tz-lookup'
 import { isWithinBayArea } from '#/lib/geo'
@@ -96,7 +97,8 @@ export const getApprovedLocations = createServerFn({ method: 'GET' })
     if (error) throw new Error(error.message)
 
     // Get photo counts per location
-    const locationIds = (locations ?? []).map((l) => l.id)
+    const locs = (locations ?? []) as Tables<'map_locations'>[]
+    const locationIds = locs.map((l) => l.id)
     const { data: photos } = locationIds.length > 0
       ? await supabase
           .from('map_photos')
@@ -105,11 +107,11 @@ export const getApprovedLocations = createServerFn({ method: 'GET' })
       : { data: [] }
 
     const countMap = new Map<string, number>()
-    for (const p of photos ?? []) {
+    for (const p of (photos ?? []) as { location_id: string }[]) {
       countMap.set(p.location_id, (countMap.get(p.location_id) ?? 0) + 1)
     }
 
-    return (locations ?? []).map((loc) => ({
+    return locs.map((loc) => ({
       ...loc,
       photo_count: countMap.get(loc.id) ?? 0,
     })) as MapLocation[]
@@ -197,6 +199,7 @@ export const submitSighting = createServerFn({ method: 'POST' })
       .single()
 
     if (error) throw new Error(error.message)
+    const sub = submission as Tables<'map_submissions'>
 
     // Link photos to submission — location_id is null until approval
     if (data.photos.length > 0) {
@@ -209,7 +212,7 @@ export const submitSighting = createServerFn({ method: 'POST' })
         const takenAt = localToUtcIso(p.takenAtLocal ?? null, tz)
         return {
           location_id: data.locationId ?? null,
-          submission_id: submission.id,
+          submission_id: sub.id,
           event_id: null,
           storage_path: p.storagePath,
           exif_lat: coords?.lat ?? null,
@@ -222,7 +225,7 @@ export const submitSighting = createServerFn({ method: 'POST' })
       if (photoError) throw new Error(photoError.message)
     }
 
-    return submission
+    return sub
   })
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
@@ -248,7 +251,8 @@ export const getPendingSubmissions = createServerFn({ method: 'GET' })
     if (error) throw new Error(error.message)
 
     // Fetch photos for each submission
-    const submissionIds = (submissions ?? []).map((s) => s.id)
+    const subs = (submissions ?? []) as Tables<'map_submissions'>[]
+    const submissionIds = subs.map((s) => s.id)
     const { data: photos } = submissionIds.length > 0
       ? await supabase
           .from('map_photos')
@@ -257,14 +261,14 @@ export const getPendingSubmissions = createServerFn({ method: 'GET' })
       : { data: [] }
 
     const photosBySubmission = new Map<string, MapPhoto[]>()
-    for (const p of photos ?? []) {
+    for (const p of (photos ?? []) as MapPhoto[]) {
       if (!p.submission_id) continue
       const existing = photosBySubmission.get(p.submission_id) ?? []
-      existing.push(p as MapPhoto)
+      existing.push(p)
       photosBySubmission.set(p.submission_id, existing)
     }
 
-    return (submissions ?? []).map((s) => ({
+    return subs.map((s) => ({
       ...s,
       photos: photosBySubmission.get(s.id) ?? [],
     })) as MapSubmission[]
@@ -284,23 +288,24 @@ export const approveSubmission = createServerFn({ method: 'POST' })
       .single()
 
     if (fetchError || !submission) throw new Error('Submission not found')
+    const sub2 = submission as Tables<'map_submissions'>
 
-    let locationId = submission.location_id
+    let locationId = sub2.location_id
 
     // If no existing location, try to reuse an existing location within a
     // small radius. Otherwise create a new location from the proposed fields.
     if (!locationId) {
-      if (!submission.proposed_lat || !submission.proposed_lng) {
+      if (!sub2.proposed_lat || !sub2.proposed_lng) {
         throw new Error('Submission has no coordinates')
       }
-      if (!isWithinBayArea(submission.proposed_lat, submission.proposed_lng)) {
+      if (!isWithinBayArea(sub2.proposed_lat, sub2.proposed_lng)) {
         throw new Error('Submission coordinates are outside of the San Francisco Bay Area.')
       }
 
       const existingLocationId = await findExistingLocationWithinRadius({
         supabase,
-        mapSlug: submission.map_slug,
-        coords: { lat: submission.proposed_lat, lng: submission.proposed_lng },
+        mapSlug: sub2.map_slug,
+        coords: { lat: sub2.proposed_lat, lng: sub2.proposed_lng },
         radiusMeters: LOCATION_MERGE_RADIUS_METERS,
       })
       if (existingLocationId) {
@@ -309,45 +314,46 @@ export const approveSubmission = createServerFn({ method: 'POST' })
       const { data: newLoc, error: locError } = await supabase
         .from('map_locations')
         .insert({
-          map_slug: submission.map_slug,
-          name: submission.proposed_name ?? 'Unnamed Location',
-          lat: submission.proposed_lat,
-          lng: submission.proposed_lng,
-          address: submission.proposed_address ?? null,
+          map_slug: sub2.map_slug,
+          name: sub2.proposed_name ?? 'Unnamed Location',
+          lat: sub2.proposed_lat,
+          lng: sub2.proposed_lng,
+          address: sub2.proposed_address ?? null,
           created_by: user.id,
         })
         .select()
         .single()
 
       if (locError) throw new Error(locError.message)
-      locationId = newLoc.id
+      locationId = (newLoc as Tables<'map_locations'>).id
       }
     }
 
-    const occurredAt = submission.occurred_at ?? submission.created_at ?? new Date().toISOString()
-    const timeZone = submission.time_zone ?? DEFAULT_TIME_ZONE
+    const occurredAt = sub2.occurred_at ?? sub2.created_at ?? new Date().toISOString()
+    const timeZone = sub2.time_zone ?? DEFAULT_TIME_ZONE
 
     const { data: event, error: eventError } = await supabase
       .from('map_events')
       .insert({
-        map_slug: submission.map_slug,
+        map_slug: sub2.map_slug,
         location_id: locationId,
         occurred_at: occurredAt,
         time_zone: timeZone,
-        notes: submission.notes ?? null,
-        submitter_name: submission.submitter_name ?? null,
-        submitter_email: submission.submitter_email ?? null,
+        notes: sub2.notes ?? null,
+        submitter_name: sub2.submitter_name ?? null,
+        submitter_email: sub2.submitter_email ?? null,
         created_by: user.id,
       })
       .select()
       .single()
 
     if (eventError || !event) throw new Error(eventError?.message ?? 'Could not create event')
+    const ev = event as Tables<'map_events'>
 
     // Link any photos from this submission to the location
     await supabase
       .from('map_photos')
-      .update({ location_id: locationId, event_id: event.id })
+      .update({ location_id: locationId, event_id: ev.id })
       .eq('submission_id', data.submissionId)
 
     // Mark submission as approved
@@ -363,7 +369,7 @@ export const approveSubmission = createServerFn({ method: 'POST' })
 
     if (updateError) throw new Error(updateError.message)
 
-    return { ok: true, locationId, eventId: event.id }
+    return { ok: true, locationId, eventId: ev.id }
   })
 
 export const rejectSubmission = createServerFn({ method: 'POST' })

@@ -1,0 +1,40 @@
+name: DB Type Drift Check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'src/lib/database.types.ts'
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'src/lib/database.types.ts'
+
+jobs:
+  drift-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        run: supabase start
+
+      - name: Check for type drift
+        run: |
+          supabase gen types typescript --local 2>/dev/null > /tmp/generated.ts
+          if ! diff -q src/lib/database.types.ts /tmp/generated.ts &>/dev/null; then
+            echo "❌ database.types.ts does not match the schema."
+            echo ""
+            diff src/lib/database.types.ts /tmp/generated.ts || true
+            echo ""
+            echo "Run: npm run db:types"
+            exit 1
+          fi
+          echo "✓ database.types.ts is up to date."

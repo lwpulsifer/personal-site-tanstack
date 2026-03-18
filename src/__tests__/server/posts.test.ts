@@ -147,7 +147,7 @@ describe('getAllTags', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns a sorted, deduplicated list of tags across all posts', async () => {
-    const chain = makeChain({})
+    const chain = makeChain({ data: null, error: null })
     chain['select'] = vi.fn().mockResolvedValue({
       data: [{ tags: ['react', 'typescript'] }, { tags: ['typescript', 'css'] }],
       error: null,

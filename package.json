@@ -19,7 +19,10 @@
     "check": "biome check",
     "script": "dotenv -e .env.local -- tsx",
     "db:reset": "supabase db reset --local",
-    "supabase:env": "bash scripts/supabase-env-file.sh"
+    "db:types": "bash scripts/generate-types.sh",
+    "typecheck": "tsc --noEmit",
+    "supabase:env": "bash scripts/supabase-env-file.sh",
+    "prepare": "ln -sf ../../scripts/pre-commit.sh .git/hooks/pre-commit 2>/dev/null || true"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
@@ -56,10 +59,12 @@
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/leaflet": "^1.9.21",
+    "@types/luxon": "^3.7.1",
     "@types/node": "^22.10.2",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@types/sanitize-html": "^2.16.0",
+    "@types/tz-lookup": "^6.1.2",
     "@vitejs/plugin-react": "^6.0.0",
     "dotenv-cli": "^11.0.0",
     "happy-dom": "^20.8.3",
@@ -70,7 +75,7 @@
     "typescript": "^5.7.2",
     "vite": "^8.0.0",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^3.0.5",
+    "vitest": "^4.1.0",
     "zod": "^4.3.5"
   }
 }

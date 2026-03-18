@@ -132,7 +132,7 @@ describe('submitSighting', () => {
       makeChain({ data: { id: 'sub-new' }, error: null }),
     ))
 
-    const result = await (submitSighting as (a: { data: Record<string, unknown> }) => Promise<{ id: string }>)(
+    const result = await (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<{ id: string }>)(
       { data: { mapSlug: 'lions', proposedName: 'Test Lion', proposedLat: 37.78, proposedLng: -122.42, photos: [] } },
     )
 
@@ -146,7 +146,7 @@ describe('submitSighting', () => {
       photosChain,
     ))
 
-    const result = await (submitSighting as (a: { data: Record<string, unknown> }) => Promise<{ id: string }>)(
+    const result = await (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<{ id: string }>)(
       { data: { mapSlug: 'lions', proposedName: 'Test', photos: [{ storagePath: 'img1.jpg' }, { storagePath: 'img2.jpg' }] } },
     )
 
@@ -164,7 +164,7 @@ describe('submitSighting', () => {
       photosChain,
     ))
 
-    await (submitSighting as (a: { data: Record<string, unknown> }) => Promise<{ id: string }>)(
+    await (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<{ id: string }>)(
       { data: { mapSlug: 'lions', locationId: 'loc-1', photos: [{ storagePath: 'photo.jpg' }] } },
     )
 
@@ -179,7 +179,7 @@ describe('submitSighting', () => {
     ))
 
     await expect(
-      (submitSighting as (a: { data: Record<string, unknown> }) => Promise<unknown>)(
+      (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<unknown>)(
         { data: { mapSlug: 'lions', proposedName: 'Test', photos: [] } },
       ),
     ).rejects.toThrow('Insert failed')
@@ -190,7 +190,7 @@ describe('submitSighting', () => {
     vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(chain))
 
     await expect(
-      (submitSighting as (a: { data: Record<string, unknown> }) => Promise<unknown>)({
+      (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<unknown>)({
         data: {
           mapSlug: 'lions',
           proposedLat: 34.05,

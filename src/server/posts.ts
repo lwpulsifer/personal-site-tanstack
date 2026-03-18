@@ -2,23 +2,11 @@ import { createServerFn } from '@tanstack/react-start'
 import { getSupabaseServiceClient } from '#/lib/supabase'
 import { requireAuth } from '#/server/auth.server'
 import { z } from 'zod'
+import type { Enums, Tables } from '#/lib/database.types'
 
-export type PostStatus = 'PENDING' | 'PUBLISHED' | 'ARCHIVED'
+export type PostStatus = Enums<'post_status'>
 
-export type DbPost = {
-  id: string
-  slug: string
-  title: string
-  description: string | null
-  content: string
-  tags: string[]
-  hero_image: string | null
-  published_at: string | null
-  created_at: string
-  updated_at: string
-  author_id: string | null
-  status: PostStatus
-}
+export type DbPost = Tables<'posts'> & { status: PostStatus }
 
 const UpsertPostSchema = z.object({
   id: z.string().optional(),
@@ -47,8 +35,9 @@ export const getPublishedPosts = createServerFn({ method: 'GET' }).handler(
         .eq('status', 'PUBLISHED'),
     ])
     if (error) throw new Error(error.message)
-    const publishedIds = new Set((statuses ?? []).map((s) => s.post_id))
-    return (posts ?? [])
+    const publishedIds = new Set((statuses ?? []).map((s) => (s as Tables<'post_current_status'>).post_id))
+    const rows = (posts ?? []) as Tables<'posts'>[]
+    return rows
       .filter((p) => publishedIds.has(p.id))
       .map((p) => ({ ...p, status: 'PUBLISHED' as PostStatus })) as DbPost[]
   },
@@ -64,15 +53,16 @@ export const getPublishedPost = createServerFn({ method: 'GET' })
       .eq('slug', data.slug)
       .single()
     if (error || !post) return null
+    const p = post as Tables<'posts'>
 
     const { data: statusRow } = await supabase
       .from('post_current_status')
       .select('status')
-      .eq('post_id', post.id)
+      .eq('post_id', p.id)
       .single()
     if (statusRow?.status !== 'PUBLISHED') return null
 
-    return { ...post, status: 'PUBLISHED' as PostStatus } as DbPost
+    return { ...p, status: 'PUBLISHED' as PostStatus } as DbPost
   })
 
 export const getAllTags = createServerFn({ method: 'GET' }).handler(async () => {
@@ -97,8 +87,10 @@ export const getAdminPosts = createServerFn({ method: 'GET' }).handler(
       supabase.from('post_current_status').select('*'),
     ])
     if (error) throw new Error(error.message)
-    const statusById = new Map((statuses ?? []).map((s) => [s.post_id, s.status]))
-    return (posts ?? []).map((post) => ({
+    const statusRows = (statuses ?? []) as Tables<'post_current_status'>[]
+    const statusById = new Map(statusRows.map((s) => [s.post_id, s.status]))
+    const rows = (posts ?? []) as Tables<'posts'>[]
+    return rows.map((post) => ({
       ...post,
       status: (statusById.get(post.id) ?? 'PENDING') as PostStatus,
     })) as DbPost[]
@@ -116,12 +108,13 @@ export const getPostBySlug = createServerFn({ method: 'GET' })
       .eq('slug', data.slug)
       .single()
     if (error || !post) return null
+    const p = post as Tables<'posts'>
     const { data: statusRow } = await supabase
       .from('post_current_status')
       .select('status')
-      .eq('post_id', post.id)
+      .eq('post_id', p.id)
       .single()
-    return { ...post, status: (statusRow?.status ?? 'PENDING') as PostStatus } as DbPost
+    return { ...p, status: (statusRow?.status ?? 'PENDING') as PostStatus } as DbPost
   })
 
 export const upsertPost = createServerFn({ method: 'POST' })

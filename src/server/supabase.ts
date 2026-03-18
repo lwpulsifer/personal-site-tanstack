@@ -1,5 +1,6 @@
 import { getCookies, setCookie } from '@tanstack/react-start/server'
 import { createServerClient } from '@supabase/ssr'
+import type { Database } from '#/lib/database.types'
 
 /**
  * Builds a Supabase server client that reads/writes the user session from
@@ -17,7 +18,7 @@ export function getSupabaseSessionClient() {
   if (!url || !key) {
     throw new Error('VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set')
   }
-  return createServerClient(url, key, {
+  return createServerClient<Database>(url, key, {
     // Keep in sync with getSupabaseBrowserClient() so server-fns can read the
     // same auth cookies the browser writes.
     cookieOptions: { name: 'sb-personal-site-auth' },
