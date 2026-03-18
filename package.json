@@ -19,7 +19,10 @@
     "check": "biome check",
     "script": "dotenv -e .env.local -- tsx",
     "db:reset": "supabase db reset --local",
-    "supabase:env": "bash scripts/supabase-env-file.sh"
+    "db:types": "bash scripts/generate-types.sh",
+    "typecheck": "tsc --noEmit",
+    "supabase:env": "bash scripts/supabase-env-file.sh",
+    "prepare": "ln -sf ../../scripts/pre-commit.sh .git/hooks/pre-commit 2>/dev/null || true"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",

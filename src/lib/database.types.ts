@@ -1,16 +1,3 @@
-/**
- * Supabase Database type definitions.
- *
- * These types mirror the Supabase generated format. To regenerate from a
- * running Supabase instance, run:
- *
- *   npx supabase gen types typescript --local > src/lib/database.types.ts
- *
- * Or, if you have a linked remote project:
- *
- *   npx supabase gen types typescript --linked > src/lib/database.types.ts
- */
-
 export type Json =
   | string
   | number
@@ -20,315 +7,340 @@ export type Json =
   | Json[]
 
 export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       map_events: {
         Row: {
-          id: string
-          map_slug: string
-          location_id: string
-          occurred_at: string
-          time_zone: string
-          notes: string | null
-          submitter_name: string | null
-          submitter_email: string | null
-          created_by: string | null
           created_at: string
+          created_by: string | null
+          id: string
+          location_id: string
+          map_slug: string
+          notes: string | null
+          occurred_at: string
+          submitter_email: string | null
+          submitter_name: string | null
+          time_zone: string
         }
         Insert: {
-          id?: string
-          map_slug: string
-          location_id: string
-          occurred_at: string
-          time_zone?: string
-          notes?: string | null
-          submitter_name?: string | null
-          submitter_email?: string | null
-          created_by?: string | null
           created_at?: string
+          created_by?: string | null
+          id?: string
+          location_id: string
+          map_slug: string
+          notes?: string | null
+          occurred_at: string
+          submitter_email?: string | null
+          submitter_name?: string | null
+          time_zone?: string
         }
         Update: {
-          id?: string
-          map_slug?: string
-          location_id?: string
-          occurred_at?: string
-          time_zone?: string
-          notes?: string | null
-          submitter_name?: string | null
-          submitter_email?: string | null
-          created_by?: string | null
           created_at?: string
+          created_by?: string | null
+          id?: string
+          location_id?: string
+          map_slug?: string
+          notes?: string | null
+          occurred_at?: string
+          submitter_email?: string | null
+          submitter_name?: string | null
+          time_zone?: string
         }
         Relationships: [
           {
-            foreignKeyName: 'map_events_location_id_fkey'
-            columns: ['location_id']
+            foreignKeyName: "map_events_location_id_fkey"
+            columns: ["location_id"]
             isOneToOne: false
-            referencedRelation: 'map_locations'
-            referencedColumns: ['id']
+            referencedRelation: "map_locations"
+            referencedColumns: ["id"]
           },
         ]
       }
       map_locations: {
         Row: {
-          id: string
-          map_slug: string
-          name: string
-          description: string | null
           address: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
           lat: number
           lng: number
-          created_at: string
+          map_slug: string
+          name: string
           updated_at: string
-          created_by: string | null
         }
         Insert: {
-          id?: string
-          map_slug: string
-          name: string
-          description?: string | null
           address?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
           lat: number
           lng: number
-          created_at?: string
+          map_slug: string
+          name: string
           updated_at?: string
-          created_by?: string | null
         }
         Update: {
-          id?: string
-          map_slug?: string
-          name?: string
-          description?: string | null
           address?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
           lat?: number
           lng?: number
-          created_at?: string
+          map_slug?: string
+          name?: string
           updated_at?: string
-          created_by?: string | null
         }
         Relationships: []
       }
       map_photos: {
         Row: {
-          id: string
-          location_id: string | null
-          submission_id: string | null
-          event_id: string | null
-          storage_path: string
           caption: string | null
+          created_at: string
+          event_id: string | null
           exif_lat: number | null
           exif_lng: number | null
+          id: string
+          location_id: string | null
+          storage_path: string
+          submission_id: string | null
           taken_at: string | null
           time_zone: string | null
-          created_at: string
         }
         Insert: {
-          id?: string
-          location_id?: string | null
-          submission_id?: string | null
-          event_id?: string | null
-          storage_path: string
           caption?: string | null
+          created_at?: string
+          event_id?: string | null
           exif_lat?: number | null
           exif_lng?: number | null
+          id?: string
+          location_id?: string | null
+          storage_path: string
+          submission_id?: string | null
           taken_at?: string | null
           time_zone?: string | null
-          created_at?: string
         }
         Update: {
-          id?: string
-          location_id?: string | null
-          submission_id?: string | null
-          event_id?: string | null
-          storage_path?: string
           caption?: string | null
+          created_at?: string
+          event_id?: string | null
           exif_lat?: number | null
           exif_lng?: number | null
+          id?: string
+          location_id?: string | null
+          storage_path?: string
+          submission_id?: string | null
           taken_at?: string | null
           time_zone?: string | null
-          created_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: 'map_photos_location_id_fkey'
-            columns: ['location_id']
+            foreignKeyName: "map_photos_event_id_fkey"
+            columns: ["event_id"]
             isOneToOne: false
-            referencedRelation: 'map_locations'
-            referencedColumns: ['id']
+            referencedRelation: "map_events"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'map_photos_submission_id_fkey'
-            columns: ['submission_id']
+            foreignKeyName: "map_photos_location_id_fkey"
+            columns: ["location_id"]
             isOneToOne: false
-            referencedRelation: 'map_submissions'
-            referencedColumns: ['id']
+            referencedRelation: "map_locations"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'map_photos_event_id_fkey'
-            columns: ['event_id']
+            foreignKeyName: "map_photos_submission_id_fkey"
+            columns: ["submission_id"]
             isOneToOne: false
-            referencedRelation: 'map_events'
-            referencedColumns: ['id']
+            referencedRelation: "map_submissions"
+            referencedColumns: ["id"]
           },
         ]
       }
       map_submissions: {
         Row: {
+          created_at: string
           id: string
-          map_slug: string
           location_id: string | null
-          proposed_name: string | null
+          map_slug: string
+          notes: string | null
+          occurred_at: string | null
+          proposed_address: string | null
           proposed_lat: number | null
           proposed_lng: number | null
-          proposed_address: string | null
-          occurred_at: string | null
-          time_zone: string | null
-          notes: string | null
-          submitter_name: string | null
-          submitter_email: string | null
-          status: Database['public']['Enums']['map_submission_status']
+          proposed_name: string | null
           reviewed_at: string | null
           reviewed_by: string | null
-          created_at: string
+          status: Database["public"]["Enums"]["map_submission_status"]
+          submitter_email: string | null
+          submitter_name: string | null
+          time_zone: string | null
         }
         Insert: {
+          created_at?: string
           id?: string
-          map_slug: string
           location_id?: string | null
-          proposed_name?: string | null
+          map_slug: string
+          notes?: string | null
+          occurred_at?: string | null
+          proposed_address?: string | null
           proposed_lat?: number | null
           proposed_lng?: number | null
-          proposed_address?: string | null
-          occurred_at?: string | null
-          time_zone?: string | null
-          notes?: string | null
-          submitter_name?: string | null
-          submitter_email?: string | null
-          status?: Database['public']['Enums']['map_submission_status']
+          proposed_name?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
-          created_at?: string
+          status?: Database["public"]["Enums"]["map_submission_status"]
+          submitter_email?: string | null
+          submitter_name?: string | null
+          time_zone?: string | null
         }
         Update: {
+          created_at?: string
           id?: string
-          map_slug?: string
           location_id?: string | null
-          proposed_name?: string | null
+          map_slug?: string
+          notes?: string | null
+          occurred_at?: string | null
+          proposed_address?: string | null
           proposed_lat?: number | null
           proposed_lng?: number | null
-          proposed_address?: string | null
-          occurred_at?: string | null
-          time_zone?: string | null
-          notes?: string | null
-          submitter_name?: string | null
-          submitter_email?: string | null
-          status?: Database['public']['Enums']['map_submission_status']
+          proposed_name?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
-          created_at?: string
+          status?: Database["public"]["Enums"]["map_submission_status"]
+          submitter_email?: string | null
+          submitter_name?: string | null
+          time_zone?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: 'map_submissions_location_id_fkey'
-            columns: ['location_id']
+            foreignKeyName: "map_submissions_location_id_fkey"
+            columns: ["location_id"]
             isOneToOne: false
-            referencedRelation: 'map_locations'
-            referencedColumns: ['id']
+            referencedRelation: "map_locations"
+            referencedColumns: ["id"]
           },
         ]
       }
       post_status_update: {
         Row: {
-          id: string
-          post_id: string
-          status: Database['public']['Enums']['post_status']
           changed_at: string
           changed_by: string | null
+          id: string
+          post_id: string
+          status: Database["public"]["Enums"]["post_status"]
         }
         Insert: {
+          changed_at?: string
+          changed_by?: string | null
           id?: string
           post_id: string
-          status: Database['public']['Enums']['post_status']
-          changed_at?: string
-          changed_by?: string | null
+          status: Database["public"]["Enums"]["post_status"]
         }
         Update: {
-          id?: string
-          post_id?: string
-          status?: Database['public']['Enums']['post_status']
           changed_at?: string
           changed_by?: string | null
+          id?: string
+          post_id?: string
+          status?: Database["public"]["Enums"]["post_status"]
         }
         Relationships: [
           {
-            foreignKeyName: 'post_status_update_post_id_fkey'
-            columns: ['post_id']
+            foreignKeyName: "post_status_update_post_id_fkey"
+            columns: ["post_id"]
             isOneToOne: false
-            referencedRelation: 'posts'
-            referencedColumns: ['id']
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
           },
         ]
       }
       posts: {
         Row: {
-          id: string
-          slug: string
-          title: string
-          description: string | null
-          content: string
-          tags: string[]
-          hero_image: string | null
-          published_at: string | null
-          created_at: string
-          updated_at: string
           author_id: string | null
+          content: string
+          created_at: string
+          description: string | null
+          hero_image: string | null
+          id: string
+          published_at: string | null
+          slug: string
+          tags: string[]
+          title: string
+          updated_at: string
         }
         Insert: {
-          id?: string
-          slug: string
-          title: string
-          description?: string | null
-          content?: string
-          tags?: string[]
-          hero_image?: string | null
-          published_at?: string | null
-          created_at?: string
-          updated_at?: string
           author_id?: string | null
+          content?: string
+          created_at?: string
+          description?: string | null
+          hero_image?: string | null
+          id?: string
+          published_at?: string | null
+          slug: string
+          tags?: string[]
+          title: string
+          updated_at?: string
         }
         Update: {
-          id?: string
-          slug?: string
-          title?: string
-          description?: string | null
-          content?: string
-          tags?: string[]
-          hero_image?: string | null
-          published_at?: string | null
-          created_at?: string
-          updated_at?: string
           author_id?: string | null
+          content?: string
+          created_at?: string
+          description?: string | null
+          hero_image?: string | null
+          id?: string
+          published_at?: string | null
+          slug?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
       site_views: {
         Row: {
-          id: number
           created_at: string | null
-          user_ip: string | null
+          id: number
           url: string | null
+          user_ip: string | null
         }
         Insert: {
-          id?: number
           created_at?: string | null
-          user_ip?: string | null
+          id?: number
           url?: string | null
+          user_ip?: string | null
         }
         Update: {
-          id?: number
           created_at?: string | null
-          user_ip?: string | null
+          id?: number
           url?: string | null
+          user_ip?: string | null
         }
         Relationships: []
       }
@@ -336,54 +348,168 @@ export type Database = {
     Views: {
       page_view_counts: {
         Row: {
-          url: string | null
           count: number | null
+          url: string | null
         }
         Relationships: []
       }
       post_current_status: {
         Row: {
-          post_id: string | null
-          status: Database['public']['Enums']['post_status'] | null
           changed_at: string | null
           changed_by: string | null
+          post_id: string | null
+          status: Database["public"]["Enums"]["post_status"] | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "post_status_update_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
-    Functions: Record<string, never>
-    Enums: {
-      map_submission_status: 'pending' | 'approved' | 'rejected'
-      post_status: 'PENDING' | 'PUBLISHED' | 'ARCHIVED'
+    Functions: {
+      [_ in never]: never
     }
-    CompositeTypes: Record<string, never>
+    Enums: {
+      map_submission_status: "pending" | "approved" | "rejected"
+      post_status: "PENDING" | "PUBLISHED" | "ARCHIVED"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
 }
 
-// ── Convenience helpers ─────────────────────────────────────────────────────
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type PublicSchema = Database[Extract<keyof Database, 'public'>]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
-/** Shorthand for a row type from any public table. */
 export type Tables<
-  T extends keyof (PublicSchema['Tables'] & PublicSchema['Views']),
-> = T extends keyof PublicSchema['Tables']
-  ? PublicSchema['Tables'][T]['Row']
-  : T extends keyof PublicSchema['Views']
-    ? PublicSchema['Views'][T]['Row']
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
     : never
 
-/** Shorthand for an insert type from any public table. */
 export type TablesInsert<
-  T extends keyof PublicSchema['Tables'],
-> = PublicSchema['Tables'][T]['Insert']
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
-/** Shorthand for an update type from any public table. */
 export type TablesUpdate<
-  T extends keyof PublicSchema['Tables'],
-> = PublicSchema['Tables'][T]['Update']
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
-/** Shorthand for an enum value from the public schema. */
 export type Enums<
-  T extends keyof PublicSchema['Enums'],
-> = PublicSchema['Enums'][T]
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
+  public: {
+    Enums: {
+      map_submission_status: ["pending", "approved", "rejected"],
+      post_status: ["PENDING", "PUBLISHED", "ARCHIVED"],
+    },
+  },
+} as const
+
