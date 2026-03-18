@@ -3,7 +3,7 @@ import tsconfigPaths from 'vite-tsconfig-paths'
 import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [tsconfigPaths() as any, viteReact() as any],
+  plugins: [tsconfigPaths(), viteReact()],
   test: {
     environment: 'happy-dom',
     setupFiles: ['./src/__tests__/setup.ts'],
