@@ -1,12 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { getSupabaseClient } from '#/lib/supabase'
+import { getSupabaseServiceClient } from '#/lib/supabase'
 import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from '#/lib/site'
 
 export const Route = createFileRoute('/rss.xml')({
   server: {
     handlers: {
       GET: async () => {
-        const supabase = getSupabaseClient()
+        const supabase = getSupabaseServiceClient()
         const [{ data: posts }, { data: statuses }] = await Promise.all([
           supabase
             .from('posts')

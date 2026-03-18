@@ -11,7 +11,7 @@ import { createServerClient } from '@supabase/ssr'
  * function inside server-fn handlers (the handler body is stripped from the
  * client bundle at build time).
  */
-export function getSupabaseServerClient() {
+export function getSupabaseSessionClient() {
   const url = process.env.VITE_SUPABASE_URL
   const key = process.env.VITE_SUPABASE_ANON_KEY
   if (!url || !key) {

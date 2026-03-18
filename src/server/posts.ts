@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { getSupabaseClient } from '#/lib/supabase'
+import { getSupabaseServiceClient } from '#/lib/supabase'
 import { requireAuth } from '#/server/auth.server'
 import { z } from 'zod'
 
@@ -35,7 +35,7 @@ const UpsertPostSchema = z.object({
 
 export const getPublishedPosts = createServerFn({ method: 'GET' }).handler(
   async () => {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseServiceClient()
     const [{ data: posts, error }, { data: statuses }] = await Promise.all([
       supabase
         .from('posts')
@@ -57,7 +57,7 @@ export const getPublishedPosts = createServerFn({ method: 'GET' }).handler(
 export const getPublishedPost = createServerFn({ method: 'GET' })
   .inputValidator(z.object({ slug: z.string() }))
   .handler(async ({ data }) => {
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseServiceClient()
     const { data: post, error } = await supabase
       .from('posts')
       .select('*')
@@ -76,7 +76,7 @@ export const getPublishedPost = createServerFn({ method: 'GET' })
   })
 
 export const getAllTags = createServerFn({ method: 'GET' }).handler(async () => {
-  const supabase = getSupabaseClient()
+  const supabase = getSupabaseServiceClient()
   const { data, error } = await supabase.from('posts').select('tags')
   if (error) throw new Error(error.message)
   const tags = [...new Set((data ?? []).flatMap((p) => p.tags as string[]))]
@@ -88,7 +88,7 @@ export const getAllTags = createServerFn({ method: 'GET' }).handler(async () => 
 export const getAdminPosts = createServerFn({ method: 'GET' }).handler(
   async () => {
     await requireAuth()
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseServiceClient()
     const [{ data: posts, error }, { data: statuses }] = await Promise.all([
       supabase
         .from('posts')
@@ -109,7 +109,7 @@ export const getPostBySlug = createServerFn({ method: 'GET' })
   .inputValidator(z.object({ slug: z.string() }))
   .handler(async ({ data }) => {
     await requireAuth()
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseServiceClient()
     const { data: post, error } = await supabase
       .from('posts')
       .select('*')
@@ -128,7 +128,7 @@ export const upsertPost = createServerFn({ method: 'POST' })
   .inputValidator(UpsertPostSchema)
   .handler(async ({ data }) => {
     await requireAuth()
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseServiceClient()
     const { data: post, error } = await supabase
       .from('posts')
       .upsert(
@@ -159,7 +159,7 @@ export const setPostStatus = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     await requireAuth()
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseServiceClient()
 
     const { error } = await supabase
       .from('post_status_update')

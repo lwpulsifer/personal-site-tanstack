@@ -1,14 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getSupabaseClient } from "#/lib/supabase";
+import { getSupabaseServiceClient } from "#/lib/supabase";
 import { SITE_URL } from "#/lib/site";
 
-const STATIC_PATHS = ["/", "/blog", "/about", "/fun", "/lions"];
+const STATIC_PATHS = ["/", "/blog", "/fun", "/lions"];
 
 export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async () => {
-        const supabase = getSupabaseClient();
+        const supabase = getSupabaseServiceClient();
         const [{ data: posts }, { data: statuses }] = await Promise.all([
           supabase
             .from("posts")

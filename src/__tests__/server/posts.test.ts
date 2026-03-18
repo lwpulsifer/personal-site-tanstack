@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getSupabaseClient } from '#/lib/supabase'
+import { getSupabaseServiceClient } from '#/lib/supabase'
 import { requireAuth } from '#/server/auth.server'
 
 vi.mock('@tanstack/react-start', () => ({
@@ -16,7 +16,7 @@ vi.mock('@tanstack/react-start', () => ({
 }))
 
 vi.mock('#/lib/supabase', () => ({
-  getSupabaseClient: vi.fn(),
+  getSupabaseServiceClient: vi.fn(),
 }))
 
 vi.mock('#/server/auth.server', () => ({
@@ -46,10 +46,10 @@ function makeChain(resolved: { data: unknown; error: unknown }) {
 
 function mockClient(
   ...chains: ReturnType<typeof makeChain>[]
-): ReturnType<typeof getSupabaseClient> {
+): ReturnType<typeof getSupabaseServiceClient> {
   const from = vi.fn()
   for (const chain of chains) from.mockReturnValueOnce(chain)
-  return { from } as unknown as ReturnType<typeof getSupabaseClient>
+  return { from } as unknown as ReturnType<typeof getSupabaseServiceClient>
 }
 
 // ---------------------------------------------------------------------------
@@ -80,7 +80,7 @@ describe('getPublishedPosts', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns only posts that have PUBLISHED status', async () => {
-    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
       makeChain({ data: [publishedPost, pendingPost], error: null }),
       makeChain({ data: [{ post_id: 'post-1' }], error: null }),
     ))
@@ -92,7 +92,7 @@ describe('getPublishedPosts', () => {
   })
 
   it('throws when the database returns an error', async () => {
-    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
       makeChain({ data: null, error: { message: 'DB error' } }),
       makeChain({ data: [], error: null }),
     ))
@@ -105,7 +105,7 @@ describe('getPublishedPost', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns null when the post does not exist', async () => {
-    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
       makeChain({ data: null, error: { message: 'not found' } }),
     ))
 
@@ -117,7 +117,7 @@ describe('getPublishedPost', () => {
   })
 
   it('returns null when the post exists but is not published', async () => {
-    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
       makeChain({ data: publishedPost, error: null }),
       makeChain({ data: { status: 'PENDING' }, error: null }),
     ))
@@ -130,7 +130,7 @@ describe('getPublishedPost', () => {
   })
 
   it('returns the post when it exists and is published', async () => {
-    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
       makeChain({ data: publishedPost, error: null }),
       makeChain({ data: { status: 'PUBLISHED' }, error: null }),
     ))
@@ -152,7 +152,7 @@ describe('getAllTags', () => {
       data: [{ tags: ['react', 'typescript'] }, { tags: ['typescript', 'css'] }],
       error: null,
     })
-    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(chain))
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(chain))
 
     const result = await (getAllTags as () => Promise<string[]>)()
 

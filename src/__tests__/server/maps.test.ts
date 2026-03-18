@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getSupabaseClient } from '#/lib/supabase'
+import { getSupabaseServiceClient } from '#/lib/supabase'
 import { requireAuth } from '#/server/auth.server'
 
 vi.mock('@tanstack/react-start', () => ({
@@ -16,7 +16,7 @@ vi.mock('@tanstack/react-start', () => ({
 }))
 
 vi.mock('#/lib/supabase', () => ({
-  getSupabaseClient: vi.fn(),
+  getSupabaseServiceClient: vi.fn(),
 }))
 
 vi.mock('#/server/auth.server', () => ({
@@ -50,10 +50,10 @@ function makeChain(resolved: { data: unknown; error: unknown }) {
 
 function mockClient(
   ...chains: ReturnType<typeof makeChain>[]
-): ReturnType<typeof getSupabaseClient> {
+): ReturnType<typeof getSupabaseServiceClient> {
   const from = vi.fn()
   for (const chain of chains) from.mockReturnValueOnce(chain)
-  return { from } as unknown as ReturnType<typeof getSupabaseClient>
+  return { from } as unknown as ReturnType<typeof getSupabaseServiceClient>
 }
 
 // ---------------------------------------------------------------------------
@@ -81,7 +81,7 @@ describe('getApprovedLocations', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns locations with photo counts', async () => {
-    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
       makeChain({ data: [sampleLocation], error: null }),
       makeChain({ data: [{ location_id: 'loc-1' }, { location_id: 'loc-1' }], error: null }),
     ))
@@ -95,7 +95,7 @@ describe('getApprovedLocations', () => {
   })
 
   it('throws when the database returns an error', async () => {
-    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
       makeChain({ data: null, error: { message: 'DB error' } }),
     ))
 
@@ -112,7 +112,7 @@ describe('getLocationPhotos', () => {
 
   it('returns photos for a location', async () => {
     const photos = [{ id: 'photo-1', location_id: 'loc-1', storage_path: 'test.jpg' }]
-    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
       makeChain({ data: photos, error: null }),
     ))
 
@@ -128,7 +128,7 @@ describe('submitSighting', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('creates a submission', async () => {
-    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
       makeChain({ data: { id: 'sub-new' }, error: null }),
     ))
 
@@ -141,7 +141,7 @@ describe('submitSighting', () => {
 
   it('inserts photo rows without a locationId', async () => {
     const photosChain = makeChain({ data: null, error: null })
-    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
       makeChain({ data: { id: 'sub-photos' }, error: null }),
       photosChain,
     ))
@@ -159,7 +159,7 @@ describe('submitSighting', () => {
 
   it('inserts photo rows with locationId when provided', async () => {
     const photosChain = makeChain({ data: null, error: null })
-    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
       makeChain({ data: { id: 'sub-with-loc' }, error: null }),
       photosChain,
     ))
@@ -174,7 +174,7 @@ describe('submitSighting', () => {
   })
 
   it('throws when insert fails', async () => {
-    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
       makeChain({ data: null, error: { message: 'Insert failed' } }),
     ))
 
@@ -187,7 +187,7 @@ describe('submitSighting', () => {
 
   it('rejects out-of-bounds coordinates for new sightings', async () => {
     const chain = makeChain({ data: { id: 'sub-oob' }, error: null })
-    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(chain))
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(chain))
 
     await expect(
       (submitSighting as (a: { data: Record<string, unknown> }) => Promise<unknown>)({
@@ -255,7 +255,7 @@ describe('approveSubmission', () => {
     const updatePhotosChain = makeChain({ data: null, error: null })
     const updateSubmissionChain = makeChain({ data: null, error: null })
 
-    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
       fetchChain,
       findExistingChain,
       insertLocationChain,
@@ -311,7 +311,7 @@ describe('approveSubmission', () => {
     const updatePhotosChain = makeChain({ data: null, error: null })
     const updateSubmissionChain = makeChain({ data: null, error: null })
 
-    vi.mocked(getSupabaseClient).mockReturnValue(mockClient(
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
       fetchChain,
       insertEventChain,
       updatePhotosChain,

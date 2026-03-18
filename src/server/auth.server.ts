@@ -1,9 +1,9 @@
-import { getSupabaseServerClient } from './supabase'
+import { getSupabaseSessionClient } from './supabase'
 
 // Throws 'Unauthorized' if there is no valid session in the request cookies.
 // Call at the top of any admin server function handler.
 export async function requireAuth() {
-  const supabase = getSupabaseServerClient()
+  const supabase = getSupabaseSessionClient()
   const {
     data: { user },
     error,
