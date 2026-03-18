@@ -24,7 +24,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.98.0",
-    "@tailwindcss/vite": "^4.1.18",
+    "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-devtools": "^0.10.0",
     "@tanstack/react-query": "^5.90.21",
     "@tanstack/react-router": "^1.167.4",
@@ -44,7 +44,7 @@
     "react-dom": "^19.2.0",
     "react-leaflet": "^5.0.0",
     "sanitize-html": "^2.17.1",
-    "tailwindcss": "^4.1.18",
+    "tailwindcss": "^4.2.2",
     "tz-lookup": "^6.1.25"
   },
   "devDependencies": {
