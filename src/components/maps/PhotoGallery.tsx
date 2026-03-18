@@ -54,6 +54,8 @@ export function PhotoGallery({ locationId }: { locationId: string }) {
                 storagePath={photo.storage_path}
                 alt={photo.caption ?? 'Lion statue photo'}
                 className="h-full w-full object-cover transition group-hover:scale-105"
+                width={200}
+                height={200}
               />
             </div>
             {photo.caption && (

@@ -9,6 +9,8 @@ export function StorageImage({
   className,
   loading = 'lazy',
   onClick,
+  width,
+  height,
 }: {
   bucket: string
   storagePath: string
@@ -16,19 +18,27 @@ export function StorageImage({
   className?: string
   loading?: 'lazy' | 'eager'
   onClick?: React.MouseEventHandler<HTMLImageElement>
+  width?: number
+  height?: number
 }) {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
   const { originalUrl, cachedJpegPath, cachedJpegUrl, initialUrl } = useMemo(() => {
-    const originalUrl = `${supabaseUrl}/storage/v1/object/public/${bucket}/${storagePath}`
+    const baseSegment = width && height
+      ? `render/image/public`
+      : `object/public`
+    const suffix = width && height
+      ? `?width=${width}&height=${height}&resize=cover`
+      : ''
+    const originalUrl = `${supabaseUrl}/storage/v1/${baseSegment}/${bucket}/${storagePath}${suffix}`
     const cachedJpegPath = isHeicPath(storagePath) ? getCachedJpegPath(storagePath) : null
     const cachedJpegUrl = cachedJpegPath
-      ? `${supabaseUrl}/storage/v1/object/public/${bucket}/${cachedJpegPath}`
+      ? `${supabaseUrl}/storage/v1/${baseSegment}/${bucket}/${cachedJpegPath}${suffix}`
       : null
     // Prefer the cached JPEG for HEIC paths. If it 404s, we'll convert and upload.
     const initialUrl = cachedJpegUrl ?? originalUrl
     return { originalUrl, cachedJpegPath, cachedJpegUrl, initialUrl }
-  }, [bucket, storagePath, supabaseUrl])
+  }, [bucket, storagePath, supabaseUrl, width, height])
 
   const [src, setSrc] = useState(initialUrl)
   const [isLoaded, setIsLoaded] = useState(false)
