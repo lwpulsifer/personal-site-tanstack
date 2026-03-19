@@ -6,6 +6,12 @@ import type { DbPost, PostStatus } from '#/server/posts'
 import { upsertPost, setPostStatus } from '#/server/posts'
 import { STATUS_STYLES } from '#/components/blog/StatusBadge'
 import { useOnEscapeKey } from '#/lib/hooks/useOnEscapeKey'
+import { TagsInput } from '#/components/blog/TagsInput'
+import {
+  DIVIDER,
+  ToolbarButton,
+  useEditorFormatting,
+} from '#/components/blog/EditorToolbar'
 
 marked.setOptions({ async: false })
 
@@ -59,135 +65,6 @@ type PostFields = {
   heroImage: string
 }
 
-// ── TagsInput ──────────────────────────────────────────────────────────────────
-
-function TagsInput({
-  value,
-  onChange,
-  suggestions,
-}: {
-  value: string[]
-  onChange: (tags: string[]) => void
-  suggestions: string[]
-}) {
-  const [input, setInput] = useState('')
-  const [open, setOpen] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const filtered = suggestions.filter(
-    (s) =>
-      s.toLowerCase().startsWith(input.toLowerCase()) && !value.includes(s),
-  )
-
-  function addTag(raw: string) {
-    const tag = raw.trim()
-    if (tag && !value.includes(tag)) onChange([...value, tag])
-    setInput('')
-    setOpen(false)
-    inputRef.current?.focus()
-  }
-
-  function removeTag(tag: string) {
-    onChange(value.filter((t) => t !== tag))
-  }
-
-  return (
-    <div className="relative">
-      <div className="flex min-h-[2.25rem] flex-wrap items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 transition focus-within:border-[var(--blue)] focus-within:ring-2 focus-within:ring-[rgba(59,130,246,0.2)]">
-        {value.map((tag) => (
-          <span
-            key={tag}
-            className="inline-flex items-center gap-1 rounded-full border border-[var(--chip-border)] bg-[var(--chip-bg)] px-2 py-0.5 text-xs font-medium text-[var(--text)]"
-          >
-            {tag}
-            <button
-              type="button"
-              onClick={() => removeTag(tag)}
-              className="leading-none text-[var(--text-muted)] hover:text-[var(--text)]"
-              aria-label={`Remove ${tag}`}
-            >
-              ×
-            </button>
-          </span>
-        ))}
-        <input
-          ref={inputRef}
-          type="text"
-          value={input}
-          onChange={(e) => {
-            setInput(e.target.value)
-            setOpen(true)
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ',') {
-              e.preventDefault()
-              addTag(input)
-            } else if (e.key === 'Backspace' && !input && value.length > 0) {
-              onChange(value.slice(0, -1))
-            } else if (e.key === 'Escape') {
-              setOpen(false)
-            }
-          }}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
-          placeholder={value.length === 0 ? 'Add tags…' : ''}
-          className="min-w-20 flex-1 bg-transparent text-sm text-[var(--text)] outline-none placeholder-[var(--text-muted)]"
-        />
-      </div>
-
-      {open && input && filtered.length > 0 && (
-        <ul className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg)] shadow-lg">
-          {filtered.slice(0, 8).map((tag) => (
-            <li key={tag}>
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  addTag(tag)
-                }}
-                className="w-full px-3 py-2 text-left text-sm text-[var(--text)] hover:bg-[var(--hover-bg)]"
-              >
-                {tag}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
-
-// ── Toolbar ────────────────────────────────────────────────────────────────────
-
-const DIVIDER = <span className="w-px self-stretch bg-[var(--border)]" />
-
-function ToolbarButton({
-  label,
-  title,
-  labelClass,
-  onAction,
-}: {
-  label: string
-  title: string
-  labelClass?: string
-  onAction: () => void
-}) {
-  return (
-    <button
-      type="button"
-      title={title}
-      // mousedown keeps focus in the textarea; click fires after blur
-      onMouseDown={(e) => {
-        e.preventDefault()
-        onAction()
-      }}
-      className="rounded px-2 py-1 text-xs text-[var(--text-muted)] transition hover:bg-[var(--hover-bg)] hover:text-[var(--text)]"
-    >
-      <span className={labelClass}>{label}</span>
-    </button>
-  )
-}
-
 // ── PostEditor ─────────────────────────────────────────────────────────────────
 
 export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props) {
@@ -210,70 +87,8 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
     setFields((prev) => ({ ...prev, [key]: value }))
   }
 
-  // ── Formatting helpers ─────────────────────────────────────────────────────
-
-  // Wraps the selected text (or a placeholder) in prefix/suffix.
-  // After update, the inserted word is selected so the user can keep typing.
-  function applyWrap(prefix: string, suffix: string, placeholder: string) {
-    const ta = textareaRef.current
-    if (!ta) return
-    const { selectionStart: s, selectionEnd: e, value } = ta
-    const word = value.slice(s, e) || placeholder
-    const next = value.slice(0, s) + prefix + word + suffix + value.slice(e)
-    setField('content', next)
-    requestAnimationFrame(() => {
-      ta.focus()
-      ta.setSelectionRange(s + prefix.length, s + prefix.length + word.length)
-    })
-  }
-
-  // Prepends prefix to the current line.
-  function applyPrefix(prefix: string) {
-    const ta = textareaRef.current
-    if (!ta) return
-    const { selectionStart: s, selectionEnd: e, value } = ta
-    const lineStart = value.lastIndexOf('\n', s - 1) + 1
-    const next = value.slice(0, lineStart) + prefix + value.slice(lineStart)
-    setField('content', next)
-    requestAnimationFrame(() => {
-      ta.focus()
-      ta.setSelectionRange(s + prefix.length, e + prefix.length)
-    })
-  }
-
-  // Inserts a link, pre-selecting the url placeholder so the user can type it.
-  function applyLink() {
-    const ta = textareaRef.current
-    if (!ta) return
-    const { selectionStart: s, selectionEnd: e, value } = ta
-    const text = value.slice(s, e) || 'link text'
-    const insertion = `[${text}](url)`
-    const next = value.slice(0, s) + insertion + value.slice(e)
-    setField('content', next)
-    requestAnimationFrame(() => {
-      ta.focus()
-      // select the "url" placeholder: after `[text](`
-      const urlStart = s + 1 + text.length + 2
-      ta.setSelectionRange(urlStart, urlStart + 3)
-    })
-  }
-
-  // Inserts an image tag, pre-selecting the url placeholder.
-  function applyImage() {
-    const ta = textareaRef.current
-    if (!ta) return
-    const { selectionStart: s, selectionEnd: e, value } = ta
-    const alt = value.slice(s, e) || 'alt text'
-    const insertion = `![${alt}](url)`
-    const next = value.slice(0, s) + insertion + value.slice(e)
-    setField('content', next)
-    requestAnimationFrame(() => {
-      ta.focus()
-      // select the "url" placeholder: after `![alt](`
-      const urlStart = s + 2 + alt.length + 2
-      ta.setSelectionRange(urlStart, urlStart + 3)
-    })
-  }
+  const { applyWrap, applyPrefix, applyLink, applyImage } =
+    useEditorFormatting(textareaRef, (content) => setField('content', content))
 
   // ── Mutations ──────────────────────────────────────────────────────────────
 
