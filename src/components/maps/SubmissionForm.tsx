@@ -355,6 +355,9 @@ export function SubmissionForm({
             />
           </div>
         </div>
+        <p className="text-xs text-[var(--text-muted)]">
+          Your name will be shown publicly on the map if provided. Your email is never shared.
+        </p>
 
         {error && (
           <p className="text-sm text-red-600">{error}</p>
