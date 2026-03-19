@@ -303,18 +303,6 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
 
   const error = saveMutation.error ?? statusMutation.error
 
-  // Auto-generate slug from title for new posts
-  useEffect(() => {
-    if (!slugManuallyEdited.current && !initial.slug) {
-      setField('slug', slugify(fields.title))
-    }
-  }, [fields.title, initial.slug])
-
-  // Focus textarea on tab switch to Write
-  useEffect(() => {
-    if (tab === 'write') textareaRef.current?.focus()
-  }, [tab])
-
   // Escape closes the editor
   useEffect(() => {
     const handler = (e: globalThis.KeyboardEvent) => {
@@ -359,7 +347,10 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
           <div className="flex rounded-full border border-[var(--border)] bg-[var(--chip-bg)] p-0.5 text-sm">
             <button
               type="button"
-              onClick={() => setTab('write')}
+              onClick={() => {
+                setTab('write')
+                requestAnimationFrame(() => textareaRef.current?.focus())
+              }}
               className={`rounded-full px-3 py-1 transition ${tab === 'write' ? 'bg-[var(--blue-deep)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text)]'}`}
             >
               Write
@@ -426,7 +417,12 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
             <input
               type="text"
               value={fields.title}
-              onChange={(e) => setField('title', e.target.value)}
+              onChange={(e) => {
+                setField('title', e.target.value)
+                if (!slugManuallyEdited.current && !initial.slug) {
+                  setField('slug', slugify(e.target.value))
+                }
+              }}
               data-testid="post-title"
               placeholder="Post title"
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)] outline-none transition focus:border-[var(--blue)] focus:ring-2 focus:ring-[rgba(59,130,246,0.2)]"

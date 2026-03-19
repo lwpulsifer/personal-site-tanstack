@@ -3,14 +3,7 @@ import { pendingMapSubmissionsQueryOptions, mapLocationsQueryOptions } from '#/l
 import { approveSubmission, rejectSubmission } from '#/server/maps'
 import type { MapSubmission } from '#/lib/map-types'
 import { StorageImage } from './StorageImage'
-
-function toTestIdPart(value: string) {
-	return value
-		.toLowerCase()
-		.trim()
-		.replace(/[^a-z0-9]+/g, "-")
-		.replace(/^-+|-+$/g, "")
-}
+import { toTestIdPart } from '#/lib/strings'
 
 export function AdminPanel({
 	mapSlug,
