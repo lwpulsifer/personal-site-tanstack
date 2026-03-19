@@ -122,10 +122,28 @@ export const getApprovedLocations = createServerFn({ method: 'GET' })
       }
     }
 
+    // Get submitter names from approved submissions linked to each location
+    const { data: submissions } = locationIds.length > 0
+      ? await supabase
+          .from('map_submissions')
+          .select('location_id, submitter_name')
+          .in('location_id', locationIds)
+          .eq('status', 'approved')
+          .order('created_at', { ascending: true })
+      : { data: [] }
+
+    const submitterMap = new Map<string, string>()
+    for (const s of (submissions ?? []) as { location_id: string; submitter_name: string | null }[]) {
+      if (s.submitter_name && !submitterMap.has(s.location_id)) {
+        submitterMap.set(s.location_id, s.submitter_name)
+      }
+    }
+
     return locs.map((loc) => ({
       ...loc,
       photo_count: countMap.get(loc.id) ?? 0,
       thumbnail_path: thumbMap.get(loc.id) ?? null,
+      submitted_by: submitterMap.get(loc.id) ?? null,
     })) as MapLocation[]
   })
 
