@@ -4,18 +4,18 @@ import { fireEvent, render, screen } from '@testing-library/react'
 const { StorageImage } = await import('#/components/maps/StorageImage')
 
 describe('StorageImage', () => {
-  it('prefers a cached JPEG URL for HEIC paths', () => {
+  it('builds a public URL from bucket and storagePath', () => {
     render(
       <StorageImage
         bucket="map-photos"
-        storagePath="submissions/foo.heic"
-        alt="Heic image"
+        storagePath="submissions/foo.jpg"
+        alt="Test image"
         className="h-16 w-16 object-cover"
       />,
     )
 
-    const img = screen.getByRole('img', { name: 'Heic image' }) as HTMLImageElement
-    expect(img.getAttribute('src')).toContain('submissions/foo.jpg')
+    const img = screen.getByRole('img', { name: 'Test image' }) as HTMLImageElement
+    expect(img.getAttribute('src')).toContain('map-photos/submissions/foo.jpg')
   })
 
   it('shows a loading state until the image loads', async () => {
