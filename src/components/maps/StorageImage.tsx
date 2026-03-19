@@ -24,21 +24,15 @@ export function StorageImage({
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
   const { originalUrl, cachedJpegPath, cachedJpegUrl, initialUrl } = useMemo(() => {
-    const baseSegment = width && height
-      ? `render/image/public`
-      : `object/public`
-    const suffix = width && height
-      ? `?width=${width}&height=${height}&resize=cover`
-      : ''
-    const originalUrl = `${supabaseUrl}/storage/v1/${baseSegment}/${bucket}/${storagePath}${suffix}`
+    const originalUrl = `${supabaseUrl}/storage/v1/object/public/${bucket}/${storagePath}`
     const cachedJpegPath = isHeicPath(storagePath) ? getCachedJpegPath(storagePath) : null
     const cachedJpegUrl = cachedJpegPath
-      ? `${supabaseUrl}/storage/v1/${baseSegment}/${bucket}/${cachedJpegPath}${suffix}`
+      ? `${supabaseUrl}/storage/v1/object/public/${bucket}/${cachedJpegPath}`
       : null
     // Prefer the cached JPEG for HEIC paths. If it 404s, we'll convert and upload.
     const initialUrl = cachedJpegUrl ?? originalUrl
     return { originalUrl, cachedJpegPath, cachedJpegUrl, initialUrl }
-  }, [bucket, storagePath, supabaseUrl, width, height])
+  }, [bucket, storagePath, supabaseUrl])
 
   const [src, setSrc] = useState(initialUrl)
   const [isLoaded, setIsLoaded] = useState(false)
@@ -89,6 +83,8 @@ export function StorageImage({
         <img
           src={src}
           alt={alt}
+          width={width}
+          height={height}
           className={`${className ?? ''} transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
           loading={loading}
           onClick={onClick}
