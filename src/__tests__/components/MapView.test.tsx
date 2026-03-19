@@ -48,6 +48,7 @@ describe('MapView', () => {
       updated_at: '2026-01-01',
       created_by: null,
       photo_count: 3,
+      thumbnail_path: 'lions/test.jpg',
     },
     {
       id: 'loc-2',
@@ -61,6 +62,7 @@ describe('MapView', () => {
       updated_at: '2026-01-02',
       created_by: null,
       photo_count: 0,
+      thumbnail_path: null,
     },
   ]
 
