@@ -9,6 +9,8 @@ export function StorageImage({
   className,
   loading = 'lazy',
   onClick,
+  width,
+  height,
 }: {
   bucket: string
   storagePath: string
@@ -16,6 +18,8 @@ export function StorageImage({
   className?: string
   loading?: 'lazy' | 'eager'
   onClick?: React.MouseEventHandler<HTMLImageElement>
+  width?: number
+  height?: number
 }) {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
@@ -79,6 +83,8 @@ export function StorageImage({
         <img
           src={src}
           alt={alt}
+          width={width}
+          height={height}
           className={`${className ?? ''} transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
           loading={loading}
           onClick={onClick}

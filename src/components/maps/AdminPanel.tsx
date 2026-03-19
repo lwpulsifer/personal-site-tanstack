@@ -143,6 +143,8 @@ export function AdminPanel({
 									storagePath={photo.storage_path}
 									alt="Submission photo"
 									className="h-16 w-16 shrink-0 rounded-lg object-cover"
+									width={80}
+									height={80}
 								/>
 							))}
 						</div>
