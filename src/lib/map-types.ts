@@ -1,6 +1,9 @@
 import type { Enums, Tables } from '#/lib/database.types'
 
-export type MapLocation = Tables<'map_locations'> & { photo_count: number }
+export type MapLocation = Tables<'map_locations'> & {
+  photo_count: number
+  thumbnail_path: string | null
+}
 
 export type MapEvent = Tables<'map_events'>
 

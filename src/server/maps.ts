@@ -102,24 +102,30 @@ export const getApprovedLocations = createServerFn({ method: 'GET' })
 
     if (error) throw new Error(error.message)
 
-    // Get photo counts per location
+    // Get photo counts and first photo per location
     const locs = (locations ?? []) as Tables<'map_locations'>[]
     const locationIds = locs.map((l) => l.id)
     const { data: photos } = locationIds.length > 0
       ? await supabase
           .from('map_photos')
-          .select('location_id')
+          .select('location_id, storage_path, created_at')
           .in('location_id', locationIds)
+          .order('created_at', { ascending: true })
       : { data: [] }
 
     const countMap = new Map<string, number>()
-    for (const p of (photos ?? []) as { location_id: string }[]) {
+    const thumbMap = new Map<string, string>()
+    for (const p of (photos ?? []) as { location_id: string; storage_path: string }[]) {
       countMap.set(p.location_id, (countMap.get(p.location_id) ?? 0) + 1)
+      if (!thumbMap.has(p.location_id)) {
+        thumbMap.set(p.location_id, p.storage_path)
+      }
     }
 
     return locs.map((loc) => ({
       ...loc,
       photo_count: countMap.get(loc.id) ?? 0,
+      thumbnail_path: thumbMap.get(loc.id) ?? null,
     })) as MapLocation[]
   })
 

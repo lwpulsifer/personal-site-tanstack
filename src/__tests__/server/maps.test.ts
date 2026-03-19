@@ -87,18 +87,22 @@ const sampleLocation = {
 describe('getApprovedLocations', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('returns locations with photo counts', async () => {
+  it('returns locations with photo counts and thumbnail paths', async () => {
     vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
       makeChain({ data: [sampleLocation], error: null }),
-      makeChain({ data: [{ location_id: 'loc-1' }, { location_id: 'loc-1' }], error: null }),
+      makeChain({ data: [
+        { location_id: 'loc-1', storage_path: 'lions/first.jpg', created_at: '2026-03-01T12:00:00Z' },
+        { location_id: 'loc-1', storage_path: 'lions/second.jpg', created_at: '2026-03-02T12:00:00Z' },
+      ], error: null }),
     ))
 
-    const result = await (getApprovedLocations as (a: { data: { mapSlug: string } }) => Promise<{ id: string; photo_count: number }[]>)(
+    const result = await (getApprovedLocations as (a: { data: { mapSlug: string } }) => Promise<{ id: string; photo_count: number; thumbnail_path: string | null }[]>)(
       { data: { mapSlug: 'lions' } },
     )
 
     expect(result).toHaveLength(1)
     expect(result[0].photo_count).toBe(2)
+    expect(result[0].thumbnail_path).toBe('lions/first.jpg')
   })
 
   it('throws when the database returns an error', async () => {
