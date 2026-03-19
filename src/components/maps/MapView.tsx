@@ -1,7 +1,8 @@
-import { Suspense, lazy, useEffect, useState } from 'react'
+import { Suspense, lazy } from 'react'
 import { createClientOnlyFn } from '@tanstack/react-start'
 import type { MapLocation } from '#/lib/map-types'
 import { MapSkeleton } from './MapSkeleton'
+import { useHydrated } from '#/lib/hooks/useHydrated'
 
 const importMapViewClient = createClientOnlyFn(() => import('./MapView.client'))
 const MapViewClient = lazy(async () => {
@@ -24,16 +25,13 @@ export function MapView({
   selectedLocationId?: string | null
   previewCoords?: { lat: number; lng: number } | null
 }) {
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  const hydrated = useHydrated()
 
-  const fallback = <MapSkeleton />
-
-  // Leaflet depends on `window`, so we only render the real map on the client.
-  if (!mounted) return fallback
+  // Leaflet requires `window`, so render the skeleton during SSR and hydration.
+  if (!hydrated) return <MapSkeleton />
 
   return (
-    <Suspense fallback={fallback}>
+    <Suspense fallback={<MapSkeleton />}>
       <MapViewClient
         locations={locations}
         onSelectLocation={onSelectLocation}

@@ -9,3 +9,10 @@ export const getServerUser = createServerFn({ method: 'GET' }).handler(async () 
   } = await supabase.auth.getUser()
   return user ?? null
 })
+
+// Server function to sign out — clears the session cookie so subsequent SSR
+// requests no longer see a logged-in user.
+export const serverSignOut = createServerFn({ method: 'POST' }).handler(async () => {
+  const supabase = getSupabaseSessionClient()
+  await supabase.auth.signOut()
+})

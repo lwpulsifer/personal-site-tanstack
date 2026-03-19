@@ -21,6 +21,7 @@ const mockSubmissions: MapSubmission[] = [
 		status: "pending",
 		reviewed_at: null,
 		reviewed_by: null,
+		// Use midday UTC to avoid local-timezone day-boundary shifts in assertions.
 		created_at: "2026-03-15T12:00:00Z",
 		photos: [
 			{
@@ -82,6 +83,8 @@ vi.mock("#/lib/queries", () => ({
 
 const { AdminPanel } = await import("#/components/maps/AdminPanel")
 
+// AdminPanel uses useQueryClient internally, so it must be wrapped in a
+// QueryClientProvider or the render will throw.
 function renderWithProvider(ui: React.ReactNode) {
 	const queryClient = new QueryClient({
 		defaultOptions: { queries: { retry: false } },

@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getSupabaseServiceClient } from '#/lib/supabase'
 import { requireAuth } from '#/server/auth.server'
 
+// createServerFn mock: a transparent builder where handler() returns the raw
+// function. This lets tests call server functions as plain async functions
+// without the TanStack Start RPC layer.
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: () => {
     const builder: {
@@ -64,6 +67,7 @@ const publishedPost = {
   content: '# Hello',
   tags: ['typescript', 'react'],
   hero_image: null,
+  // Use midday UTC to avoid local-timezone day-boundary shifts in assertions.
   published_at: '2025-06-15T12:00:00Z',
   created_at: '2025-06-15T12:00:00Z',
   updated_at: '2025-06-15T12:00:00Z',

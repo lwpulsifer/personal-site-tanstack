@@ -10,6 +10,7 @@ import { SubmissionForm } from '#/components/maps/SubmissionForm'
 import { AdminPanel } from '#/components/maps/AdminPanel'
 import type { MapLocation, MapSubmission } from '#/lib/map-types'
 import { MapSkeleton } from '#/components/maps/MapSkeleton'
+import { toTestIdPart } from '#/lib/strings'
 
 const MapView = lazy(() =>
   import('#/components/maps/MapView').then((m) => ({ default: m.MapView })),
@@ -17,14 +18,6 @@ const MapView = lazy(() =>
 
 const canonical = `${SITE_URL}/lions`
 const pageTitle = `Lions of SF | ${SITE_TITLE}`
-
-function toTestIdPart(value: string) {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
 
 export const Route = createFileRoute('/lions/')({
   loader: async () => getApprovedLocations({ data: { mapSlug: 'lions' } }),

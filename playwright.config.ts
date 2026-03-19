@@ -20,18 +20,18 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'html',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: `http://localhost:${process.env.E2E_PORT ?? '3000'}`,
     trace: 'on-first-retry',
   },
   // Local dev: set reuseExistingServer=true so a running `npm run dev` is used.
   // CI: builds the app first, then this starts the Nitro server.
   webServer: {
-    command: isCI ? 'node .output/server/index.mjs' : 'vite dev --port 3000',
-    url: 'http://localhost:3000',
+    command: isCI ? 'node .output/server/index.mjs' : `npx vite dev --port ${process.env.E2E_PORT ?? '3000'}`,
+    url: `http://localhost:${process.env.E2E_PORT ?? '3000'}`,
     reuseExistingServer: !isCI,
     timeout: 30_000,
     env: {
-      PORT: '3000',
+      PORT: process.env.E2E_PORT ?? '3000',
       VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321',
       VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? '',
       SUPABASE_URL: process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321',

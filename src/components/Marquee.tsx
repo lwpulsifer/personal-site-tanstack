@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 
 type MarqueeProps = {
   children: React.ReactNode
@@ -10,10 +10,17 @@ export default function Marquee({ children, className = '' }: MarqueeProps) {
   const maskRef = useRef<HTMLDivElement>(null)
   const [overflows, setOverflows] = useState(false)
 
-  useEffect(() => {
-    if (trackRef.current && maskRef.current) {
-      setOverflows(trackRef.current.scrollWidth > maskRef.current.clientWidth)
-    }
+  useLayoutEffect(() => {
+    const mask = maskRef.current
+    const track = trackRef.current
+    if (!mask || !track) return
+
+    const check = () => setOverflows(track.scrollWidth > mask.clientWidth)
+    check()
+
+    const observer = new ResizeObserver(check)
+    observer.observe(mask)
+    return () => observer.disconnect()
   }, [children])
 
   return (

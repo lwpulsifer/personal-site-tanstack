@@ -5,7 +5,6 @@ export function MarkerPopup({
   onViewDetails,
 }: {
   location: MapLocation
-  isSelected?: boolean
   onViewDetails?: () => void
 }) {
   return (

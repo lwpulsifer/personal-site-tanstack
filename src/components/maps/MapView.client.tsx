@@ -137,7 +137,6 @@ export function MapView({
             <Popup>
               <MarkerPopup
                 location={loc}
-                isSelected={selectedLocationId === loc.id}
                 onViewDetails={() => onSelectLocation?.(loc)}
               />
             </Popup>
