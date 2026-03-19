@@ -11,6 +11,7 @@ import { AdminPanel } from '#/components/maps/AdminPanel'
 import type { MapLocation, MapSubmission } from '#/lib/map-types'
 import { MapSkeleton } from '#/components/maps/MapSkeleton'
 import { toTestIdPart } from '#/lib/strings'
+import { ErrorBoundary } from '#/components/ErrorBoundary'
 
 const MapView = lazy(() =>
   import('#/components/maps/MapView').then((m) => ({ default: m.MapView })),
@@ -177,16 +178,24 @@ function LionsPage() {
               {state.mapBoundsError}
             </div>
           )}
-          <Suspense fallback={<MapSkeleton />}>
-            <MapView
-              locations={locations}
-              onSelectLocation={handleSelectLocation}
-              onMapClick={handleMapClick}
-              onMapClickOutOfBounds={() => dispatch({ type: 'MAP_CLICK_OUT_OF_BOUNDS' })}
-              selectedLocationId={state.selectedLocation?.id}
-              previewCoords={showPreviewCoords ? state.previewCoords : null}
-            />
-          </Suspense>
+          <ErrorBoundary
+            fallback={
+              <div className="flex h-full items-center justify-center text-sm text-[var(--text-muted)]">
+                Failed to load the map. Please refresh the page.
+              </div>
+            }
+          >
+            <Suspense fallback={<MapSkeleton />}>
+              <MapView
+                locations={locations}
+                onSelectLocation={handleSelectLocation}
+                onMapClick={handleMapClick}
+                onMapClickOutOfBounds={() => dispatch({ type: 'MAP_CLICK_OUT_OF_BOUNDS' })}
+                selectedLocationId={state.selectedLocation?.id}
+                previewCoords={showPreviewCoords ? state.previewCoords : null}
+              />
+            </Suspense>
+          </ErrorBoundary>
         </div>
 
         {/* Sidebar */}

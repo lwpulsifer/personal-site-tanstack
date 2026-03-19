@@ -7,6 +7,7 @@ import { BuyMeACoffee } from '#/components/BuyMeACoffee'
 import { PostEditor } from '#/components/PostEditor'
 import { useAuth } from '#/lib/auth'
 import { getPublishedPost } from '#/server/posts'
+import { ErrorBoundary } from '#/components/ErrorBoundary'
 
 export const Route = createFileRoute('/blog/$slug')({
   loader: async ({ params }) => {
@@ -136,12 +137,14 @@ function BlogPost() {
             <BuyMeACoffee variant="prominent" />
           </div>
 
-          <div
-            data-testid="post-content"
-            // biome-ignore lint/security/noDangerouslySetInnerHtml: rendered from trusted DB content
-            dangerouslySetInnerHTML={{ __html: renderedHtml }}
-            className="prose prose-slate prose-headings:text-[var(--text)] prose-p:text-[var(--text-muted)] prose-li:text-[var(--text-muted)] prose-ul:text-[var(--text-muted)] prose-ol:text-[var(--text-muted)] prose-strong:text-[var(--text)] prose-a:text-[var(--blue-deep)] max-w-none"
-          />
+          <ErrorBoundary>
+            <div
+              data-testid="post-content"
+              // biome-ignore lint/security/noDangerouslySetInnerHtml: rendered from trusted DB content
+              dangerouslySetInnerHTML={{ __html: renderedHtml }}
+              className="prose prose-slate prose-headings:text-[var(--text)] prose-p:text-[var(--text-muted)] prose-li:text-[var(--text-muted)] prose-ul:text-[var(--text-muted)] prose-ol:text-[var(--text-muted)] prose-strong:text-[var(--text)] prose-a:text-[var(--blue-deep)] max-w-none"
+            />
+          </ErrorBoundary>
 
           <div className="mt-8 border-t border-[var(--border)] pt-6">
             <Link
