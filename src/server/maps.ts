@@ -4,7 +4,6 @@ import { requireAuth } from '#/server/auth.server'
 import { z } from 'zod'
 import type { MapLocation, MapPhoto, MapSubmission } from '#/lib/map-types'
 import type { Tables } from '#/lib/database.types'
-import { DateTime } from 'luxon'
 import tzLookup from 'tz-lookup'
 import { isWithinBayArea } from '#/lib/geo'
 
@@ -22,9 +21,16 @@ function inferTimeZoneFromCoords(coords: { lat: number; lng: number } | null): s
 
 function localToUtcIso(local: string | null | undefined, timeZone: string): string | null {
   if (!local) return null
-  const dt = DateTime.fromISO(local, { zone: timeZone })
-  if (!dt.isValid) return null
-  return dt.toUTC().toISO()
+  // Parse the local string as if it were UTC (no timezone suffix → UTC)
+  const naive = new Date(local)
+  if (isNaN(naive.getTime())) return null
+  // Compute the offset: how far ahead the target timezone is from UTC at this instant
+  const utcStr = naive.toLocaleString('en-US', { timeZone: 'UTC' })
+  const tzStr = naive.toLocaleString('en-US', { timeZone })
+  const offsetMs = new Date(utcStr).getTime() - new Date(tzStr).getTime()
+  // Shift so that the local string is interpreted in the target timezone
+  const result = new Date(naive.getTime() + offsetMs)
+  return isNaN(result.getTime()) ? null : result.toISOString()
 }
 
 function metersToLatDegrees(meters: number) {
