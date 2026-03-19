@@ -15,7 +15,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321'
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
 
 const AUTH_STATE_PATH = 'e2e/.auth/admin.json'
-const BASE_URL = 'http://localhost:3000'
+const BASE_URL = `http://localhost:${process.env.E2E_PORT ?? '3000'}`
 const AUTH_COOKIE_PREFIX = 'sb-personal-site-auth'
 
 async function waitForAuthCookie(page: import('@playwright/test').Page, timeoutMs = 10_000) {
@@ -96,7 +96,6 @@ export default async function globalSetup() {
   const page = await browser.newPage()
 
   await page.goto(`${BASE_URL}/login`)
-  await page.waitForLoadState('networkidle')
   // Wait for React hydration marker (see src/routes/__root.tsx).
   await page.waitForSelector('body[data-hydrated="true"]', { timeout: 30_000 })
   await fillStable(page.getByTestId('login-email'), ADMIN_EMAIL, 15_000)

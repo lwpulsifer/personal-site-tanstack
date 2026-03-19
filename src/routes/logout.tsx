@@ -1,12 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { getSupabaseBrowserClient } from '#/lib/supabase'
+import { serverSignOut } from '#/server/auth'
 
 export const Route = createFileRoute('/logout')({
   head: () => ({ meta: [{ title: 'Signed out' }] }),
-  beforeLoad: () => {
-    if (typeof window !== 'undefined') {
-      getSupabaseBrowserClient().auth.signOut()
-    }
+  beforeLoad: async () => {
+    await serverSignOut()
   },
   component: LogoutPage,
 })

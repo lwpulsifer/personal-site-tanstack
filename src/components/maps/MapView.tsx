@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react'
 import { createClientOnlyFn } from '@tanstack/react-start'
 import type { MapLocation } from '#/lib/map-types'
 import { MapSkeleton } from './MapSkeleton'
+import { useHydrated } from '#/lib/hooks/useHydrated'
 
 const importMapViewClient = createClientOnlyFn(() => import('./MapView.client'))
 const MapViewClient = lazy(async () => {
@@ -24,6 +25,11 @@ export function MapView({
   selectedLocationId?: string | null
   previewCoords?: { lat: number; lng: number } | null
 }) {
+  const hydrated = useHydrated()
+
+  // Leaflet requires `window`, so render the skeleton during SSR and hydration.
+  if (!hydrated) return <MapSkeleton />
+
   return (
     <Suspense fallback={<MapSkeleton />}>
       <MapViewClient
