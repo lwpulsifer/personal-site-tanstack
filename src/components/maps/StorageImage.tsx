@@ -1,6 +1,35 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useReducer } from 'react'
 import { getSupabaseBrowserClient } from '#/lib/supabase'
 import { isHeicPath, getCachedJpegPath, convertHeicUrlToJpeg } from '#/lib/heic'
+import { useRevokeObjectUrl } from '#/lib/hooks/useRevokeObjectUrl'
+
+type ImageState = {
+  src: string
+  status: 'loading' | 'loaded' | 'converting' | 'errored'
+  fallbackTried: boolean
+}
+
+type ImageAction =
+  | { type: 'LOADED' }
+  | { type: 'CONVERTING' }
+  | { type: 'CONVERTED'; objectUrl: string }
+  | { type: 'CACHED'; cachedUrl: string }
+  | { type: 'ERRORED' }
+
+function imageReducer(state: ImageState, action: ImageAction): ImageState {
+  switch (action.type) {
+    case 'LOADED':
+      return { ...state, status: 'loaded' }
+    case 'CONVERTING':
+      return { ...state, status: 'converting', fallbackTried: true }
+    case 'CONVERTED':
+      return { ...state, src: action.objectUrl, status: 'loading' }
+    case 'CACHED':
+      return { ...state, src: action.cachedUrl, status: 'loading' }
+    case 'ERRORED':
+      return { ...state, status: 'errored' }
+  }
+}
 
 export function StorageImage({
   bucket,
@@ -29,42 +58,30 @@ export function StorageImage({
     const cachedJpegUrl = cachedJpegPath
       ? `${supabaseUrl}/storage/v1/object/public/${bucket}/${cachedJpegPath}`
       : null
-    // Prefer the cached JPEG for HEIC paths. If it 404s, we'll convert and upload.
     const initialUrl = cachedJpegUrl ?? originalUrl
     return { originalUrl, cachedJpegPath, cachedJpegUrl, initialUrl }
   }, [bucket, storagePath, supabaseUrl])
 
-  const [src, setSrc] = useState(initialUrl)
-  const [isLoaded, setIsLoaded] = useState(false)
-  const [hasErrored, setHasErrored] = useState(false)
-  const [fallbackTried, setFallbackTried] = useState(false)
-  const [isConverting, setIsConverting] = useState(false)
+  const [state, dispatch] = useReducer(imageReducer, {
+    src: initialUrl,
+    status: 'loading',
+    fallbackTried: false,
+  })
 
-  useEffect(() => {
-    setSrc(initialUrl)
-    setIsLoaded(false)
-    setHasErrored(false)
-    setFallbackTried(false)
-    setIsConverting(false)
-  }, [initialUrl])
-
-  // Clean up object URLs we create for converted images.
-  useEffect(() => {
-    return () => {
-      if (src.startsWith('blob:')) URL.revokeObjectURL(src)
-    }
-  }, [src])
+  // Clean up blob URLs we create for converted images.
+  const blobUrl = state.src.startsWith('blob:') ? state.src : null
+  useRevokeObjectUrl(blobUrl)
 
   return (
     <div className="relative">
-      {!hasErrored && !isLoaded && (
+      {state.status !== 'loaded' && state.status !== 'errored' && (
         <div
           data-testid="storage-image-loading"
           aria-hidden
           className="pointer-events-none absolute inset-0 grid place-items-center rounded-lg bg-[var(--surface)]"
         >
           <div className="h-full w-full animate-pulse rounded-lg bg-[color-mix(in_oklab,var(--surface),var(--text)_6%)]" />
-          {isConverting && (
+          {state.status === 'converting' && (
             <span className="pointer-events-none absolute text-xs font-semibold text-[var(--text-muted)]">
               Converting…
             </span>
@@ -72,7 +89,7 @@ export function StorageImage({
         </div>
       )}
 
-      {hasErrored ? (
+      {state.status === 'errored' ? (
         <div
           data-testid="storage-image-error"
           className="flex h-full w-full items-center justify-center rounded-lg bg-[var(--surface)] text-xs text-[var(--text-muted)]"
@@ -81,27 +98,22 @@ export function StorageImage({
         </div>
       ) : (
         <img
-          src={src}
+          src={state.src}
           alt={alt}
           width={width}
           height={height}
-          className={`${className ?? ''} transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+          className={`${className ?? ''} transition-opacity duration-300 ${state.status === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
           loading={loading}
           onClick={onClick}
-          onLoad={() => setIsLoaded(true)}
+          onLoad={() => dispatch({ type: 'LOADED' })}
           onError={async () => {
-            // Many browsers can't render HEIC/HEIF. If we detect it, fetch + convert client-side.
-            // If conversion succeeds and we can upload, cache it as a JPEG for future viewers.
-            if (!fallbackTried && isHeicPath(storagePath) && cachedJpegPath && cachedJpegUrl) {
-              setFallbackTried(true)
-              setIsConverting(true)
+            if (!state.fallbackTried && isHeicPath(storagePath) && cachedJpegPath && cachedJpegUrl) {
+              dispatch({ type: 'CONVERTING' })
               try {
                 const { objectUrl, jpegBlob } = await convertHeicUrlToJpeg(originalUrl)
-                setIsConverting(false)
-                setSrc(objectUrl)
+                dispatch({ type: 'CONVERTED', objectUrl })
 
-                // Best-effort cache upload. This will succeed for authenticated users
-                // (or if bucket policies allow) and silently no-op otherwise.
+                // Best-effort cache upload
                 try {
                   const supabase = getSupabaseBrowserClient()
                   const { error: uploadError } = await supabase.storage
@@ -110,24 +122,20 @@ export function StorageImage({
                       contentType: 'image/jpeg',
                       upsert: false,
                     })
-                  // 409 = already exists; treat as success.
                   if (uploadError && (uploadError as any).statusCode !== 409) {
                     throw uploadError
                   }
-                  // Swap to the stable public URL once the cached image exists.
-                  setSrc(cachedJpegUrl)
+                  dispatch({ type: 'CACHED', cachedUrl: cachedJpegUrl })
                 } catch {
                   // Ignore caching failures; viewer still sees converted blob.
                 }
                 return
               } catch {
-                setIsConverting(false)
                 // Fall through to error UI
               }
             }
-            setHasErrored(true)
+            dispatch({ type: 'ERRORED' })
           }}
-          data-errored={hasErrored ? 'true' : 'false'}
         />
       )}
     </div>

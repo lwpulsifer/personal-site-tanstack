@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { marked } from 'marked'
 import { sanitize } from '#/lib/sanitize'
 import type { DbPost, PostStatus } from '#/server/posts'
 import { upsertPost, setPostStatus } from '#/server/posts'
 import { STATUS_STYLES } from '#/components/blog/StatusBadge'
+import { useOnEscapeKey } from '#/lib/hooks/useOnEscapeKey'
 
 marked.setOptions({ async: false })
 
@@ -303,14 +304,7 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
 
   const error = saveMutation.error ?? statusMutation.error
 
-  // Escape closes the editor
-  useEffect(() => {
-    const handler = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [onClose])
+  useOnEscapeKey(onClose)
 
   const renderedHtml = useMemo(
     () => sanitize(marked.parse(fields.content) as string),
