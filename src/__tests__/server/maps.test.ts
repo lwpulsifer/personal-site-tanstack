@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getSupabaseServiceClient } from '#/lib/supabase'
 import { requireAuth } from '#/server/auth.server'
 
+// createServerFn mock: a transparent builder where handler() returns the raw
+// function. This lets tests call server functions as plain async functions
+// without the TanStack Start RPC layer.
 vi.mock('@tanstack/react-start', () => ({
   createServerFn: () => {
     const builder: {
@@ -37,6 +40,10 @@ const {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * A fluent Supabase query-builder mock. Every method returns the chain, and
+ * the chain is thenable so any step in the pipeline can be awaited.
+ */
 function makeChain(resolved: { data: unknown; error: unknown }) {
   const chain: Record<string, unknown> = {}
   for (const method of [

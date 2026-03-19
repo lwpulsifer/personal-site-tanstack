@@ -4,6 +4,8 @@ import type { DbPost } from '#/server/posts'
 import { PostCard } from '#/components/blog/PostCard'
 import { describe, expect, it, vi } from 'vitest'
 
+// Link mock must render an <a> with href={to} — without href, the element
+// won't have the ARIA "link" role and getByRole('link') queries will fail.
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
     children,
@@ -25,6 +27,7 @@ const basePost: DbPost = {
   content: '# Hello',
   tags: ['typescript'],
   hero_image: null,
+  // Use midday UTC to avoid local-timezone day-boundary shifts in assertions.
   published_at: '2025-06-15T12:00:00Z',
   created_at: '2025-06-15T12:00:00Z',
   updated_at: '2025-06-15T12:00:00Z',
@@ -54,6 +57,8 @@ describe('PostCard', () => {
   it('shows the hero image when one is provided', () => {
     const postWithImage = { ...basePost, hero_image: 'https://example.com/img.jpg' }
     const { container } = render(<PostCard post={postWithImage} showAdmin={false} onEdit={noop} />)
+    // PostCard uses alt="" (decorative image), which gives role "presentation"
+    // instead of "img" — so we use querySelector instead of getByRole('img').
     const img = container.querySelector('img')
     expect(img).toBeTruthy()
     expect(img?.getAttribute('src')).toBe('https://example.com/img.jpg')
