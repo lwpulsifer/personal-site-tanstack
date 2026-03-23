@@ -1,0 +1,128 @@
+{
+  "@biomejs/biome": {
+    "current": "2.2.4",
+    "wanted": "2.2.4",
+    "latest": "2.4.8",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/@biomejs/biome"
+  },
+  "@supabase/ssr": {
+    "current": "0.8.0",
+    "wanted": "0.8.0",
+    "latest": "0.9.0",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/@supabase/ssr"
+  },
+  "@supabase/supabase-js": {
+    "current": "2.99.1",
+    "wanted": "2.99.3",
+    "latest": "2.99.3",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/@supabase/supabase-js"
+  },
+  "@tanstack/react-query": {
+    "current": "5.90.21",
+    "wanted": "5.95.0",
+    "latest": "5.95.0",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/@tanstack/react-query"
+  },
+  "@tanstack/react-router": {
+    "current": "1.167.4",
+    "wanted": "1.168.2",
+    "latest": "1.168.2",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/@tanstack/react-router"
+  },
+  "@tanstack/react-router-devtools": {
+    "current": "1.166.9",
+    "wanted": "1.166.11",
+    "latest": "1.166.11",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/@tanstack/react-router-devtools"
+  },
+  "@tanstack/react-router-ssr-query": {
+    "current": "1.166.9",
+    "wanted": "1.166.10",
+    "latest": "1.166.10",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/@tanstack/react-router-ssr-query"
+  },
+  "@tanstack/react-start": {
+    "current": "1.166.16",
+    "wanted": "1.167.3",
+    "latest": "1.167.3",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/@tanstack/react-start"
+  },
+  "@tanstack/router-plugin": {
+    "current": "1.166.13",
+    "wanted": "1.167.3",
+    "latest": "1.167.3",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/@tanstack/router-plugin"
+  },
+  "@types/node": {
+    "current": "22.19.15",
+    "wanted": "22.19.15",
+    "latest": "25.5.0",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/@types/node"
+  },
+  "@vitejs/plugin-react": {
+    "current": "6.0.0",
+    "wanted": "6.0.1",
+    "latest": "6.0.1",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/@vitejs/plugin-react"
+  },
+  "jsdom": {
+    "current": "27.0.1",
+    "wanted": "27.4.0",
+    "latest": "29.0.1",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/jsdom"
+  },
+  "lucide-react": {
+    "current": "0.545.0",
+    "wanted": "0.545.0",
+    "latest": "0.577.0",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/lucide-react"
+  },
+  "marked": {
+    "current": "17.0.4",
+    "wanted": "17.0.5",
+    "latest": "17.0.5",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/marked"
+  },
+  "nitro:nitro-nightly@latest": {
+    "current": "3.0.1-20260312-093400-ba5147a5",
+    "wanted": "3.0.1-20260322-095631-ffdd706a",
+    "latest": "3.0.1-20260322-095631-ffdd706a",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/nitro"
+  },
+  "rolldown": {
+    "current": "1.0.0-rc.9",
+    "wanted": "1.0.0-rc.9",
+    "latest": "1.0.0-rc.10",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/rolldown"
+  },
+  "sanitize-html": {
+    "current": "2.17.1",
+    "wanted": "2.17.2",
+    "latest": "2.17.2",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/sanitize-html"
+  },
+  "vite": {
+    "current": "8.0.0",
+    "wanted": "8.0.1",
+    "latest": "8.0.1",
+    "dependent": "personal-site-tanstack",
+    "location": "/home/runner/work/personal-site-tanstack/personal-site-tanstack/node_modules/vite"
+  }
+}
