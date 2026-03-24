@@ -360,7 +360,7 @@ export function SubmissionForm({
         </p>
 
         {error && (
-          <p className="text-sm text-red-600">{error}</p>
+          <p data-testid="submission-error" className="text-sm text-red-600">{error}</p>
         )}
 
         <button

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getSupabaseServiceClient } from '#/lib/supabase'
 import { requireAuth } from '#/server/auth.server'
-import { checkRateLimit } from '#/server/rate-limit'
+import { _resetRateLimitStore } from '#/server/rate-limit'
 
 // createServerFn mock: a transparent builder where handler() returns the raw
 // function. This lets tests call server functions as plain async functions
@@ -31,10 +31,6 @@ vi.mock('@tanstack/react-start/server', () => ({
   getRequestIP: vi.fn(() => '127.0.0.1'),
 }))
 
-vi.mock('#/server/rate-limit', () => ({
-  checkRateLimit: vi.fn(() => ({ allowed: true })),
-  _resetRateLimitStore: vi.fn(),
-}))
 
 const {
   getApprovedLocations,
@@ -149,8 +145,15 @@ describe('getLocationPhotos', () => {
   })
 })
 
+// Typed caller avoids repeated `as unknown as` casts in submitSighting tests
+const callSubmitSighting = submitSighting as unknown as
+  (a: { data: Record<string, unknown> }) => Promise<{ id: string }>
+
 describe('submitSighting', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    _resetRateLimitStore()
+  })
 
   it('creates a submission', async () => {
     vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
@@ -237,26 +240,30 @@ describe('submitSighting', () => {
     ))
 
     await expect(
-      (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<unknown>)(
-        { data: { mapSlug: 'lions', proposedName: 'Test', photos: [] } },
-      ),
+      callSubmitSighting({ data: { mapSlug: 'lions', proposedName: 'Test', photos: [] } }),
     ).rejects.toThrow('Too many pending submissions. Please try again later.')
   })
 
-  it('rejects when per-IP rate limit is exceeded', async () => {
-    vi.mocked(checkRateLimit).mockReturnValue({ allowed: false })
+  it('rejects the 6th submission from the same IP within a minute', async () => {
+    const makeSuccessClient = () => mockClient(
+      makeChain({ count: 0, error: null }),
+      makeChain({ data: { id: `sub-${Math.random()}` }, error: null }),
+    )
+    const payload = { data: { mapSlug: 'lions', proposedName: 'Test', proposedLat: 37.78, proposedLng: -122.42, photos: [] } }
+
+    // First 5 succeed
+    for (let i = 0; i < 5; i++) {
+      vi.mocked(getSupabaseServiceClient).mockReturnValue(makeSuccessClient())
+      await callSubmitSighting(payload)
+    }
+
+    // 6th is rate-limited
     vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
       makeChain({ count: 0, error: null }),
     ))
-
-    await expect(
-      (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<unknown>)(
-        { data: { mapSlug: 'lions', proposedName: 'Test', photos: [] } },
-      ),
-    ).rejects.toThrow('You are submitting too quickly. Please wait a moment.')
-
-    // Restore default for other tests
-    vi.mocked(checkRateLimit).mockReturnValue({ allowed: true })
+    await expect(callSubmitSighting(payload)).rejects.toThrow(
+      'You are submitting too quickly. Please wait a moment.',
+    )
   })
 })
 
