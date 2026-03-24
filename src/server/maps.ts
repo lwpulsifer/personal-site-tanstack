@@ -1,6 +1,8 @@
 import { createServerFn } from '@tanstack/react-start'
+import { getRequestIP } from '@tanstack/react-start/server'
 import { getSupabaseServiceClient } from '#/lib/supabase'
 import { requireAuth } from '#/server/auth.server'
+import { checkRateLimit } from '#/server/rate-limit'
 import { z } from 'zod'
 import type { MapLocation, MapPhoto, MapSubmission } from '#/lib/map-types'
 import type { Tables } from '#/lib/database.types'
@@ -205,6 +207,24 @@ export const submitSighting = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const supabase = getSupabaseServiceClient()
+
+    // Global pending limit
+    const { count, error: countError } = await supabase
+      .from('map_submissions')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending')
+
+    if (countError) throw new Error(countError.message)
+    if ((count ?? 0) >= 100) {
+      throw new Error('Too many pending submissions. Please try again later.')
+    }
+
+    // Per-IP rate limit
+    const ip = getRequestIP({ xForwardedFor: true }) ?? 'unknown'
+    const { allowed } = checkRateLimit(ip)
+    if (!allowed) {
+      throw new Error('You are submitting too quickly. Please wait a moment.')
+    }
 
     const firstPhotoWithCoords =
       data.photos.find((p) => typeof p.exifLat === 'number' && typeof p.exifLng === 'number') ?? null

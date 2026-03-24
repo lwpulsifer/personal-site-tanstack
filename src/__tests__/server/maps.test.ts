@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getSupabaseServiceClient } from '#/lib/supabase'
 import { requireAuth } from '#/server/auth.server'
+import { checkRateLimit } from '#/server/rate-limit'
 
 // createServerFn mock: a transparent builder where handler() returns the raw
 // function. This lets tests call server functions as plain async functions
@@ -26,6 +27,15 @@ vi.mock('#/server/auth.server', () => ({
   requireAuth: vi.fn(),
 }))
 
+vi.mock('@tanstack/react-start/server', () => ({
+  getRequestIP: vi.fn(() => '127.0.0.1'),
+}))
+
+vi.mock('#/server/rate-limit', () => ({
+  checkRateLimit: vi.fn(() => ({ allowed: true })),
+  _resetRateLimitStore: vi.fn(),
+}))
+
 const {
   getApprovedLocations,
   getLocationPhotos,
@@ -44,7 +54,7 @@ const {
  * A fluent Supabase query-builder mock. Every method returns the chain, and
  * the chain is thenable so any step in the pipeline can be awaited.
  */
-function makeChain(resolved: { data: unknown; error: unknown }) {
+function makeChain(resolved: Record<string, unknown>) {
   const chain: Record<string, unknown> = {}
   for (const method of [
     'select', 'order', 'eq', 'single', 'insert', 'update', 'is', 'upsert', 'delete', 'in', 'gte', 'lte',
@@ -144,6 +154,7 @@ describe('submitSighting', () => {
 
   it('creates a submission', async () => {
     vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
+      makeChain({ count: 0, error: null }),
       makeChain({ data: { id: 'sub-new' }, error: null }),
     ))
 
@@ -157,6 +168,7 @@ describe('submitSighting', () => {
   it('inserts photo rows without a locationId', async () => {
     const photosChain = makeChain({ data: null, error: null })
     vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
+      makeChain({ count: 0, error: null }),
       makeChain({ data: { id: 'sub-photos' }, error: null }),
       photosChain,
     ))
@@ -175,6 +187,7 @@ describe('submitSighting', () => {
   it('inserts photo rows with locationId when provided', async () => {
     const photosChain = makeChain({ data: null, error: null })
     vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
+      makeChain({ count: 0, error: null }),
       makeChain({ data: { id: 'sub-with-loc' }, error: null }),
       photosChain,
     ))
@@ -190,6 +203,7 @@ describe('submitSighting', () => {
 
   it('throws when insert fails', async () => {
     vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
+      makeChain({ count: 0, error: null }),
       makeChain({ data: null, error: { message: 'Insert failed' } }),
     ))
 
@@ -201,8 +215,9 @@ describe('submitSighting', () => {
   })
 
   it('rejects out-of-bounds coordinates for new sightings', async () => {
-    const chain = makeChain({ data: { id: 'sub-oob' }, error: null })
-    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(chain))
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
+      makeChain({ count: 0, error: null }),
+    ))
 
     await expect(
       (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<unknown>)({
@@ -214,6 +229,34 @@ describe('submitSighting', () => {
         },
       }),
     ).rejects.toThrow('Please submit sightings within the San Francisco Bay Area.')
+  })
+
+  it('rejects when global pending limit is reached', async () => {
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
+      makeChain({ count: 100, error: null }),
+    ))
+
+    await expect(
+      (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<unknown>)(
+        { data: { mapSlug: 'lions', proposedName: 'Test', photos: [] } },
+      ),
+    ).rejects.toThrow('Too many pending submissions. Please try again later.')
+  })
+
+  it('rejects when per-IP rate limit is exceeded', async () => {
+    vi.mocked(checkRateLimit).mockReturnValue({ allowed: false })
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
+      makeChain({ count: 0, error: null }),
+    ))
+
+    await expect(
+      (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<unknown>)(
+        { data: { mapSlug: 'lions', proposedName: 'Test', photos: [] } },
+      ),
+    ).rejects.toThrow('You are submitting too quickly. Please wait a moment.')
+
+    // Restore default for other tests
+    vi.mocked(checkRateLimit).mockReturnValue({ allowed: true })
   })
 })
 
