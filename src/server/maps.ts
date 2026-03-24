@@ -4,6 +4,7 @@ import { requireAuth } from '#/server/auth.server'
 import { z } from 'zod'
 import type { MapLocation, MapPhoto, MapSubmission } from '#/lib/map-types'
 import type { Tables } from '#/lib/database.types'
+import { censorName } from '#/lib/strings'
 import tzLookup from 'tz-lookup'
 import { isWithinBayArea } from '#/lib/geo'
 
@@ -143,7 +144,7 @@ export const getApprovedLocations = createServerFn({ method: 'GET' })
       ...loc,
       photo_count: countMap.get(loc.id) ?? 0,
       thumbnail_path: thumbMap.get(loc.id) ?? null,
-      submitted_by: submitterMap.get(loc.id) ?? null,
+      submitted_by: censorName(submitterMap.get(loc.id) ?? null),
     })) as MapLocation[]
   })
 
@@ -158,7 +159,25 @@ export const getLocationPhotos = createServerFn({ method: 'GET' })
       .order('created_at', { ascending: false })
 
     if (error) throw new Error(error.message)
-    return (photos ?? []) as MapPhoto[]
+
+    const photoRows = (photos ?? []) as Tables<'map_photos'>[]
+    const submissionIds = [...new Set(photoRows.map((p) => p.submission_id).filter(Boolean))] as string[]
+
+    const submitterMap = new Map<string, string>()
+    if (submissionIds.length > 0) {
+      const { data: submissions } = await supabase
+        .from('map_submissions')
+        .select('id, submitter_name')
+        .in('id', submissionIds)
+      for (const s of (submissions ?? []) as { id: string; submitter_name: string | null }[]) {
+        if (s.submitter_name) submitterMap.set(s.id, s.submitter_name)
+      }
+    }
+
+    return photoRows.map((p) => ({
+      ...p,
+      submitted_by: censorName(submitterMap.get(p.submission_id ?? '') ?? null),
+    })) as MapPhoto[]
   })
 
 export const submitSighting = createServerFn({ method: 'POST' })
@@ -290,11 +309,17 @@ export const getPendingSubmissions = createServerFn({ method: 'GET' })
           .in('submission_id', submissionIds)
       : { data: [] }
 
+    const submitterBySubmission = new Map(subs.map((s) => [s.id, s.submitter_name]))
+
     const photosBySubmission = new Map<string, MapPhoto[]>()
-    for (const p of (photos ?? []) as MapPhoto[]) {
+    for (const p of (photos ?? []) as Tables<'map_photos'>[]) {
       if (!p.submission_id) continue
+      const enriched: MapPhoto = {
+        ...p,
+        submitted_by: censorName(submitterBySubmission.get(p.submission_id) ?? null),
+      }
       const existing = photosBySubmission.get(p.submission_id) ?? []
-      existing.push(p)
+      existing.push(enriched)
       photosBySubmission.set(p.submission_id, existing)
     }
 

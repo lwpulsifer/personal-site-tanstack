@@ -36,6 +36,7 @@ const mockSubmissions: MapSubmission[] = [
 				taken_at: null,
 				time_zone: null,
 				created_at: "2026-03-15T12:00:00Z",
+				submitted_by: null,
 			},
 		],
 	},
