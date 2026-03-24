@@ -259,11 +259,11 @@ function LionsPage() {
                           {loc.address && (
                             <p className="m-0 truncate text-xs text-[var(--text-muted)]">{loc.address}</p>
                           )}
-                          {loc.photo_count > 0 && (
-                            <p className="m-0 mt-0.5 text-xs text-[var(--text-muted)]">
-                              {loc.photo_count} photo{loc.photo_count !== 1 ? 's' : ''}
-                            </p>
-                          )}
+                          <p className="m-0 mt-0.5 text-xs text-[var(--text-muted)]">
+                            {loc.submitted_by && <>Spotted by {loc.submitted_by}</>}
+                            {loc.submitted_by && loc.photo_count > 0 && ' · '}
+                            {loc.photo_count > 0 && <>{loc.photo_count} photo{loc.photo_count !== 1 ? 's' : ''}</>}
+                          </p>
                         </div>
                       </button>
                     </li>

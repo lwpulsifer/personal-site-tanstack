@@ -38,9 +38,10 @@ export function PhotoGallery({ locationId }: { locationId: string }) {
                 height={200}
               />
             </div>
-            {photo.caption && (
+            {(photo.caption || photo.submitted_by) && (
               <div className="border-t border-[var(--border)] px-3 py-2">
-                <p className="m-0 text-xs text-[var(--text-muted)]">{photo.caption}</p>
+                {photo.caption && <p className="m-0 text-xs text-[var(--text-muted)]">{photo.caption}</p>}
+                {photo.submitted_by && <p className="m-0 text-xs text-[var(--text-muted)]">Spotted by {photo.submitted_by}</p>}
               </div>
             )}
           </button>
@@ -112,10 +113,15 @@ export function PhotoGallery({ locationId }: { locationId: string }) {
               className="h-auto w-auto max-h-[78vh] max-w-full rounded-xl object-contain"
             />
           </div>
-          {photos[lightbox.index].caption && (
-            <p className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-lg bg-black/60 px-4 py-2 text-sm text-white">
-              {photos[lightbox.index].caption}
-            </p>
+          {(photos[lightbox.index].caption || photos[lightbox.index].submitted_by) && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-lg bg-black/60 px-4 py-2 text-center">
+              {photos[lightbox.index].caption && (
+                <p className="m-0 text-sm text-white">{photos[lightbox.index].caption}</p>
+              )}
+              {photos[lightbox.index].submitted_by && (
+                <p className="m-0 text-xs text-white/70">Spotted by {photos[lightbox.index].submitted_by}</p>
+              )}
+            </div>
           )}
         </div>
       ), document.body)}

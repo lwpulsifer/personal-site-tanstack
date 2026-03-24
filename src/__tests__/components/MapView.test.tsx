@@ -49,6 +49,7 @@ describe('MapView', () => {
       created_by: null,
       photo_count: 3,
       thumbnail_path: 'lions/test.jpg',
+      submitted_by: 'Jane',
     },
     {
       id: 'loc-2',
@@ -63,6 +64,7 @@ describe('MapView', () => {
       created_by: null,
       photo_count: 0,
       thumbnail_path: null,
+      submitted_by: null,
     },
   ]
 
