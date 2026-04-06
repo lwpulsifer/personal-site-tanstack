@@ -264,7 +264,7 @@ describe('submitSighting', () => {
     ))
 
     await expect(
-      callSubmitSighting({ data: { mapSlug: 'lions', proposedName: 'Test', photos: [] } }),
+      callSubmitSighting({ data: { mapSlug: 'lions', proposedName: 'Test', proposedLat: 37.78, proposedLng: -122.42, photos: [] } }),
     ).rejects.toThrow('Too many pending submissions. Please try again later.')
   })
 
