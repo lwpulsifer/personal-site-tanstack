@@ -63,6 +63,22 @@ describe('SubmissionForm', () => {
     expect(lngInput.value).toBe('-122.42')
   })
 
+  it('disables submit button when no coordinates are set', () => {
+    renderWithProvider(<SubmissionForm mapSlug="lions" onClose={() => {}} />)
+
+    const submitBtn = screen.getByTestId('submit-sighting-btn') as HTMLButtonElement
+    expect(submitBtn.disabled).toBe(true)
+  })
+
+  it('enables submit button when coordinates are provided', () => {
+    renderWithProvider(
+      <SubmissionForm mapSlug="lions" onClose={() => {}} initialLat={37.78} initialLng={-122.42} />,
+    )
+
+    const submitBtn = screen.getByTestId('submit-sighting-btn') as HTMLButtonElement
+    expect(submitBtn.disabled).toBe(false)
+  })
+
   it('renders add-photos mode without location fields', () => {
     renderWithProvider(
       <SubmissionForm

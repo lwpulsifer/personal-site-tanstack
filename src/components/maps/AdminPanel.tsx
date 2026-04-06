@@ -17,10 +17,25 @@ export function AdminPanel({
 	const queryClient = useQueryClient()
 	const { data: submissions = [], isLoading } = useQuery(pendingMapSubmissionsQueryOptions(mapSlug))
 
+	const pendingQueryKey = pendingMapSubmissionsQueryOptions(mapSlug).queryKey
+
 	const approveMutation = useMutation({
 		mutationFn: (submissionId: string) => approveSubmission({ data: { submissionId } }),
-		onSuccess: (result) => {
-			queryClient.invalidateQueries({ queryKey: pendingMapSubmissionsQueryOptions(mapSlug).queryKey })
+		onMutate: async (submissionId) => {
+			await queryClient.cancelQueries({ queryKey: pendingQueryKey })
+			const previous = queryClient.getQueryData<MapSubmission[]>(pendingQueryKey)
+			queryClient.setQueryData<MapSubmission[]>(pendingQueryKey, (old) =>
+				old?.filter((s) => s.id !== submissionId) ?? [],
+			)
+			return { previous }
+		},
+		onError: (_err, _id, context) => {
+			if (context?.previous) {
+				queryClient.setQueryData(pendingQueryKey, context.previous)
+			}
+		},
+		onSettled: (result) => {
+			queryClient.invalidateQueries({ queryKey: pendingQueryKey })
 			queryClient.invalidateQueries({ queryKey: mapLocationsQueryOptions(mapSlug).queryKey })
 			if (result?.locationId) {
 				// Refresh gallery when approving submissions for an existing location.
@@ -31,8 +46,21 @@ export function AdminPanel({
 
 	const rejectMutation = useMutation({
 		mutationFn: (submissionId: string) => rejectSubmission({ data: { submissionId } }),
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: pendingMapSubmissionsQueryOptions(mapSlug).queryKey })
+		onMutate: async (submissionId) => {
+			await queryClient.cancelQueries({ queryKey: pendingQueryKey })
+			const previous = queryClient.getQueryData<MapSubmission[]>(pendingQueryKey)
+			queryClient.setQueryData<MapSubmission[]>(pendingQueryKey, (old) =>
+				old?.filter((s) => s.id !== submissionId) ?? [],
+			)
+			return { previous }
+		},
+		onError: (_err, _id, context) => {
+			if (context?.previous) {
+				queryClient.setQueryData(pendingQueryKey, context.previous)
+			}
+		},
+		onSettled: () => {
+			queryClient.invalidateQueries({ queryKey: pendingQueryKey })
 		},
 	})
 

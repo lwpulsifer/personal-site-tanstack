@@ -206,7 +206,29 @@ export const submitSighting = createServerFn({ method: 'POST' })
     }),
   )
   .handler(async ({ data }) => {
+    const firstPhotoWithCoords =
+      data.photos.find((p) => typeof p.exifLat === 'number' && typeof p.exifLng === 'number') ?? null
+    const inferredCoords =
+      firstPhotoWithCoords
+        ? { lat: firstPhotoWithCoords.exifLat as number, lng: firstPhotoWithCoords.exifLng as number }
+        : typeof data.proposedLat === 'number' && typeof data.proposedLng === 'number'
+          ? { lat: data.proposedLat, lng: data.proposedLng }
+          : null
+
+    // New sightings (no existing location) must have coordinates — either from
+    // the form or from photo EXIF data — so admins can approve them later.
+    if (!data.locationId && !inferredCoords) {
+      throw new Error('Please provide a location by clicking the map, entering coordinates, or uploading a photo with GPS data.')
+    }
+
+    // Enforce a basic geofence for new sightings. (Adding photos to an existing
+    // location is allowed even if EXIF data is missing/odd.)
+    if (!data.locationId && inferredCoords && !isWithinBayArea(inferredCoords.lat, inferredCoords.lng)) {
+      throw new Error('Please submit sightings within the San Francisco Bay Area.')
+    }
+
     const supabase = getSupabaseServiceClient()
+    const submissionTz = inferTimeZoneFromCoords(inferredCoords)
 
     // Global pending limit
     const { count, error: countError } = await supabase
@@ -224,23 +246,6 @@ export const submitSighting = createServerFn({ method: 'POST' })
     const { allowed } = checkRateLimit(ip)
     if (!allowed) {
       throw new Error('You are submitting too quickly. Please wait a moment.')
-    }
-
-    const firstPhotoWithCoords =
-      data.photos.find((p) => typeof p.exifLat === 'number' && typeof p.exifLng === 'number') ?? null
-    const inferredCoords =
-      firstPhotoWithCoords
-        ? { lat: firstPhotoWithCoords.exifLat as number, lng: firstPhotoWithCoords.exifLng as number }
-        : typeof data.proposedLat === 'number' && typeof data.proposedLng === 'number'
-          ? { lat: data.proposedLat, lng: data.proposedLng }
-          : null
-
-    const submissionTz = inferTimeZoneFromCoords(inferredCoords)
-
-    // Enforce a basic geofence for new sightings. (Adding photos to an existing
-    // location is allowed even if EXIF data is missing/odd.)
-    if (!data.locationId && inferredCoords && !isWithinBayArea(inferredCoords.lat, inferredCoords.lng)) {
-      throw new Error('Please submit sightings within the San Francisco Bay Area.')
     }
 
     const occurredAtLocal =
