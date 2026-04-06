@@ -46,6 +46,11 @@ export function SubmissionForm({
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const hasCoords = mode === 'new'
+    ? (lat !== '' && lng !== '' && !Number.isNaN(Number.parseFloat(lat)) && !Number.isNaN(Number.parseFloat(lng)))
+      || fileMeta.some((m) => m.exifLat != null && m.exifLng != null)
+    : true
+
   const mutation = useMutation({
     mutationFn: async () => {
       setUploading(true)
@@ -363,10 +368,16 @@ export function SubmissionForm({
           <p data-testid="submission-error" className="text-sm text-red-600">{error}</p>
         )}
 
+        {mode === 'new' && !hasCoords && (
+          <p className="text-xs text-amber-600">
+            A location is required. Click the map, enter coordinates, or upload a photo with GPS data.
+          </p>
+        )}
+
         <button
           type="submit"
           data-testid="submit-sighting-btn"
-          disabled={uploading}
+          disabled={uploading || !hasCoords}
           className="w-full rounded-full bg-[var(--blue-deep)] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
         >
           {uploading ? 'Submitting...' : mode === 'add-photos' ? 'Submit Photos' : 'Submit Sighting'}

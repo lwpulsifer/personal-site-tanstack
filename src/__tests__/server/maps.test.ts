@@ -177,7 +177,7 @@ describe('submitSighting', () => {
     ))
 
     const result = await (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<{ id: string }>)(
-      { data: { mapSlug: 'lions', proposedName: 'Test', photos: [{ storagePath: 'img1.jpg' }, { storagePath: 'img2.jpg' }] } },
+      { data: { mapSlug: 'lions', proposedName: 'Test', proposedLat: 37.78, proposedLng: -122.42, photos: [{ storagePath: 'img1.jpg' }, { storagePath: 'img2.jpg' }] } },
     )
 
     expect(result.id).toBe('sub-photos')
@@ -212,9 +212,33 @@ describe('submitSighting', () => {
 
     await expect(
       (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<unknown>)(
-        { data: { mapSlug: 'lions', proposedName: 'Test', photos: [] } },
+        { data: { mapSlug: 'lions', proposedName: 'Test', proposedLat: 37.78, proposedLng: -122.42, photos: [] } },
       ),
     ).rejects.toThrow('Insert failed')
+  })
+
+  it('rejects new sightings without any coordinates', async () => {
+    await expect(
+      (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<unknown>)({
+        data: {
+          mapSlug: 'lions',
+          proposedName: 'No-coords Lion',
+          photos: [],
+        },
+      }),
+    ).rejects.toThrow('location')
+  })
+
+  it('rejects new sightings where only photos lack EXIF GPS', async () => {
+    await expect(
+      (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<unknown>)({
+        data: {
+          mapSlug: 'lions',
+          proposedName: 'No-coords Lion',
+          photos: [{ storagePath: 'img.jpg' }],
+        },
+      }),
+    ).rejects.toThrow('location')
   })
 
   it('rejects out-of-bounds coordinates for new sightings', async () => {

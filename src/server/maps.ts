@@ -237,6 +237,12 @@ export const submitSighting = createServerFn({ method: 'POST' })
 
     const submissionTz = inferTimeZoneFromCoords(inferredCoords)
 
+    // New sightings (no existing location) must have coordinates — either from
+    // the form or from photo EXIF data — so admins can approve them later.
+    if (!data.locationId && !inferredCoords) {
+      throw new Error('Please provide a location by clicking the map, entering coordinates, or uploading a photo with GPS data.')
+    }
+
     // Enforce a basic geofence for new sightings. (Adding photos to an existing
     // location is allowed even if EXIF data is missing/odd.)
     if (!data.locationId && inferredCoords && !isWithinBayArea(inferredCoords.lat, inferredCoords.lng)) {
