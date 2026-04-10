@@ -50,6 +50,8 @@ function Home() {
           <div className="shrink-0">
             <img
               src="/roys_peak.webp"
+              srcSet="/roys_peak-192.webp 192w, /roys_peak.webp 384w"
+              sizes="192px"
               alt="Me, at the top of Roy's Peak in Wanaka, New Zealand"
               width={384}
               height={384}
