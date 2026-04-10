@@ -48,18 +48,24 @@ function Home() {
           </div>
 
           <div className="shrink-0">
-            <img
-              src="/roys_peak.webp"
-              srcSet="/roys_peak-192.webp 192w, /roys_peak.webp 384w"
-              sizes="(min-width: 768px) 384px, 192px"
-              alt="Me, at the top of Roy's Peak in Wanaka, New Zealand"
-              width={384}
-              height={384}
-              fetchPriority="high"
-              loading="eager"
-              decoding="async"
-              className="h-48 w-48 rounded-full object-cover shadow-lg ring-2 ring-[var(--border)] md:h-96 md:w-96"
-            />
+            <picture>
+              <source
+                media="(min-width: 768px)"
+                srcSet="/roys_peak.webp"
+                width={384}
+                height={384}
+              />
+              <img
+                src="/roys_peak-192.webp"
+                alt="Me, at the top of Roy's Peak in Wanaka, New Zealand"
+                width={192}
+                height={192}
+                fetchPriority="high"
+                loading="eager"
+                decoding="async"
+                className="h-48 w-48 rounded-full object-cover shadow-lg ring-2 ring-[var(--border)] md:h-96 md:w-96"
+              />
+            </picture>
           </div>
         </div>
       </section>
