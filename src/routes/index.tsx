@@ -51,14 +51,14 @@ function Home() {
             <img
               src="/roys_peak.webp"
               srcSet="/roys_peak-192.webp 192w, /roys_peak.webp 384w"
-              sizes="192px"
+              sizes="(min-width: 768px) 384px, 192px"
               alt="Me, at the top of Roy's Peak in Wanaka, New Zealand"
               width={384}
               height={384}
               fetchPriority="high"
               loading="eager"
               decoding="async"
-              className="h-48 w-48 rounded-full object-cover shadow-lg ring-2 ring-[var(--border)]"
+              className="h-48 w-48 rounded-full object-cover shadow-lg ring-2 ring-[var(--border)] md:h-96 md:w-96"
             />
           </div>
         </div>
