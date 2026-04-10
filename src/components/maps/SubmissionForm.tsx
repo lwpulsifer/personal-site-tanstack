@@ -5,6 +5,7 @@ import { extractExifFromImage } from '#/lib/exif'
 import { isHeicFile, convertHeicFileToJpeg } from '#/lib/heic'
 import { getSupabaseBrowserClient } from '#/lib/supabase'
 import { mapLocationsQueryOptions, pendingMapSubmissionsQueryOptions } from '#/lib/queries'
+import { AddressSearch, type AddressResult } from './AddressSearch'
 
 export function SubmissionForm({
   mapSlug,
@@ -45,6 +46,11 @@ export function SubmissionForm({
   const [converting, setConverting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const hasCoords = mode === 'new'
+    ? (lat !== '' && lng !== '' && !Number.isNaN(Number.parseFloat(lat)) && !Number.isNaN(Number.parseFloat(lng)))
+      || fileMeta.some((m) => m.exifLat != null && m.exifLng != null)
+    : true
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -214,20 +220,16 @@ export function SubmissionForm({
               />
             </div>
 
-            <div>
-              <label htmlFor="lion-address" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
-                Address
-              </label>
-              <input
-                id="lion-address"
-                data-testid="field-address"
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="e.g. 3301 Lyon St, San Francisco"
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
-              />
-            </div>
+            <AddressSearch
+              value={address}
+              onChange={setAddress}
+              onSelect={(result: AddressResult) => {
+                setAddress(result.displayName)
+                setLat(result.lat.toString())
+                setLng(result.lng.toString())
+                onCoordsChange?.(result.lat, result.lng)
+              }}
+            />
 
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -277,7 +279,7 @@ export function SubmissionForm({
             </div>
 
             <p className="text-xs text-[var(--text-muted)]">
-              Tip: click on the map to set coordinates, or upload a photo with GPS data.
+              Tip: search for an address, click on the map, or upload a photo with GPS data to set the location.
             </p>
           </>
         )}
@@ -363,10 +365,16 @@ export function SubmissionForm({
           <p data-testid="submission-error" className="text-sm text-red-600">{error}</p>
         )}
 
+        {mode === 'new' && !hasCoords && (
+          <p className="text-xs text-amber-600">
+            A location is required. Click the map, enter coordinates, or upload a photo with GPS data.
+          </p>
+        )}
+
         <button
           type="submit"
           data-testid="submit-sighting-btn"
-          disabled={uploading}
+          disabled={uploading || !hasCoords}
           className="w-full rounded-full bg-[var(--blue-deep)] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
         >
           {uploading ? 'Submitting...' : mode === 'add-photos' ? 'Submit Photos' : 'Submit Sighting'}
