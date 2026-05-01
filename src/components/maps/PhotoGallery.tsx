@@ -101,9 +101,11 @@ export function PhotoGallery({ locationId }: { locationId: string }) {
             {lightbox.index + 1} / {photos.length}
           </div>
 
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: lightbox wrapper needs to stop propagation without being a focusable element */}
           <div
             className="mx-auto flex w-[92vw] max-w-[1100px] items-center justify-center px-4 pb-10 pt-16"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => { if (e.key === 'Escape') e.stopPropagation() }}
           >
             <StorageImage
               bucket="map-photos"

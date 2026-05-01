@@ -21,7 +21,7 @@ export default function Marquee({ children, className = '' }: MarqueeProps) {
     const observer = new ResizeObserver(check)
     observer.observe(mask)
     return () => observer.disconnect()
-  }, [children])
+  }, [])
 
   return (
     <div ref={maskRef} className={`overflow-hidden ${className}`}>

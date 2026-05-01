@@ -7,7 +7,7 @@ import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from '#/lib/site'
 import { getPublishedPosts, type DbPost } from '#/server/posts'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useId } from 'react'
 import { ErrorBoundary } from '#/components/ErrorBoundary'
 
 const canonical = `${SITE_URL}/blog`
@@ -29,6 +29,7 @@ function BlogIndex() {
   const publishedPosts = Route.useLoaderData()
   const { isAuthenticated } = useAuth()
   const queryClient = useQueryClient()
+  const tagDatalistId = useId()
 
   const [tagFilter, setTagFilter] = useState('')
   const [editingPost, setEditingPost] = useState<DbPost | 'new' | null>(null)
@@ -132,13 +133,13 @@ function BlogIndex() {
                 <input
                   type="search"
                   data-testid="tag-filter"
-                  list="tag-options"
+                  list={tagDatalistId}
                   value={tagFilter}
                   onChange={(e) => setTagFilter(e.target.value)}
                   placeholder="Filter by tag"
                   className="rounded-full border border-[var(--chip-border)] bg-[var(--chip-bg)] px-4 py-1.5 text-sm text-[var(--text)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--blue)]"
                 />
-                <datalist id="tag-options">
+                <datalist id={tagDatalistId}>
                   {allTags.map((tag) => (
                     <option key={tag} value={tag} />
                   ))}

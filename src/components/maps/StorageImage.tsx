@@ -45,6 +45,7 @@ export function StorageImage({
           Image unavailable
         </div>
       ) : (
+        // biome-ignore lint/a11y/useKeyWithClickEvents: onClick is a passthrough; consumers should provide keyboard handling
         <img
           src={src}
           alt={alt}

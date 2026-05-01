@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useId } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { submitSighting } from '#/server/maps'
 import { extractExifFromImage } from '#/lib/exif'
@@ -46,6 +46,7 @@ export function SubmissionForm({
   const [converting, setConverting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const id = useId()
 
   const hasCoords = mode === 'new'
     ? (lat !== '' && lng !== '' && !Number.isNaN(Number.parseFloat(lat)) && !Number.isNaN(Number.parseFloat(lng)))
@@ -145,7 +146,7 @@ export function SubmissionForm({
     setFileMeta(meta)
 
     // Generate preview URLs (revoke old ones via ref to avoid stale closure)
-    previewsRef.current.forEach((url) => URL.revokeObjectURL(url))
+    previewsRef.current.forEach((url) => { URL.revokeObjectURL(url) })
     const newPreviews = processed.map((f) => URL.createObjectURL(f))
     previewsRef.current = newPreviews
     setPreviews(newPreviews)
@@ -206,11 +207,11 @@ export function SubmissionForm({
         {mode === 'new' && (
           <>
             <div>
-              <label htmlFor="lion-name" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+              <label htmlFor={`${id}-name`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
                 Name / Description
               </label>
               <input
-                id="lion-name"
+                id={`${id}-name`}
                 data-testid="field-name"
                 type="text"
                 value={name}
@@ -233,11 +234,11 @@ export function SubmissionForm({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="lion-lat" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+                <label htmlFor={`${id}-lat`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
                   Latitude
                 </label>
                 <input
-                  id="lion-lat"
+                  id={`${id}-lat`}
                   data-testid="field-lat"
                   type="number"
                   step="any"
@@ -255,11 +256,11 @@ export function SubmissionForm({
                 />
               </div>
               <div>
-                <label htmlFor="lion-lng" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+                <label htmlFor={`${id}-lng`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
                   Longitude
                 </label>
                 <input
-                  id="lion-lng"
+                  id={`${id}-lng`}
                   data-testid="field-lng"
                   type="number"
                   step="any"
@@ -285,11 +286,11 @@ export function SubmissionForm({
         )}
 
         <div>
-          <label htmlFor="lion-photos" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+          <label htmlFor={`${id}-photos`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
             Photos
           </label>
           <input
-            id="lion-photos"
+            id={`${id}-photos`}
             data-testid="field-photos"
             type="file"
             accept="image/*"
@@ -317,11 +318,11 @@ export function SubmissionForm({
         </div>
 
         <div>
-          <label htmlFor="lion-notes" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+          <label htmlFor={`${id}-notes`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
             Notes
           </label>
           <textarea
-            id="lion-notes"
+            id={`${id}-notes`}
             data-testid="field-notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -333,11 +334,11 @@ export function SubmissionForm({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="lion-submitter-name" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+            <label htmlFor={`${id}-submitter-name`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
               Your Name (optional)
             </label>
             <input
-              id="lion-submitter-name"
+              id={`${id}-submitter-name`}
               type="text"
               value={submitterName}
               onChange={(e) => setSubmitterName(e.target.value)}
@@ -345,11 +346,11 @@ export function SubmissionForm({
             />
           </div>
           <div>
-            <label htmlFor="lion-submitter-email" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+            <label htmlFor={`${id}-submitter-email`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
               Your Email (optional)
             </label>
             <input
-              id="lion-submitter-email"
+              id={`${id}-submitter-email`}
               type="email"
               value={submitterEmail}
               onChange={(e) => setSubmitterEmail(e.target.value)}

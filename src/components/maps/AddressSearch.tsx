@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useId } from 'react'
 import { BAY_AREA_BOUNDS } from '#/lib/geo'
 
 export interface AddressResult {
@@ -27,6 +27,8 @@ export function AddressSearch({
   const timerRef = useRef<ReturnType<typeof setTimeout>>(null)
   const abortRef = useRef<AbortController>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const inputId = useId()
+  const resultsId = useId()
 
   const search = useCallback(async (query: string) => {
     abortRef.current?.abort()
@@ -132,12 +134,12 @@ export function AddressSearch({
 
   return (
     <div ref={containerRef} className="relative">
-      <label htmlFor="lion-address" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+      <label htmlFor={inputId} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
         Address
       </label>
       <div className="relative">
         <input
-          id="lion-address"
+          id={inputId}
           data-testid="field-address"
           type="text"
           value={value}
@@ -148,7 +150,7 @@ export function AddressSearch({
           autoComplete="off"
           role="combobox"
           aria-expanded={isOpen}
-          aria-controls="address-results"
+          aria-controls={resultsId}
           aria-activedescendant={activeIndex >= 0 ? `address-result-${activeIndex}` : undefined}
           className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
         />
@@ -158,17 +160,18 @@ export function AddressSearch({
       </div>
 
       {isOpen && results.length > 0 && (
-        <ul
-          id="address-results"
+        <div
+          id={resultsId}
           data-testid="address-results"
           role="listbox"
           className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-lg"
         >
           {results.map((r, i) => (
-            <li
+            <div
               key={`${r.lat}-${r.lng}`}
               id={`address-result-${i}`}
               role="option"
+              tabIndex={-1}
               aria-selected={i === activeIndex}
               onMouseDown={() => handleSelect(r)}
               className={`cursor-pointer px-3 py-2 text-xs text-[var(--text)] ${
@@ -176,9 +179,9 @@ export function AddressSearch({
               }`}
             >
               {r.displayName}
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   )

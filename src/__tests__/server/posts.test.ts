@@ -43,7 +43,8 @@ function makeChain(resolved: { data: unknown; error: unknown }) {
   for (const method of ['select', 'order', 'eq', 'single', 'insert', 'update', 'is', 'upsert', 'delete']) {
     chain[method] = vi.fn(() => chain)
   }
-  chain['then'] = (resolve: (v: unknown) => void) => Promise.resolve(resolved).then(resolve)
+  // biome-ignore lint/suspicious/noThenProperty: needed for thenable mock in tests
+  chain.then = (resolve: (v: unknown) => void) => Promise.resolve(resolved).then(resolve)
   return chain
 }
 
@@ -152,7 +153,7 @@ describe('getAllTags', () => {
 
   it('returns a sorted, deduplicated list of tags across all posts', async () => {
     const chain = makeChain({ data: null, error: null })
-    chain['select'] = vi.fn().mockResolvedValue({
+    chain.select = vi.fn().mockResolvedValue({
       data: [{ tags: ['react', 'typescript'] }, { tags: ['typescript', 'css'] }],
       error: null,
     })
