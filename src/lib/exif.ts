@@ -27,9 +27,13 @@ function normalizeExifDateTime(value: unknown): string | null {
  * Extract GPS coordinates and date-time from an image file's EXIF data.
  */
 export async function extractExifFromImage(file: File): Promise<ExifExtract> {
+  // biome-ignore lint/suspicious/noExplicitAny: e2e test hook, needs to read global
+  const win = typeof window !== 'undefined' ? (window as any) : null
+  if (win?.__e2e_exif_result__) {
+    return win.__e2e_exif_result__ as ExifExtract
+  }
   try {
-    const buffer = await file.arrayBuffer()
-    const tags = ExifReader.load(buffer, { expanded: true })
+    const tags = await ExifReader.load(file, { expanded: true })
     // biome-ignore lint/suspicious/noExplicitAny: ExifReader's expanded tag structure is not fully typed
     const gps = (tags as any).gps ?? {}
     // biome-ignore lint/suspicious/noExplicitAny: ExifReader's expanded tag structure is not fully typed
