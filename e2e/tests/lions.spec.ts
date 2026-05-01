@@ -89,6 +89,41 @@ test('can submit additional photos for an existing location (multiple files)', a
   await expect(page.getByTestId('submission-success')).toBeVisible({ timeout: 10_000 })
 })
 
+test('uploading photo with GPS EXIF populates lat/lng fields', async ({ page }) => {
+  // Mock the exif.ts module to return known GPS coordinates for any file.
+  // This avoids needing a real JPEG with embedded EXIF data.
+  await page.route(/\/lib\/exif\.ts/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/javascript',
+      body: `
+export async function extractExifFromImage(file) {
+  return { coords: { lat: 37.7749, lng: -122.4194 }, takenAtLocal: '2026-03-15T12:34:56' }
+}
+`,
+    })
+  })
+
+  await page.goto('/lions/')
+  await ensureHydrated(page)
+  await page.getByTestId('report-sighting-btn').click()
+  await expect(page.getByTestId('submission-form-heading')).toBeVisible({ timeout: 10_000 })
+
+  // Upload a minimal JPEG file — the mock above intercepts EXIF extraction.
+  await page.getByTestId('field-photos').setInputFiles({
+    name: 'photo.jpg',
+    mimeType: 'image/jpeg',
+    buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]), // minimal valid JPEG (SOI + EOI only)
+  })
+
+  // Verify the lat/lng fields are populated with the mocked EXIF GPS coordinates.
+  await expect(page.getByTestId('field-lat')).toHaveValue('37.7749', { timeout: 5_000 })
+  await expect(page.getByTestId('field-lng')).toHaveValue('-122.4194', { timeout: 5_000 })
+
+  // Verify the submit button is now enabled (coords are present).
+  await expect(page.getByTestId('submit-sighting-btn')).toBeEnabled()
+})
+
 // ── Admin (authenticated) ─────────────────────────────────────────────────────
 
 adminTest.describe('admin: lion management', () => {

@@ -28,8 +28,7 @@ function normalizeExifDateTime(value: unknown): string | null {
  */
 export async function extractExifFromImage(file: File): Promise<ExifExtract> {
   try {
-    const buffer = await file.arrayBuffer()
-    const tags = ExifReader.load(buffer, { expanded: true })
+    const tags = await ExifReader.load(file, { expanded: true })
     // biome-ignore lint/suspicious/noExplicitAny: ExifReader's expanded tag structure is not fully typed
     const gps = (tags as any).gps ?? {}
     // biome-ignore lint/suspicious/noExplicitAny: ExifReader's expanded tag structure is not fully typed
