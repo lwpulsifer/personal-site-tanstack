@@ -90,18 +90,14 @@ test('can submit additional photos for an existing location (multiple files)', a
 })
 
 test('uploading photo with GPS EXIF populates lat/lng fields', async ({ page }) => {
-  // Mock the exif.ts module to return known GPS coordinates for any file.
-  // This avoids needing a real JPEG with embedded EXIF data.
-  await page.route(/\/lib\/exif\.ts/, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'text/javascript',
-      body: `
-export async function extractExifFromImage(file) {
-  return { coords: { lat: 37.7749, lng: -122.4194 }, takenAtLocal: '2026-03-15T12:34:56' }
-}
-`,
-    })
+  // Set a global that extractExifFromImage checks before performing real EXIF
+  // extraction. This avoids needing a real JPEG with embedded GPS data and works
+  // regardless of how Vite bundles modules.
+  await page.addInitScript(() => {
+    ;(window as any).__e2e_exif_result__ = {
+      coords: { lat: 37.7749, lng: -122.4194 },
+      takenAtLocal: '2026-03-15T12:34:56',
+    }
   })
 
   await page.goto('/lions/')
@@ -109,7 +105,7 @@ export async function extractExifFromImage(file) {
   await page.getByTestId('report-sighting-btn').click()
   await expect(page.getByTestId('submission-form-heading')).toBeVisible({ timeout: 10_000 })
 
-  // Upload a minimal JPEG file — the mock above intercepts EXIF extraction.
+  // Upload a minimal JPEG file — the global mock above intercepts EXIF extraction.
   await page.getByTestId('field-photos').setInputFiles({
     name: 'photo.jpg',
     mimeType: 'image/jpeg',
