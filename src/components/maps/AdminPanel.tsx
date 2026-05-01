@@ -86,6 +86,7 @@ export function AdminPanel({
 				// Falls back to the submission id to keep the id unique even if proposed names collide.
 				// Example: `submission-card-e2e-test-lion-approve`
 				//          `submission-card-0f5d...` (fallback)
+				// biome-ignore lint/a11y/useSemanticElements: need div for complex card layout with nested buttons
 				<div
 					key={sub.id}
 					data-testid={`submission-card-${toTestIdPart(sub.proposed_name ?? sub.id)}`}

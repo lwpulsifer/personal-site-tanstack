@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, useId } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { marked } from 'marked'
 import { sanitize } from '#/lib/sanitize'
@@ -82,6 +82,7 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
   const [tab, setTab] = useState<'write' | 'preview'>('write')
   const slugManuallyEdited = useRef(!!initial.slug)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const id = useId()
 
   function setField<K extends keyof PostFields>(key: K, value: PostFields[K]) {
     setFields((prev) => ({ ...prev, [key]: value }))
@@ -112,8 +113,10 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
   })
 
   const statusMutation = useMutation({
-    mutationFn: (next: PostStatus) =>
-      setPostStatus({ data: { postId: savedPostId!, status: next } }),
+    mutationFn: (next: PostStatus) => {
+      if (!savedPostId) throw new Error('Post not saved yet')
+      return setPostStatus({ data: { postId: savedPostId, status: next } })
+    },
     onSuccess: (_data, next) => setStatus(next),
   })
 
@@ -220,10 +223,11 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
       <div className="shrink-0 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3">
         <div className="mx-auto grid max-w-5xl grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-2">
-            <label className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+            <label htmlFor={`${id}-title`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
               Title
             </label>
             <input
+              id={`${id}-title`}
               type="text"
               value={fields.title}
               onChange={(e) => {
@@ -239,10 +243,11 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+            <label htmlFor={`${id}-slug`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
               Slug
             </label>
             <input
+              id={`${id}-slug`}
               type="text"
               value={fields.slug}
               onChange={(e) => {
@@ -256,6 +261,7 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
           </div>
 
           <div>
+            {/* biome-ignore lint/a11y/noLabelWithoutControl: TagsInput is a compound component */}
             <label className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
               Tags
             </label>
@@ -267,10 +273,11 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
           </div>
 
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+            <label htmlFor={`${id}-description`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
               Description
             </label>
             <input
+              id={`${id}-description`}
               type="text"
               value={fields.description}
               onChange={(e) => setField('description', e.target.value)}
@@ -280,10 +287,11 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
           </div>
 
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+            <label htmlFor={`${id}-hero-image`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
               Hero image URL (optional)
             </label>
             <input
+              id={`${id}-hero-image`}
               type="text"
               value={fields.heroImage}
               onChange={(e) => setField('heroImage', e.target.value)}

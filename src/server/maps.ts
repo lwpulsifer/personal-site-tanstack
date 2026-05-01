@@ -26,14 +26,14 @@ function localToUtcIso(local: string | null | undefined, timeZone: string): stri
   if (!local) return null
   // Parse the local string as if it were UTC (no timezone suffix → UTC)
   const naive = new Date(local)
-  if (isNaN(naive.getTime())) return null
+  if (Number.isNaN(naive.getTime())) return null
   // Compute the offset: how far ahead the target timezone is from UTC at this instant
   const utcStr = naive.toLocaleString('en-US', { timeZone: 'UTC' })
   const tzStr = naive.toLocaleString('en-US', { timeZone })
   const offsetMs = new Date(utcStr).getTime() - new Date(tzStr).getTime()
   // Shift so that the local string is interpreted in the target timezone
   const result = new Date(naive.getTime() + offsetMs)
-  return isNaN(result.getTime()) ? null : result.toISOString()
+  return Number.isNaN(result.getTime()) ? null : result.toISOString()
 }
 
 function metersToLatDegrees(meters: number) {
@@ -82,10 +82,10 @@ async function findExistingLocationWithinRadius(opts: {
   if (error) throw new Error(error.message)
   let best: { id: string; dist: number } | null = null
   for (const c of candidates ?? []) {
-    if (typeof (c as any).lat !== 'number' || typeof (c as any).lng !== 'number') continue
-    const dist = haversineDistanceMeters(opts.coords, { lat: (c as any).lat, lng: (c as any).lng })
+    if (typeof c.lat !== 'number' || typeof c.lng !== 'number') continue
+    const dist = haversineDistanceMeters(opts.coords, { lat: c.lat as number, lng: c.lng as number })
     if (dist <= opts.radiusMeters && (!best || dist < best.dist)) {
-      best = { id: (c as any).id, dist }
+      best = { id: String(c.id), dist }
     }
   }
   return best?.id ?? null

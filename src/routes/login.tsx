@@ -1,5 +1,5 @@
+import { useState, useId } from 'react'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { useState } from 'react'
 import { getSupabaseBrowserClient } from '#/lib/supabase'
 
 export const Route = createFileRoute('/login')({
@@ -9,6 +9,8 @@ export const Route = createFileRoute('/login')({
 
 function LoginPage() {
   const router = useRouter()
+  const emailId = useId()
+  const passwordId = useId()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -43,11 +45,11 @@ function LoginPage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="email" className="text-sm font-semibold text-[var(--text-muted)]">
+            <label htmlFor={emailId} className="text-sm font-semibold text-[var(--text-muted)]">
               Email
             </label>
             <input
-              id="email"
+              id={emailId}
               data-testid="login-email"
               type="email"
               autoComplete="email"
@@ -59,11 +61,11 @@ function LoginPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="password" className="text-sm font-semibold text-[var(--text-muted)]">
+            <label htmlFor={passwordId} className="text-sm font-semibold text-[var(--text-muted)]">
               Password
             </label>
             <input
-              id="password"
+              id={passwordId}
               data-testid="login-password"
               type="password"
               autoComplete="current-password"

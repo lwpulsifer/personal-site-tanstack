@@ -57,7 +57,8 @@ function makeChain(resolved: Record<string, unknown>) {
   ]) {
     chain[method] = vi.fn(() => chain)
   }
-  chain['then'] = (resolve: (v: unknown) => void) => Promise.resolve(resolved).then(resolve)
+  // biome-ignore lint/suspicious/noThenProperty: needed for thenable mock in tests
+  chain.then = (resolve: (v: unknown) => void) => Promise.resolve(resolved).then(resolve)
   return chain
 }
 
