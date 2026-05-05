@@ -3,6 +3,7 @@ import { getAdminPosts, getAllTags } from '#/server/posts'
 import { getNowPlaying } from '#/server/spotify'
 import { getPageViews } from '#/server/pageViews'
 import { getApprovedLocations, getLocationPhotos, getPendingSubmissions } from '#/server/maps'
+import { getFeeds, getFeedItems } from '#/server/feeds'
 
 export const adminPostsQueryOptions = queryOptions({
   queryKey: ['adminPosts'],
@@ -46,3 +47,15 @@ export const pendingMapSubmissionsQueryOptions = (mapSlug?: string) =>
     queryKey: ['pendingMapSubmissions', mapSlug],
     queryFn: () => getPendingSubmissions({ data: { mapSlug } }),
   })
+
+// ── Feeds ────────────────────────────────────────────────────────────────────
+
+export const feedsQueryOptions = queryOptions({
+  queryKey: ['feeds'],
+  queryFn: () => getFeeds(),
+})
+
+export const feedItemsQueryOptions = queryOptions({
+  queryKey: ['feedItems'],
+  queryFn: () => getFeedItems(),
+})

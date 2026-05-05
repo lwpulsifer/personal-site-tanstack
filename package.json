@@ -45,6 +45,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-leaflet": "^5.0.0",
+    "rss-parser": "^3.13.0",
     "sanitize-html": "^2.17.1",
     "tailwindcss": "^4.2.2",
     "tz-lookup": "^6.1.25"
