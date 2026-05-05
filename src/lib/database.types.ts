@@ -34,6 +34,83 @@ export type Database = {
   }
   public: {
     Tables: {
+      feed_items: {
+        Row: {
+          author: string | null
+          created_at: string
+          description: string | null
+          feed_id: string
+          guid: string
+          id: string
+          link: string | null
+          published_at: string | null
+          title: string
+        }
+        Insert: {
+          author?: string | null
+          created_at?: string
+          description?: string | null
+          feed_id: string
+          guid: string
+          id?: string
+          link?: string | null
+          published_at?: string | null
+          title: string
+        }
+        Update: {
+          author?: string | null
+          created_at?: string
+          description?: string | null
+          feed_id?: string
+          guid?: string
+          id?: string
+          link?: string | null
+          published_at?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feed_items_feed_id_fkey"
+            columns: ["feed_id"]
+            isOneToOne: false
+            referencedRelation: "feeds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feeds: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          last_error: string | null
+          last_fetched_at: string | null
+          site_url: string | null
+          title: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          last_error?: string | null
+          last_fetched_at?: string | null
+          site_url?: string | null
+          title?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          last_error?: string | null
+          last_fetched_at?: string | null
+          site_url?: string | null
+          title?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
       map_events: {
         Row: {
           created_at: string

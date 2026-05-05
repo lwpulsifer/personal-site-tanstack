@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RssDotxmlRouteImport } from './routes/rss[.]xml'
+import { Route as ReadRouteImport } from './routes/read'
 import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FunRouteImport } from './routes/fun'
@@ -27,6 +28,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const RssDotxmlRoute = RssDotxmlRouteImport.update({
   id: '/rss.xml',
   path: '/rss.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReadRoute = ReadRouteImport.update({
+  id: '/read',
+  path: '/read',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LogoutRoute = LogoutRouteImport.update({
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/fun': typeof FunRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
+  '/read': typeof ReadRoute
   '/rss.xml': typeof RssDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/blog/$slug': typeof BlogSlugRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/fun': typeof FunRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
+  '/read': typeof ReadRoute
   '/rss.xml': typeof RssDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/blog/$slug': typeof BlogSlugRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/fun': typeof FunRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
+  '/read': typeof ReadRoute
   '/rss.xml': typeof RssDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/blog/$slug': typeof BlogSlugRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/fun'
     | '/login'
     | '/logout'
+    | '/read'
     | '/rss.xml'
     | '/sitemap.xml'
     | '/blog/$slug'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/fun'
     | '/login'
     | '/logout'
+    | '/read'
     | '/rss.xml'
     | '/sitemap.xml'
     | '/blog/$slug'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/fun'
     | '/login'
     | '/logout'
+    | '/read'
     | '/rss.xml'
     | '/sitemap.xml'
     | '/blog/$slug'
@@ -140,6 +152,7 @@ export interface RootRouteChildren {
   FunRoute: typeof FunRoute
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
+  ReadRoute: typeof ReadRoute
   RssDotxmlRoute: typeof RssDotxmlRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   BlogSlugRoute: typeof BlogSlugRoute
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       path: '/rss.xml'
       fullPath: '/rss.xml'
       preLoaderRoute: typeof RssDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/read': {
+      id: '/read'
+      path: '/read'
+      fullPath: '/read'
+      preLoaderRoute: typeof ReadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/logout': {
@@ -220,6 +240,7 @@ const rootRouteChildren: RootRouteChildren = {
   FunRoute: FunRoute,
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,
+  ReadRoute: ReadRoute,
   RssDotxmlRoute: RssDotxmlRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   BlogSlugRoute: BlogSlugRoute,
