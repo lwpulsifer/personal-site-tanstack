@@ -1,16 +1,19 @@
 import { Link } from '@tanstack/react-router'
 import type { DbPost } from '#/server/posts'
-import { StatusBadge } from './StatusBadge'
 import { AdminActions } from './AdminActions'
+import { StatusBadge } from './StatusBadge'
 
 function PostDate({ post }: { post: DbPost }) {
   return (
     <p className="m-0 text-xs text-[var(--text-muted)]">
-      {new Date(post.published_at ?? post.created_at).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      })}
+      {new Date(post.published_at ?? post.created_at).toLocaleDateString(
+        'en-US',
+        {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        },
+      )}
     </p>
   )
 }
@@ -79,7 +82,9 @@ export function PostCard({
       </h2>
 
       {post.description && (
-        <p className={`mb-2 text-[var(--text-muted)] ${featured ? 'mt-3 text-base' : 'mt-2 text-sm'}`}>
+        <p
+          className={`mb-2 text-[var(--text-muted)] ${featured ? 'mt-3 text-base' : 'mt-2 text-sm'}`}
+        >
           {post.description}
         </p>
       )}

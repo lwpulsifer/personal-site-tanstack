@@ -1,18 +1,18 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
+import { createFileRoute } from '@tanstack/react-router'
 import { lazy, Suspense, useCallback, useReducer } from 'react'
-import { SITE_TITLE, SITE_URL } from '#/lib/site'
-import { getApprovedLocations } from '#/server/maps'
-import { mapLocationsQueryOptions } from '#/lib/queries'
-import { useAuth } from '#/lib/auth'
-import { LocationDetail } from '#/components/maps/LocationDetail'
-import { SubmissionForm } from '#/components/maps/SubmissionForm'
+import { ErrorBoundary } from '#/components/ErrorBoundary'
 import { AdminPanel } from '#/components/maps/AdminPanel'
-import type { MapLocation, MapSubmission } from '#/lib/map-types'
+import { LocationDetail } from '#/components/maps/LocationDetail'
 import { MapSkeleton } from '#/components/maps/MapSkeleton'
 import { StorageImage } from '#/components/maps/StorageImage'
+import { SubmissionForm } from '#/components/maps/SubmissionForm'
+import { useAuth } from '#/lib/auth'
+import type { MapLocation, MapSubmission } from '#/lib/map-types'
+import { mapLocationsQueryOptions } from '#/lib/queries'
+import { SITE_TITLE, SITE_URL } from '#/lib/site'
 import { toTestIdPart } from '#/lib/strings'
-import { ErrorBoundary } from '#/components/ErrorBoundary'
+import { getApprovedLocations } from '#/server/maps'
 
 const MapView = lazy(() =>
   import('#/components/maps/MapView').then((m) => ({ default: m.MapView })),
@@ -30,7 +30,10 @@ export const Route = createFileRoute('/lions/')({
     ],
     meta: [
       { title: pageTitle },
-      { name: 'description', content: 'An interactive map of lion statues across San Francisco.' },
+      {
+        name: 'description',
+        content: 'An interactive map of lion statues across San Francisco.',
+      },
     ],
   }),
   component: LionsPage,
@@ -71,7 +74,10 @@ const initialSidebarState: SidebarState = {
   mapBoundsError: null,
 }
 
-function sidebarReducer(state: SidebarState, action: SidebarAction): SidebarState {
+function sidebarReducer(
+  state: SidebarState,
+  action: SidebarAction,
+): SidebarState {
   switch (action.type) {
     case 'MAP_CLICK':
       return {
@@ -81,7 +87,11 @@ function sidebarReducer(state: SidebarState, action: SidebarAction): SidebarStat
         previewCoords: { lat: action.lat, lng: action.lng },
       }
     case 'SELECT_LOCATION':
-      return { ...initialSidebarState, view: 'location', selectedLocation: action.location }
+      return {
+        ...initialSidebarState,
+        view: 'location',
+        selectedLocation: action.location,
+      }
     case 'SELECT_SUBMISSION':
       return {
         ...initialSidebarState,
@@ -89,7 +99,10 @@ function sidebarReducer(state: SidebarState, action: SidebarAction): SidebarStat
         selectedSubmission: action.submission,
         previewCoords:
           action.submission.proposed_lat && action.submission.proposed_lng
-            ? { lat: action.submission.proposed_lat, lng: action.submission.proposed_lng }
+            ? {
+                lat: action.submission.proposed_lat,
+                lng: action.submission.proposed_lng,
+              }
             : null,
       }
     case 'ADD_PHOTOS':
@@ -109,7 +122,11 @@ function sidebarReducer(state: SidebarState, action: SidebarAction): SidebarStat
     case 'SET_PREVIEW_COORDS':
       return { ...state, previewCoords: { lat: action.lat, lng: action.lng } }
     case 'MAP_CLICK_OUT_OF_BOUNDS':
-      return { ...state, mapBoundsError: 'Please add sightings within the San Francisco Bay Area.' }
+      return {
+        ...state,
+        mapBoundsError:
+          'Please add sightings within the San Francisco Bay Area.',
+      }
   }
 }
 
@@ -141,7 +158,8 @@ function LionsPage() {
     dispatch({ type: 'ADD_PHOTOS', location })
   }, [])
 
-  const showPreviewCoords = state.view === 'submit' || state.view === 'submission'
+  const showPreviewCoords =
+    state.view === 'submit' || state.view === 'submission'
 
   return (
     <main className="px-4 pb-8 pt-14">
@@ -155,7 +173,8 @@ function LionsPage() {
             Lions of SF
           </h1>
           <p className="mt-2 text-sm text-[var(--text-muted)]">
-            An interactive map of lion statues across San Francisco. Click the map to report a sighting!
+            An interactive map of lion statues across San Francisco. Click the
+            map to report a sighting!
           </p>
         </div>
         <button
@@ -191,7 +210,9 @@ function LionsPage() {
                 locations={locations}
                 onSelectLocation={handleSelectLocation}
                 onMapClick={handleMapClick}
-                onMapClickOutOfBounds={() => dispatch({ type: 'MAP_CLICK_OUT_OF_BOUNDS' })}
+                onMapClickOutOfBounds={() =>
+                  dispatch({ type: 'MAP_CLICK_OUT_OF_BOUNDS' })
+                }
                 selectedLocationId={state.selectedLocation?.id}
                 previewCoords={showPreviewCoords ? state.previewCoords : null}
               />
@@ -205,13 +226,27 @@ function LionsPage() {
             <SubmissionForm
               mapSlug="lions"
               mode={state.submitMode}
-              locationId={state.submitMode === 'add-photos' ? state.submitLocation?.id : undefined}
-              initialName={state.submitMode === 'add-photos' ? state.submitLocation?.name : undefined}
-              initialAddress={state.submitMode === 'add-photos' ? state.submitLocation?.address ?? undefined : undefined}
+              locationId={
+                state.submitMode === 'add-photos'
+                  ? state.submitLocation?.id
+                  : undefined
+              }
+              initialName={
+                state.submitMode === 'add-photos'
+                  ? state.submitLocation?.name
+                  : undefined
+              }
+              initialAddress={
+                state.submitMode === 'add-photos'
+                  ? (state.submitLocation?.address ?? undefined)
+                  : undefined
+              }
               onClose={() => dispatch({ type: 'CLOSE_FORM' })}
               initialLat={state.clickedCoords?.lat}
               initialLng={state.clickedCoords?.lng}
-              onCoordsChange={(lat, lng) => dispatch({ type: 'SET_PREVIEW_COORDS', lat, lng })}
+              onCoordsChange={(lat, lng) =>
+                dispatch({ type: 'SET_PREVIEW_COORDS', lat, lng })
+              }
             />
           ) : state.view === 'location' && state.selectedLocation ? (
             <LocationDetail
@@ -225,7 +260,8 @@ function LionsPage() {
                 {locations.length} lion{locations.length !== 1 ? 's' : ''} found
               </h3>
               <p className="mt-2 text-xs text-[var(--text-muted)]">
-                Click a marker to see details, or click the map to report a new sighting.
+                Click a marker to see details, or click the map to report a new
+                sighting.
               </p>
 
               {locations.length > 0 && (
@@ -255,14 +291,28 @@ function LionsPage() {
                           </div>
                         )}
                         <div className="min-w-0">
-                          <p data-testid={`location-name-${toTestIdPart(loc.name)}`} className="m-0 truncate text-sm font-semibold text-[var(--text)]">{loc.name}</p>
+                          <p
+                            data-testid={`location-name-${toTestIdPart(loc.name)}`}
+                            className="m-0 truncate text-sm font-semibold text-[var(--text)]"
+                          >
+                            {loc.name}
+                          </p>
                           {loc.address && (
-                            <p className="m-0 truncate text-xs text-[var(--text-muted)]">{loc.address}</p>
+                            <p className="m-0 truncate text-xs text-[var(--text-muted)]">
+                              {loc.address}
+                            </p>
                           )}
                           <p className="m-0 mt-0.5 text-xs text-[var(--text-muted)]">
-                            {loc.submitted_by && <>Spotted by {loc.submitted_by}</>}
+                            {loc.submitted_by && (
+                              <>Spotted by {loc.submitted_by}</>
+                            )}
                             {loc.submitted_by && loc.photo_count > 0 && ' · '}
-                            {loc.photo_count > 0 && <>{loc.photo_count} photo{loc.photo_count !== 1 ? 's' : ''}</>}
+                            {loc.photo_count > 0 && (
+                              <>
+                                {loc.photo_count} photo
+                                {loc.photo_count !== 1 ? 's' : ''}
+                              </>
+                            )}
                           </p>
                         </div>
                       </button>

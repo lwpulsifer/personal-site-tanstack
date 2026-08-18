@@ -25,7 +25,7 @@
     "prepare": "ln -sf ../../scripts/pre-commit.sh .git/hooks/pre-commit 2>/dev/null || true"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.8.0",
+    "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.98.0",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-devtools": "^0.10.0",
@@ -50,10 +50,10 @@
     "tz-lookup": "^6.1.25"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.2.4",
+    "@biomejs/biome": "2.5.9",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/typography": "^0.5.16",
-    "@tanstack/devtools-vite": "^0.6.0",
+    "@tanstack/devtools-vite": "^0.8.3",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^14.6.1",
@@ -71,7 +71,7 @@
     "remark-gfm": "^4.0.1",
     "rolldown": "1.0.0-rc.9",
     "tsx": "^4.21.0",
-    "typescript": "^5.7.2",
+    "typescript": "^7.0.2",
     "vite": "^8.0.0",
     "vitest": "^4.1.0",
     "zod": "^4.3.5"

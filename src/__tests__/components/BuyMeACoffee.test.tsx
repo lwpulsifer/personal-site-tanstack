@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 import { BuyMeACoffee } from '#/components/BuyMeACoffee'
 
 const BMAC_URL = 'https://buymeacoffee.com/liam.pulsifer'
@@ -19,12 +19,21 @@ describe('BuyMeACoffee', () => {
   })
 
   it('prominent variant displays the provided label', () => {
-    render(<BuyMeACoffee variant="prominent" label="Like the blog? Buy me a coffee!" />)
-    expect(screen.getByRole('link', { name: 'Like the blog? Buy me a coffee!' })).toBeTruthy()
+    render(
+      <BuyMeACoffee
+        variant="prominent"
+        label="Like the blog? Buy me a coffee!"
+      />,
+    )
+    expect(
+      screen.getByRole('link', { name: 'Like the blog? Buy me a coffee!' }),
+    ).toBeTruthy()
   })
 
   it('prominent variant has a default label when none is provided', () => {
     render(<BuyMeACoffee variant="prominent" />)
-    expect(screen.getByRole('link', { name: 'Like this post? Buy me a coffee!' })).toBeTruthy()
+    expect(
+      screen.getByRole('link', { name: 'Like this post? Buy me a coffee!' }),
+    ).toBeTruthy()
   })
 })

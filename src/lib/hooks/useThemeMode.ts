@@ -7,7 +7,8 @@ const STORAGE_KEY = 'theme'
 function getSnapshot(): ThemeMode {
   if (typeof window === 'undefined') return 'auto'
   const stored = window.localStorage.getItem(STORAGE_KEY)
-  if (stored === 'light' || stored === 'dark' || stored === 'auto') return stored
+  if (stored === 'light' || stored === 'dark' || stored === 'auto')
+    return stored
   return 'auto'
 }
 

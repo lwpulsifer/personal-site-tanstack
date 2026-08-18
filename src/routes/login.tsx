@@ -1,5 +1,5 @@
-import { useState, useId } from 'react'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { useId, useState } from 'react'
 import { getSupabaseBrowserClient } from '#/lib/supabase'
 
 export const Route = createFileRoute('/login')({
@@ -41,11 +41,16 @@ function LoginPage() {
     <main className="page-wrap flex min-h-[calc(100dvh-8rem)] items-center justify-center px-4 py-16">
       <div className="island-shell rise-in w-full max-w-sm rounded-[2rem] px-8 py-10">
         <p className="island-kicker mb-3">Admin</p>
-        <h1 className="display-title mb-8 text-2xl font-bold text-[var(--text)]">Sign in</h1>
+        <h1 className="display-title mb-8 text-2xl font-bold text-[var(--text)]">
+          Sign in
+        </h1>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor={emailId} className="text-sm font-semibold text-[var(--text-muted)]">
+            <label
+              htmlFor={emailId}
+              className="text-sm font-semibold text-[var(--text-muted)]"
+            >
               Email
             </label>
             <input
@@ -55,13 +60,16 @@ function LoginPage() {
               autoComplete="email"
               required
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
               className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--text)] outline-none transition focus:border-[var(--blue)] focus:ring-2 focus:ring-[rgba(59,130,246,0.2)]"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label htmlFor={passwordId} className="text-sm font-semibold text-[var(--text-muted)]">
+            <label
+              htmlFor={passwordId}
+              className="text-sm font-semibold text-[var(--text-muted)]"
+            >
               Password
             </label>
             <input
@@ -71,7 +79,7 @@ function LoginPage() {
               autoComplete="current-password"
               required
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
               className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--text)] outline-none transition focus:border-[var(--blue)] focus:ring-2 focus:ring-[rgba(59,130,246,0.2)]"
             />
           </div>

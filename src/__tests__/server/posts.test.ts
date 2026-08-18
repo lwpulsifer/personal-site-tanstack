@@ -27,8 +27,13 @@ vi.mock('#/server/auth.server', () => ({
 }))
 
 // Import after mocks so the module picks up the mocked createServerFn
-const { getPublishedPosts, getPublishedPost, getAllTags, getAdminPosts, setPostStatus } =
-  await import('#/server/posts')
+const {
+  getPublishedPosts,
+  getPublishedPost,
+  getAllTags,
+  getAdminPosts,
+  setPostStatus,
+} = await import('#/server/posts')
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -40,11 +45,22 @@ const { getPublishedPosts, getPublishedPost, getAllTags, getAdminPosts, setPostS
  */
 function makeChain(resolved: { data: unknown; error: unknown }) {
   const chain: Record<string, unknown> = {}
-  for (const method of ['select', 'order', 'eq', 'single', 'insert', 'update', 'is', 'upsert', 'delete']) {
+  for (const method of [
+    'select',
+    'order',
+    'eq',
+    'single',
+    'insert',
+    'update',
+    'is',
+    'upsert',
+    'delete',
+  ]) {
     chain[method] = vi.fn(() => chain)
   }
   // biome-ignore lint/suspicious/noThenProperty: needed for thenable mock in tests
-  chain.then = (resolve: (v: unknown) => void) => Promise.resolve(resolved).then(resolve)
+  chain.then = (resolve: (v: unknown) => void) =>
+    Promise.resolve(resolved).then(resolve)
   return chain
 }
 
@@ -75,7 +91,12 @@ const publishedPost = {
   author_id: null,
 }
 
-const pendingPost = { ...publishedPost, id: 'post-2', slug: 'draft', title: 'Draft' }
+const pendingPost = {
+  ...publishedPost,
+  id: 'post-2',
+  slug: 'draft',
+  title: 'Draft',
+}
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -85,24 +106,32 @@ describe('getPublishedPosts', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns only posts that have PUBLISHED status', async () => {
-    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
-      makeChain({ data: [publishedPost, pendingPost], error: null }),
-      makeChain({ data: [{ post_id: 'post-1' }], error: null }),
-    ))
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(
+        makeChain({ data: [publishedPost, pendingPost], error: null }),
+        makeChain({ data: [{ post_id: 'post-1' }], error: null }),
+      ),
+    )
 
-    const result = await (getPublishedPosts as () => Promise<{ slug: string }[]>)()
+    const result = await (
+      getPublishedPosts as () => Promise<{ slug: string }[]>
+    )()
 
     expect(result).toHaveLength(1)
     expect(result[0].slug).toBe('hello')
   })
 
   it('throws when the database returns an error', async () => {
-    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
-      makeChain({ data: null, error: { message: 'DB error' } }),
-      makeChain({ data: [], error: null }),
-    ))
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(
+        makeChain({ data: null, error: { message: 'DB error' } }),
+        makeChain({ data: [], error: null }),
+      ),
+    )
 
-    await expect((getPublishedPosts as () => Promise<unknown>)()).rejects.toThrow('DB error')
+    await expect(
+      (getPublishedPosts as () => Promise<unknown>)(),
+    ).rejects.toThrow('DB error')
   })
 })
 
@@ -110,39 +139,45 @@ describe('getPublishedPost', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns null when the post does not exist', async () => {
-    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
-      makeChain({ data: null, error: { message: 'not found' } }),
-    ))
-
-    const result = await (getPublishedPost as (a: { data: { slug: string } }) => Promise<unknown>)(
-      { data: { slug: 'missing' } },
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(makeChain({ data: null, error: { message: 'not found' } })),
     )
+
+    const result = await (
+      getPublishedPost as (a: { data: { slug: string } }) => Promise<unknown>
+    )({ data: { slug: 'missing' } })
 
     expect(result).toBeNull()
   })
 
   it('returns null when the post exists but is not published', async () => {
-    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
-      makeChain({ data: publishedPost, error: null }),
-      makeChain({ data: { status: 'PENDING' }, error: null }),
-    ))
-
-    const result = await (getPublishedPost as (a: { data: { slug: string } }) => Promise<unknown>)(
-      { data: { slug: 'hello' } },
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(
+        makeChain({ data: publishedPost, error: null }),
+        makeChain({ data: { status: 'PENDING' }, error: null }),
+      ),
     )
+
+    const result = await (
+      getPublishedPost as (a: { data: { slug: string } }) => Promise<unknown>
+    )({ data: { slug: 'hello' } })
 
     expect(result).toBeNull()
   })
 
   it('returns the post when it exists and is published', async () => {
-    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
-      makeChain({ data: publishedPost, error: null }),
-      makeChain({ data: { status: 'PUBLISHED' }, error: null }),
-    ))
-
-    const result = await (getPublishedPost as (a: { data: { slug: string } }) => Promise<{ slug: string }>)(
-      { data: { slug: 'hello' } },
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(
+        makeChain({ data: publishedPost, error: null }),
+        makeChain({ data: { status: 'PUBLISHED' }, error: null }),
+      ),
     )
+
+    const result = await (
+      getPublishedPost as (a: {
+        data: { slug: string }
+      }) => Promise<{ slug: string }>
+    )({ data: { slug: 'hello' } })
 
     expect(result?.slug).toBe('hello')
   })
@@ -154,7 +189,10 @@ describe('getAllTags', () => {
   it('returns a sorted, deduplicated list of tags across all posts', async () => {
     const chain = makeChain({ data: null, error: null })
     chain.select = vi.fn().mockResolvedValue({
-      data: [{ tags: ['react', 'typescript'] }, { tags: ['typescript', 'css'] }],
+      data: [
+        { tags: ['react', 'typescript'] },
+        { tags: ['typescript', 'css'] },
+      ],
       error: null,
     })
     vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(chain))
@@ -171,7 +209,9 @@ describe('getAdminPosts', () => {
   it('throws when the caller is not authenticated', async () => {
     vi.mocked(requireAuth).mockRejectedValue(new Error('Unauthorized'))
 
-    await expect((getAdminPosts as () => Promise<unknown>)()).rejects.toThrow('Unauthorized')
+    await expect((getAdminPosts as () => Promise<unknown>)()).rejects.toThrow(
+      'Unauthorized',
+    )
   })
 })
 
@@ -182,9 +222,11 @@ describe('setPostStatus', () => {
     vi.mocked(requireAuth).mockRejectedValue(new Error('Unauthorized'))
 
     await expect(
-      (setPostStatus as (a: { data: { postId: string; status: 'PENDING' } }) => Promise<unknown>)(
-        { data: { postId: 'post-1', status: 'PENDING' } },
-      ),
+      (
+        setPostStatus as (a: {
+          data: { postId: string; status: 'PENDING' }
+        }) => Promise<unknown>
+      )({ data: { postId: 'post-1', status: 'PENDING' } }),
     ).rejects.toThrow('Unauthorized')
   })
 })

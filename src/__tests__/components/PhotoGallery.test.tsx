@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { describe, expect, it, vi } from 'vitest'
 
 const mockPhotos = [
   { id: 'p1', storage_path: 'submissions/one.jpg', caption: 'First' },
@@ -21,7 +21,9 @@ function renderWithProvider(ui: React.ReactNode) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
-  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+  )
 }
 
 describe('PhotoGallery', () => {
@@ -44,4 +46,3 @@ describe('PhotoGallery', () => {
     expect(screen.queryByTestId('photo-carousel-modal')).toBeNull()
   })
 })
-

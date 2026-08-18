@@ -1,8 +1,8 @@
 import { createServerFn } from '@tanstack/react-start'
-import { getSupabaseServiceClient } from '#/lib/supabase'
-import { requireAuth } from '#/server/auth.server'
 import { z } from 'zod'
 import type { Enums, Tables } from '#/lib/database.types'
+import { getSupabaseServiceClient } from '#/lib/supabase'
+import { requireAuth } from '#/server/auth.server'
 
 export type PostStatus = Enums<'post_status'>
 
@@ -35,7 +35,9 @@ export const getPublishedPosts = createServerFn({ method: 'GET' }).handler(
         .eq('status', 'PUBLISHED'),
     ])
     if (error) throw new Error(error.message)
-    const publishedIds = new Set((statuses ?? []).map((s) => (s as Tables<'post_current_status'>).post_id))
+    const publishedIds = new Set(
+      (statuses ?? []).map((s) => (s as Tables<'post_current_status'>).post_id),
+    )
     const rows = (posts ?? []) as Tables<'posts'>[]
     return rows
       .filter((p) => publishedIds.has(p.id))
@@ -65,13 +67,15 @@ export const getPublishedPost = createServerFn({ method: 'GET' })
     return { ...p, status: 'PUBLISHED' as PostStatus } as DbPost
   })
 
-export const getAllTags = createServerFn({ method: 'GET' }).handler(async () => {
-  const supabase = getSupabaseServiceClient()
-  const { data, error } = await supabase.from('posts').select('tags')
-  if (error) throw new Error(error.message)
-  const tags = [...new Set((data ?? []).flatMap((p) => p.tags as string[]))]
-  return tags.sort()
-})
+export const getAllTags = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const supabase = getSupabaseServiceClient()
+    const { data, error } = await supabase.from('posts').select('tags')
+    if (error) throw new Error(error.message)
+    const tags = [...new Set((data ?? []).flatMap((p) => p.tags as string[]))]
+    return tags.sort()
+  },
+)
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
@@ -114,7 +118,10 @@ export const getPostBySlug = createServerFn({ method: 'GET' })
       .select('status')
       .eq('post_id', p.id)
       .single()
-    return { ...p, status: (statusRow?.status ?? 'PENDING') as PostStatus } as DbPost
+    return {
+      ...p,
+      status: (statusRow?.status ?? 'PENDING') as PostStatus,
+    } as DbPost
   })
 
 export const upsertPost = createServerFn({ method: 'POST' })

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 import { StatusBadge } from '#/components/blog/StatusBadge'
 import type { PostStatus } from '#/server/posts'
 

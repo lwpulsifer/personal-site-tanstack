@@ -7,5 +7,9 @@ const emptySubscribe = () => () => {}
  * Drop-in replacement for the `useState(false) + useEffect(() => set(true), [])` pattern.
  */
 export function useHydrated(): boolean {
-  return useSyncExternalStore(emptySubscribe, () => true, () => false)
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  )
 }

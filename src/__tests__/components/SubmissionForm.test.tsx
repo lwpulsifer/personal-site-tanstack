@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('#/server/maps', () => ({
   submitSighting: vi.fn(),
@@ -13,7 +13,9 @@ vi.mock('#/server/maps', () => ({
 }))
 
 vi.mock('#/lib/exif', () => ({
-  extractExifFromImage: vi.fn().mockResolvedValue({ coords: null, takenAtLocal: null }),
+  extractExifFromImage: vi
+    .fn()
+    .mockResolvedValue({ coords: null, takenAtLocal: null }),
 }))
 
 vi.mock('#/lib/supabase', () => ({
@@ -53,7 +55,12 @@ describe('SubmissionForm', () => {
 
   it('pre-fills lat/lng when provided', () => {
     renderWithProvider(
-      <SubmissionForm mapSlug="lions" onClose={() => {}} initialLat={37.78} initialLng={-122.42} />,
+      <SubmissionForm
+        mapSlug="lions"
+        onClose={() => {}}
+        initialLat={37.78}
+        initialLng={-122.42}
+      />,
     )
 
     const latInput = screen.getByLabelText(/latitude/i) as HTMLInputElement
@@ -66,16 +73,25 @@ describe('SubmissionForm', () => {
   it('disables submit button when no coordinates are set', () => {
     renderWithProvider(<SubmissionForm mapSlug="lions" onClose={() => {}} />)
 
-    const submitBtn = screen.getByTestId('submit-sighting-btn') as HTMLButtonElement
+    const submitBtn = screen.getByTestId(
+      'submit-sighting-btn',
+    ) as HTMLButtonElement
     expect(submitBtn.disabled).toBe(true)
   })
 
   it('enables submit button when coordinates are provided', () => {
     renderWithProvider(
-      <SubmissionForm mapSlug="lions" onClose={() => {}} initialLat={37.78} initialLng={-122.42} />,
+      <SubmissionForm
+        mapSlug="lions"
+        onClose={() => {}}
+        initialLat={37.78}
+        initialLng={-122.42}
+      />,
     )
 
-    const submitBtn = screen.getByTestId('submit-sighting-btn') as HTMLButtonElement
+    const submitBtn = screen.getByTestId(
+      'submit-sighting-btn',
+    ) as HTMLButtonElement
     expect(submitBtn.disabled).toBe(false)
   })
 
@@ -90,7 +106,9 @@ describe('SubmissionForm', () => {
       />,
     )
 
-    expect(screen.getByTestId('submission-form-heading').textContent).toBe('Add Photos')
+    expect(screen.getByTestId('submission-form-heading').textContent).toBe(
+      'Add Photos',
+    )
     expect(screen.getByTestId('add-photos-hint')).toBeTruthy()
 
     // Location fields should be hidden in add-photos mode.

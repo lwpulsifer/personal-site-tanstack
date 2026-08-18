@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
 import { createBrowserClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import type { Database } from '#/lib/database.types'
 
 // Server-side client (service-role key — bypasses RLS, never sent to browser).
@@ -26,4 +26,3 @@ export function getSupabaseBrowserClient() {
     cookieOptions: { name: 'sb-personal-site-auth' },
   })
 }
-

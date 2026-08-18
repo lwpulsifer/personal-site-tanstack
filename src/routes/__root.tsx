@@ -1,14 +1,14 @@
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { QueryClientProvider } from '@tanstack/react-query'
+import { createRootRoute, HeadContent, Scripts } from '@tanstack/react-router'
+import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { useEffect } from 'react'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
 import { AuthProvider } from '../lib/auth'
-import { getServerUser } from '../server/auth'
-import { queryClient } from '../router'
 import { SITE_DESCRIPTION, SITE_TITLE } from '../lib/site'
+import { queryClient } from '../router'
+import { getServerUser } from '../server/auth'
 
 import appCss from '../styles.css?url'
 

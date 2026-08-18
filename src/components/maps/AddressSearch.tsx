@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useId } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { BAY_AREA_BOUNDS } from '#/lib/geo'
 
 export interface AddressResult {
@@ -58,7 +58,11 @@ export function AddressSearch({
 
       if (!res.ok) return
 
-      const data = (await res.json()) as { display_name: string; lat: string; lon: string }[]
+      const data = (await res.json()) as {
+        display_name: string
+        lat: string
+        lon: string
+      }[]
       const mapped = data.map((r) => ({
         displayName: r.display_name,
         lat: Number.parseFloat(r.lat),
@@ -116,7 +120,10 @@ export function AddressSearch({
   // Close dropdown on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
         setIsOpen(false)
       }
     }
@@ -134,7 +141,10 @@ export function AddressSearch({
 
   return (
     <div ref={containerRef} className="relative">
-      <label htmlFor={inputId} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+      <label
+        htmlFor={inputId}
+        className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
+      >
         Address
       </label>
       <div className="relative">
@@ -145,17 +155,23 @@ export function AddressSearch({
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          onFocus={() => { if (results.length > 0) setIsOpen(true) }}
+          onFocus={() => {
+            if (results.length > 0) setIsOpen(true)
+          }}
           placeholder="Search for an address..."
           autoComplete="off"
           role="combobox"
           aria-expanded={isOpen}
           aria-controls={resultsId}
-          aria-activedescendant={activeIndex >= 0 ? `address-result-${activeIndex}` : undefined}
+          aria-activedescendant={
+            activeIndex >= 0 ? `address-result-${activeIndex}` : undefined
+          }
           className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
         />
         {loading && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)]">...</span>
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)]">
+            ...
+          </span>
         )}
       </div>
 
@@ -175,7 +191,9 @@ export function AddressSearch({
               aria-selected={i === activeIndex}
               onMouseDown={() => handleSelect(r)}
               className={`cursor-pointer px-3 py-2 text-xs text-[var(--text)] ${
-                i === activeIndex ? 'bg-[var(--blue)]/10' : 'hover:bg-[color-mix(in_oklab,var(--surface),var(--text)_6%)]'
+                i === activeIndex
+                  ? 'bg-[var(--blue)]/10'
+                  : 'hover:bg-[color-mix(in_oklab,var(--surface),var(--text)_6%)]'
               }`}
             >
               {r.displayName}

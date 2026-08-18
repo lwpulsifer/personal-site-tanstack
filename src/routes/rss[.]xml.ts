@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { getSupabaseServiceClient } from '#/lib/supabase'
 import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from '#/lib/site'
+import { getSupabaseServiceClient } from '#/lib/supabase'
 
 export const Route = createFileRoute('/rss.xml')({
   server: {

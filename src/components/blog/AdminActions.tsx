@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { setPostStatus, type DbPost, type PostStatus } from '#/server/posts'
 import { adminPostsQueryOptions } from '#/lib/queries'
+import { type DbPost, type PostStatus, setPostStatus } from '#/server/posts'
 
 export function AdminActions({
   post,
@@ -14,7 +14,9 @@ export function AdminActions({
     mutationFn: (status: PostStatus) =>
       setPostStatus({ data: { postId: post.id, status } }),
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: adminPostsQueryOptions.queryKey }),
+      queryClient.invalidateQueries({
+        queryKey: adminPostsQueryOptions.queryKey,
+      }),
   })
 
   return (

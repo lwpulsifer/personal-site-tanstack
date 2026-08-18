@@ -9,7 +9,10 @@ interface ErrorBoundaryState {
   error: Error | null
 }
 
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   constructor(props: ErrorBoundaryProps) {
     super(props)
     this.state = { error: null }
@@ -46,10 +49,18 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             textAlign: 'center',
           }}
         >
-          <p style={{ color: 'var(--text)', fontWeight: 600, margin: '0 0 8px' }}>
+          <p
+            style={{ color: 'var(--text)', fontWeight: 600, margin: '0 0 8px' }}
+          >
             Something went wrong
           </p>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px', margin: '0 0 16px' }}>
+          <p
+            style={{
+              color: 'var(--text-muted)',
+              fontSize: '14px',
+              margin: '0 0 16px',
+            }}
+          >
             {this.state.error.message}
           </p>
           <button

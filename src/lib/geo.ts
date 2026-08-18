@@ -8,7 +8,7 @@ export type LatLng = { lat: number; lng: number }
 // Note: This is intentionally approximate and slightly conservative to keep
 // submissions within SF without needing complex polygon checks.
 export const BAY_AREA_BOUNDS = {
-  minLat: 37.70,
+  minLat: 37.7,
   maxLat: 37.84,
   minLng: -122.52,
   maxLng: -122.35,

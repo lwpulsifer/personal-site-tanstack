@@ -1,8 +1,8 @@
-import { Suspense, lazy } from 'react'
 import { createClientOnlyFn } from '@tanstack/react-start'
+import { lazy, Suspense } from 'react'
+import { useHydrated } from '#/lib/hooks/useHydrated'
 import type { MapLocation } from '#/lib/map-types'
 import { MapSkeleton } from './MapSkeleton'
-import { useHydrated } from '#/lib/hooks/useHydrated'
 
 const importMapViewClient = createClientOnlyFn(() => import('./MapView.client'))
 const MapViewClient = lazy(async () => {

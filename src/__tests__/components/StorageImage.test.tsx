@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 
 const { StorageImage } = await import('#/components/maps/StorageImage')
 
@@ -14,7 +14,9 @@ describe('StorageImage', () => {
       />,
     )
 
-    const img = screen.getByRole('img', { name: 'Test image' }) as HTMLImageElement
+    const img = screen.getByRole('img', {
+      name: 'Test image',
+    }) as HTMLImageElement
     expect(img.getAttribute('src')).toContain('map-photos/submissions/foo.jpg')
   })
 

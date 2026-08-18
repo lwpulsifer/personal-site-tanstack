@@ -1,13 +1,13 @@
-import { Link, createFileRoute, notFound } from '@tanstack/react-router'
-import { useMemo, useState } from 'react'
+import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { marked } from 'marked'
-import { sanitize } from '#/lib/sanitize'
-import { SITE_URL } from '#/lib/site'
+import { useMemo, useState } from 'react'
 import { BuyMeACoffee } from '#/components/BuyMeACoffee'
+import { ErrorBoundary } from '#/components/ErrorBoundary'
 import { PostEditor } from '#/components/PostEditor'
 import { useAuth } from '#/lib/auth'
+import { sanitize } from '#/lib/sanitize'
+import { SITE_URL } from '#/lib/site'
 import { getPublishedPost } from '#/server/posts'
-import { ErrorBoundary } from '#/components/ErrorBoundary'
 
 export const Route = createFileRoute('/blog/$slug')({
   loader: async ({ params }) => {
@@ -105,7 +105,10 @@ function BlogPost() {
           )}
 
           <div className="mb-3 flex items-start justify-between gap-4">
-            <h1 data-testid="post-heading" className="display-title text-4xl font-bold text-[var(--text)] sm:text-5xl">
+            <h1
+              data-testid="post-heading"
+              className="display-title text-4xl font-bold text-[var(--text)] sm:text-5xl"
+            >
               {post.title}
             </h1>
 

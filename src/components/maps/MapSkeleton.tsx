@@ -1,15 +1,16 @@
 export function MapSkeleton({ label = 'Loading map...' }: { label?: string }) {
   return (
-    <div data-testid="map-loading" className="relative h-full w-full overflow-hidden">
+    <div
+      data-testid="map-loading"
+      className="relative h-full w-full overflow-hidden"
+    >
       <div
         data-testid="map-skeleton"
         aria-hidden
         className="absolute inset-0 bg-[color-mix(in_oklab,var(--surface),var(--text)_2%)]"
       >
         {/* subtle “tile grid” */}
-        <div
-          className="absolute inset-0 opacity-60 [background-image:linear-gradient(to_right,color-mix(in_oklab,var(--surface),var(--text)_10%)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklab,var(--surface),var(--text)_10%)_1px,transparent_1px)] [background-size:48px_48px]"
-        />
+        <div className="absolute inset-0 opacity-60 [background-image:linear-gradient(to_right,color-mix(in_oklab,var(--surface),var(--text)_10%)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklab,var(--surface),var(--text)_10%)_1px,transparent_1px)] [background-size:48px_48px]" />
         {/* shimmer sweep */}
         <div className="absolute -inset-24 animate-pulse bg-gradient-to-br from-transparent via-white/20 to-transparent" />
 
@@ -24,9 +25,10 @@ export function MapSkeleton({ label = 'Loading map...' }: { label?: string }) {
       </div>
 
       <div className="absolute inset-0 grid place-items-center">
-        <p className="text-sm font-semibold text-[var(--text-muted)]">{label}</p>
+        <p className="text-sm font-semibold text-[var(--text-muted)]">
+          {label}
+        </p>
       </div>
     </div>
   )
 }
-
