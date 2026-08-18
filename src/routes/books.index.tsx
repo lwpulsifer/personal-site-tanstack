@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useAuth } from '#/lib/auth'
@@ -24,6 +24,26 @@ export const Route = createFileRoute('/books/')({
   component: BooksIndex,
 })
 
+function byDateDesc(dateA: string | null, dateB: string | null) {
+  return new Date(dateB ?? 0).valueOf() - new Date(dateA ?? 0).valueOf()
+}
+
+// Reading books lead the main list regardless of date, followed by finished
+// books sorted by when they were finished. Want-to-read books have no
+// meaningful chronological signal, so they get their own list below.
+function groupBooks(books: DbBook[]) {
+  const reading = books
+    .filter((b) => b.status === 'READING')
+    .sort((a, b) => byDateDesc(a.started_at, b.started_at))
+  const read = books
+    .filter((b) => b.status === 'READ')
+    .sort((a, b) => byDateDesc(a.finished_at, b.finished_at))
+  const wantToRead = books
+    .filter((b) => b.status === 'WANT_TO_READ')
+    .sort((a, b) => byDateDesc(a.created_at, b.created_at))
+  return { primary: [...reading, ...read], wantToRead }
+}
+
 function toEditorInitial(book: DbBook): BookEditorInitial {
   return {
     id: book.id,
@@ -45,6 +65,7 @@ function BooksIndex() {
   const { isAuthenticated } = useAuth()
   const queryClient = useQueryClient()
   const [editingBook, setEditingBook] = useState<DbBook | 'new' | null>(null)
+  const { primary, wantToRead } = useMemo(() => groupBooks(books), [books])
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: booksQueryOptions.queryKey })
@@ -96,18 +117,42 @@ function BooksIndex() {
         {books.length === 0 ? (
           <p className="text-[var(--text-muted)]">No books logged yet.</p>
         ) : (
-          <section className="grid gap-4 sm:grid-cols-2">
-            {books.map((book, i) => (
-              <BookCard
-                key={book.id}
-                book={book}
-                showAdmin={isAuthenticated}
-                onEdit={setEditingBook}
-                className="rise-in"
-                style={{ animationDelay: `${i * 60}ms` }}
-              />
-            ))}
-          </section>
+          <>
+            {primary.length > 0 && (
+              <section data-testid="primary-books" className="grid gap-4 sm:grid-cols-2">
+                {primary.map((book, i) => (
+                  <BookCard
+                    key={book.id}
+                    book={book}
+                    showAdmin={isAuthenticated}
+                    onEdit={setEditingBook}
+                    className="rise-in"
+                    style={{ animationDelay: `${i * 60}ms` }}
+                  />
+                ))}
+              </section>
+            )}
+
+            {wantToRead.length > 0 && (
+              <section className="mt-10">
+                <p data-testid="want-to-read-heading" className="island-kicker mb-3">
+                  Want to Read
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {wantToRead.map((book, i) => (
+                    <BookCard
+                      key={book.id}
+                      book={book}
+                      showAdmin={isAuthenticated}
+                      onEdit={setEditingBook}
+                      className="rise-in"
+                      style={{ animationDelay: `${i * 60}ms` }}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
         )}
       </main>
     </>
