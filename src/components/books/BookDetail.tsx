@@ -2,6 +2,7 @@ import type { DbBook } from '#/server/books'
 import { StarRating } from '#/components/books/StarRating'
 import { AdminActions } from '#/components/books/AdminActions'
 import { STATUS_LABEL, STATUS_STYLES } from '#/components/books/bookStatus'
+import { CoverImage } from '#/components/books/CoverImage'
 import { useOnEscapeKey } from '#/lib/hooks/useOnEscapeKey'
 
 function formatDate(iso: string) {
@@ -32,13 +33,7 @@ export function BookDetail({ book, showAdmin, onClose, onEdit }: BookDetailProps
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex gap-4">
             <div className="h-36 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-[var(--chip-bg)]">
-              {book.cover_url ? (
-                <img src={book.cover_url} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-3xl opacity-40">
-                  📖
-                </div>
-              )}
+              <CoverImage src={book.cover_url} />
             </div>
 
             <div className="min-w-0">
