@@ -32,6 +32,17 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
 
+      - name: Test database connection
+        run: |
+          if ! supabase migration list > /dev/null; then
+            echo "❌ Could not connect to the production database — check SUPABASE_DB_PASSWORD and SUPABASE_PROJECT_REF."
+            exit 1
+          fi
+          echo "✓ Database connection OK."
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
       - name: Show pending migrations (dry run)
         run: supabase db push --dry-run
         env:
