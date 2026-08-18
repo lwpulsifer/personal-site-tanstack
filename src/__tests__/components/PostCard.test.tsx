@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
-import type { DbPost } from '#/server/posts'
-import { PostCard } from '#/components/blog/PostCard'
 import { describe, expect, it, vi } from 'vitest'
+import { PostCard } from '#/components/blog/PostCard'
+import type { DbPost } from '#/server/posts'
 
 // Link mock must render an <a> with href={to} — without href, the element
 // won't have the ARIA "link" role and getByRole('link') queries will fail.
@@ -16,7 +16,11 @@ vi.mock('@tanstack/react-router', () => ({
     to: string
     params?: Record<string, string>
     className?: string
-  }) => <a href={to} className={className}>{children}</a>,
+  }) => (
+    <a href={to} className={className}>
+      {children}
+    </a>
+  ),
 }))
 
 const basePost: DbPost = {
@@ -38,7 +42,9 @@ const basePost: DbPost = {
 const noop = () => {}
 
 function withQueryClient(ui: React.ReactElement) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
   return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
 }
 
@@ -55,8 +61,13 @@ describe('PostCard', () => {
   })
 
   it('shows the hero image when one is provided', () => {
-    const postWithImage = { ...basePost, hero_image: 'https://example.com/img.jpg' }
-    const { container } = render(<PostCard post={postWithImage} showAdmin={false} onEdit={noop} />)
+    const postWithImage = {
+      ...basePost,
+      hero_image: 'https://example.com/img.jpg',
+    }
+    const { container } = render(
+      <PostCard post={postWithImage} showAdmin={false} onEdit={noop} />,
+    )
     // PostCard uses alt="" (decorative image), which gives role "presentation"
     // instead of "img" — so we use querySelector instead of getByRole('img').
     const img = container.querySelector('img')
@@ -65,7 +76,10 @@ describe('PostCard', () => {
   })
 
   it('hides the hero image in compact mode', () => {
-    const postWithImage = { ...basePost, hero_image: 'https://example.com/img.jpg' }
+    const postWithImage = {
+      ...basePost,
+      hero_image: 'https://example.com/img.jpg',
+    }
     const { container } = render(
       <PostCard post={postWithImage} compact showAdmin={false} onEdit={noop} />,
     )

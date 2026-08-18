@@ -1,19 +1,21 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getRequestIP } from '@tanstack/react-start/server'
+import tzLookup from 'tz-lookup'
+import { z } from 'zod'
+import type { Tables } from '#/lib/database.types'
+import { isWithinBayArea } from '#/lib/geo'
+import type { MapLocation, MapPhoto, MapSubmission } from '#/lib/map-types'
+import { censorName } from '#/lib/strings'
 import { getSupabaseServiceClient } from '#/lib/supabase'
 import { requireAuth } from '#/server/auth.server'
 import { checkRateLimit } from '#/server/rate-limit'
-import { z } from 'zod'
-import type { MapLocation, MapPhoto, MapSubmission } from '#/lib/map-types'
-import type { Tables } from '#/lib/database.types'
-import { censorName } from '#/lib/strings'
-import tzLookup from 'tz-lookup'
-import { isWithinBayArea } from '#/lib/geo'
 
 const DEFAULT_TIME_ZONE = 'America/Los_Angeles'
 const LOCATION_MERGE_RADIUS_METERS = 10
 
-function inferTimeZoneFromCoords(coords: { lat: number; lng: number } | null): string {
+function inferTimeZoneFromCoords(
+  coords: { lat: number; lng: number } | null,
+): string {
   if (!coords) return DEFAULT_TIME_ZONE
   try {
     return tzLookup(coords.lat, coords.lng)
@@ -22,7 +24,10 @@ function inferTimeZoneFromCoords(coords: { lat: number; lng: number } | null): s
   }
 }
 
-function localToUtcIso(local: string | null | undefined, timeZone: string): string | null {
+function localToUtcIso(
+  local: string | null | undefined,
+  timeZone: string,
+): string | null {
   if (!local) return null
   // Parse the local string as if it were UTC (no timezone suffix → UTC)
   const naive = new Date(local)
@@ -47,7 +52,10 @@ function metersToLngDegrees(meters: number, latDegrees: number) {
   return meters / denom
 }
 
-function haversineDistanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+function haversineDistanceMeters(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+) {
   const R = 6371e3
   const phi1 = (a.lat * Math.PI) / 180
   const phi2 = (b.lat * Math.PI) / 180
@@ -56,7 +64,10 @@ function haversineDistanceMeters(a: { lat: number; lng: number }, b: { lat: numb
 
   const x =
     Math.sin(dPhi / 2) * Math.sin(dPhi / 2) +
-    Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) * Math.sin(dLambda / 2)
+    Math.cos(phi1) *
+      Math.cos(phi2) *
+      Math.sin(dLambda / 2) *
+      Math.sin(dLambda / 2)
   const c = 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))
   return R * c
 }
@@ -83,7 +94,10 @@ async function findExistingLocationWithinRadius(opts: {
   let best: { id: string; dist: number } | null = null
   for (const c of candidates ?? []) {
     if (typeof c.lat !== 'number' || typeof c.lng !== 'number') continue
-    const dist = haversineDistanceMeters(opts.coords, { lat: c.lat as number, lng: c.lng as number })
+    const dist = haversineDistanceMeters(opts.coords, {
+      lat: c.lat as number,
+      lng: c.lng as number,
+    })
     if (dist <= opts.radiusMeters && (!best || dist < best.dist)) {
       best = { id: String(c.id), dist }
     }
@@ -108,17 +122,21 @@ export const getApprovedLocations = createServerFn({ method: 'GET' })
     // Get photo counts and first photo per location
     const locs = (locations ?? []) as Tables<'map_locations'>[]
     const locationIds = locs.map((l) => l.id)
-    const { data: photos } = locationIds.length > 0
-      ? await supabase
-          .from('map_photos')
-          .select('location_id, storage_path, created_at')
-          .in('location_id', locationIds)
-          .order('created_at', { ascending: true })
-      : { data: [] }
+    const { data: photos } =
+      locationIds.length > 0
+        ? await supabase
+            .from('map_photos')
+            .select('location_id, storage_path, created_at')
+            .in('location_id', locationIds)
+            .order('created_at', { ascending: true })
+        : { data: [] }
 
     const countMap = new Map<string, number>()
     const thumbMap = new Map<string, string>()
-    for (const p of (photos ?? []) as { location_id: string; storage_path: string }[]) {
+    for (const p of (photos ?? []) as {
+      location_id: string
+      storage_path: string
+    }[]) {
       countMap.set(p.location_id, (countMap.get(p.location_id) ?? 0) + 1)
       if (!thumbMap.has(p.location_id)) {
         thumbMap.set(p.location_id, p.storage_path)
@@ -126,17 +144,21 @@ export const getApprovedLocations = createServerFn({ method: 'GET' })
     }
 
     // Get submitter names from approved submissions linked to each location
-    const { data: submissions } = locationIds.length > 0
-      ? await supabase
-          .from('map_submissions')
-          .select('location_id, submitter_name')
-          .in('location_id', locationIds)
-          .eq('status', 'approved')
-          .order('created_at', { ascending: true })
-      : { data: [] }
+    const { data: submissions } =
+      locationIds.length > 0
+        ? await supabase
+            .from('map_submissions')
+            .select('location_id, submitter_name')
+            .in('location_id', locationIds)
+            .eq('status', 'approved')
+            .order('created_at', { ascending: true })
+        : { data: [] }
 
     const submitterMap = new Map<string, string>()
-    for (const s of (submissions ?? []) as { location_id: string; submitter_name: string | null }[]) {
+    for (const s of (submissions ?? []) as {
+      location_id: string
+      submitter_name: string | null
+    }[]) {
       if (s.submitter_name && !submitterMap.has(s.location_id)) {
         submitterMap.set(s.location_id, s.submitter_name)
       }
@@ -163,7 +185,9 @@ export const getLocationPhotos = createServerFn({ method: 'GET' })
     if (error) throw new Error(error.message)
 
     const photoRows = (photos ?? []) as Tables<'map_photos'>[]
-    const submissionIds = [...new Set(photoRows.map((p) => p.submission_id).filter(Boolean))] as string[]
+    const submissionIds = [
+      ...new Set(photoRows.map((p) => p.submission_id).filter(Boolean)),
+    ] as string[]
 
     const submitterMap = new Map<string, string>()
     if (submissionIds.length > 0) {
@@ -171,7 +195,10 @@ export const getLocationPhotos = createServerFn({ method: 'GET' })
         .from('map_submissions')
         .select('id, submitter_name')
         .in('id', submissionIds)
-      for (const s of (submissions ?? []) as { id: string; submitter_name: string | null }[]) {
+      for (const s of (submissions ?? []) as {
+        id: string
+        submitter_name: string | null
+      }[]) {
         if (s.submitter_name) submitterMap.set(s.id, s.submitter_name)
       }
     }
@@ -195,36 +222,51 @@ export const submitSighting = createServerFn({ method: 'POST' })
       notes: z.string().optional(),
       submitterName: z.string().optional(),
       submitterEmail: z.string().email().optional(),
-      photos: z.array(
-        z.object({
-          storagePath: z.string(),
-          takenAtLocal: z.string().optional(),
-          exifLat: z.number().optional(),
-          exifLng: z.number().optional(),
-        }),
-      ).default([]),
+      photos: z
+        .array(
+          z.object({
+            storagePath: z.string(),
+            takenAtLocal: z.string().optional(),
+            exifLat: z.number().optional(),
+            exifLng: z.number().optional(),
+          }),
+        )
+        .default([]),
     }),
   )
   .handler(async ({ data }) => {
     const firstPhotoWithCoords =
-      data.photos.find((p) => typeof p.exifLat === 'number' && typeof p.exifLng === 'number') ?? null
-    const inferredCoords =
-      firstPhotoWithCoords
-        ? { lat: firstPhotoWithCoords.exifLat as number, lng: firstPhotoWithCoords.exifLng as number }
-        : typeof data.proposedLat === 'number' && typeof data.proposedLng === 'number'
-          ? { lat: data.proposedLat, lng: data.proposedLng }
-          : null
+      data.photos.find(
+        (p) => typeof p.exifLat === 'number' && typeof p.exifLng === 'number',
+      ) ?? null
+    const inferredCoords = firstPhotoWithCoords
+      ? {
+          lat: firstPhotoWithCoords.exifLat as number,
+          lng: firstPhotoWithCoords.exifLng as number,
+        }
+      : typeof data.proposedLat === 'number' &&
+          typeof data.proposedLng === 'number'
+        ? { lat: data.proposedLat, lng: data.proposedLng }
+        : null
 
     // New sightings (no existing location) must have coordinates — either from
     // the form or from photo EXIF data — so admins can approve them later.
     if (!data.locationId && !inferredCoords) {
-      throw new Error('Please provide a location by clicking the map, entering coordinates, or uploading a photo with GPS data.')
+      throw new Error(
+        'Please provide a location by clicking the map, entering coordinates, or uploading a photo with GPS data.',
+      )
     }
 
     // Enforce a basic geofence for new sightings. (Adding photos to an existing
     // location is allowed even if EXIF data is missing/odd.)
-    if (!data.locationId && inferredCoords && !isWithinBayArea(inferredCoords.lat, inferredCoords.lng)) {
-      throw new Error('Please submit sightings within the San Francisco Bay Area.')
+    if (
+      !data.locationId &&
+      inferredCoords &&
+      !isWithinBayArea(inferredCoords.lat, inferredCoords.lng)
+    ) {
+      throw new Error(
+        'Please submit sightings within the San Francisco Bay Area.',
+      )
     }
 
     const supabase = getSupabaseServiceClient()
@@ -250,7 +292,8 @@ export const submitSighting = createServerFn({ method: 'POST' })
 
     const occurredAtLocal =
       data.occurredAtLocal ??
-      data.photos.find((p) => typeof p.takenAtLocal === 'string')?.takenAtLocal ??
+      data.photos.find((p) => typeof p.takenAtLocal === 'string')
+        ?.takenAtLocal ??
       null
     const occurredAt = localToUtcIso(occurredAtLocal, submissionTz)
 
@@ -295,7 +338,9 @@ export const submitSighting = createServerFn({ method: 'POST' })
           time_zone: tz,
         }
       })
-      const { error: photoError } = await supabase.from('map_photos').insert(photoRows)
+      const { error: photoError } = await supabase
+        .from('map_photos')
+        .insert(photoRows)
       if (photoError) throw new Error(photoError.message)
     }
 
@@ -327,21 +372,26 @@ export const getPendingSubmissions = createServerFn({ method: 'GET' })
     // Fetch photos for each submission
     const subs = (submissions ?? []) as Tables<'map_submissions'>[]
     const submissionIds = subs.map((s) => s.id)
-    const { data: photos } = submissionIds.length > 0
-      ? await supabase
-          .from('map_photos')
-          .select('*')
-          .in('submission_id', submissionIds)
-      : { data: [] }
+    const { data: photos } =
+      submissionIds.length > 0
+        ? await supabase
+            .from('map_photos')
+            .select('*')
+            .in('submission_id', submissionIds)
+        : { data: [] }
 
-    const submitterBySubmission = new Map(subs.map((s) => [s.id, s.submitter_name]))
+    const submitterBySubmission = new Map(
+      subs.map((s) => [s.id, s.submitter_name]),
+    )
 
     const photosBySubmission = new Map<string, MapPhoto[]>()
     for (const p of (photos ?? []) as Tables<'map_photos'>[]) {
       if (!p.submission_id) continue
       const enriched: MapPhoto = {
         ...p,
-        submitted_by: censorName(submitterBySubmission.get(p.submission_id) ?? null),
+        submitted_by: censorName(
+          submitterBySubmission.get(p.submission_id) ?? null,
+        ),
       }
       const existing = photosBySubmission.get(p.submission_id) ?? []
       existing.push(enriched)
@@ -379,7 +429,9 @@ export const approveSubmission = createServerFn({ method: 'POST' })
         throw new Error('Submission has no coordinates')
       }
       if (!isWithinBayArea(sub2.proposed_lat, sub2.proposed_lng)) {
-        throw new Error('Submission coordinates are outside of the San Francisco Bay Area.')
+        throw new Error(
+          'Submission coordinates are outside of the San Francisco Bay Area.',
+        )
       }
 
       const existingLocationId = await findExistingLocationWithinRadius({
@@ -391,25 +443,26 @@ export const approveSubmission = createServerFn({ method: 'POST' })
       if (existingLocationId) {
         locationId = existingLocationId
       } else {
-      const { data: newLoc, error: locError } = await supabase
-        .from('map_locations')
-        .insert({
-          map_slug: sub2.map_slug,
-          name: sub2.proposed_name ?? 'Unnamed Location',
-          lat: sub2.proposed_lat,
-          lng: sub2.proposed_lng,
-          address: sub2.proposed_address ?? null,
-          created_by: user.id,
-        })
-        .select()
-        .single()
+        const { data: newLoc, error: locError } = await supabase
+          .from('map_locations')
+          .insert({
+            map_slug: sub2.map_slug,
+            name: sub2.proposed_name ?? 'Unnamed Location',
+            lat: sub2.proposed_lat,
+            lng: sub2.proposed_lng,
+            address: sub2.proposed_address ?? null,
+            created_by: user.id,
+          })
+          .select()
+          .single()
 
-      if (locError) throw new Error(locError.message)
-      locationId = (newLoc as Tables<'map_locations'>).id
+        if (locError) throw new Error(locError.message)
+        locationId = (newLoc as Tables<'map_locations'>).id
       }
     }
 
-    const occurredAt = sub2.occurred_at ?? sub2.created_at ?? new Date().toISOString()
+    const occurredAt =
+      sub2.occurred_at ?? sub2.created_at ?? new Date().toISOString()
     const timeZone = sub2.time_zone ?? DEFAULT_TIME_ZONE
 
     const { data: event, error: eventError } = await supabase
@@ -427,7 +480,8 @@ export const approveSubmission = createServerFn({ method: 'POST' })
       .select()
       .single()
 
-    if (eventError || !event) throw new Error(eventError?.message ?? 'Could not create event')
+    if (eventError || !event)
+      throw new Error(eventError?.message ?? 'Could not create event')
     const ev = event as Tables<'map_events'>
 
     // Link any photos from this submission to the location

@@ -1,34 +1,33 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Link } from "@tanstack/react-router";
-import { getTopTracks } from "#/server/spotify";
-import type { TopTrack } from "#/lib/spotify";
-import { SITE_TITLE } from "#/lib/site";
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { SITE_TITLE } from '#/lib/site'
+import type { TopTrack } from '#/lib/spotify'
+import { getTopTracks } from '#/server/spotify'
 
-export const Route = createFileRoute("/fun")({
+export const Route = createFileRoute('/fun')({
   head: () => ({
     meta: [{ title: `Fun | ${SITE_TITLE}` }],
   }),
   loader: async () => {
     try {
-      return await getTopTracks();
+      return await getTopTracks()
     } catch {
-      return [] as TopTrack[];
+      return [] as TopTrack[]
     }
   },
   component: Fun,
-});
+})
 
 function Fun() {
-  const tracks = Route.useLoaderData();
+  const tracks = Route.useLoaderData()
 
   // Easter egg: if one artist makes up more than half the list
-  const artistCounts: Record<string, number> = {};
+  const artistCounts: Record<string, number> = {}
   for (const t of tracks) {
-    artistCounts[t.artist] = (artistCounts[t.artist] ?? 0) + 1;
+    artistCounts[t.artist] = (artistCounts[t.artist] ?? 0) + 1
   }
   const dominantArtist = Object.entries(artistCounts).find(
     ([, count]) => count / tracks.length > 0.5,
-  )?.[0];
+  )?.[0]
 
   return (
     <main className="page-wrap px-4 pb-12 pt-14">
@@ -129,5 +128,5 @@ function Fun() {
         )}
       </section>
     </main>
-  );
+  )
 }

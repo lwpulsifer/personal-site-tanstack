@@ -1,14 +1,21 @@
-import { useEffect, useRef } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Rectangle, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
-import type { MapLocation } from '#/lib/map-types'
-import { MarkerPopup } from './MarkerPopup'
-import { BAY_AREA_BOUNDS, isWithinBayArea } from '#/lib/geo'
-
+import markerIcon from 'leaflet/dist/images/marker-icon.png'
 // Fix default Leaflet marker icons (they break with bundlers)
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
-import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+import { useEffect, useRef } from 'react'
+import {
+  MapContainer,
+  Marker,
+  Popup,
+  Rectangle,
+  TileLayer,
+  useMap,
+  useMapEvents,
+} from 'react-leaflet'
+import { BAY_AREA_BOUNDS, isWithinBayArea } from '#/lib/geo'
+import type { MapLocation } from '#/lib/map-types'
+import { MarkerPopup } from './MarkerPopup'
 
 L.Icon.Default.mergeOptions({
   iconUrl: markerIcon,
@@ -34,13 +41,23 @@ const previewMarkerIcon = new L.DivIcon({
   popupAnchor: [0, -32],
 })
 
-function FlyToCoords({ coords }: { coords: { lat: number; lng: number } | null | undefined }) {
+function FlyToCoords({
+  coords,
+}: {
+  coords: { lat: number; lng: number } | null | undefined
+}) {
   const map = useMap()
   const prevCoords = useRef<{ lat: number; lng: number } | null>(null)
 
   useEffect(() => {
-    if (coords && (coords.lat !== prevCoords.current?.lat || coords.lng !== prevCoords.current?.lng)) {
-      map.flyTo([coords.lat, coords.lng], Math.max(map.getZoom(), 16), { duration: 0.8 })
+    if (
+      coords &&
+      (coords.lat !== prevCoords.current?.lat ||
+        coords.lng !== prevCoords.current?.lng)
+    ) {
+      map.flyTo([coords.lat, coords.lng], Math.max(map.getZoom(), 16), {
+        duration: 0.8,
+      })
       prevCoords.current = coords
     }
   }, [coords, map])
@@ -48,7 +65,11 @@ function FlyToCoords({ coords }: { coords: { lat: number; lng: number } | null |
   return null
 }
 
-function ClickHandler({ onClick }: { onClick?: (lat: number, lng: number) => void }) {
+function ClickHandler({
+  onClick,
+}: {
+  onClick?: (lat: number, lng: number) => void
+}) {
   useMapEvents({
     click(e) {
       onClick?.(e.latlng.lat, e.latlng.lng)
@@ -82,7 +103,12 @@ export function MapView({
     // react-leaflet doesn't guarantee forwarding unknown props to the underlying
     // container element, so we wrap in a div for stable e2e selectors.
     <div data-testid="map-container" className="h-full w-full">
-      <MapContainer center={SF_CENTER} zoom={13} className="h-full w-full" scrollWheelZoom>
+      <MapContainer
+        center={SF_CENTER}
+        zoom={13}
+        className="h-full w-full"
+        scrollWheelZoom
+      >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -90,27 +116,58 @@ export function MapView({
         {/* Visual geofence: red mask outside the Bay Area bounds + red outline */}
         <Rectangle
           interactive={false}
-          bounds={[[BAY_AREA_BOUNDS.maxLat, -180], [90, 180]]}
-          pathOptions={{ stroke: false, fillColor: '#ef4444', fillOpacity: 0.16 }}
+          bounds={[
+            [BAY_AREA_BOUNDS.maxLat, -180],
+            [90, 180],
+          ]}
+          pathOptions={{
+            stroke: false,
+            fillColor: '#ef4444',
+            fillOpacity: 0.16,
+          }}
         />
         <Rectangle
           interactive={false}
-          bounds={[[-90, -180], [BAY_AREA_BOUNDS.minLat, 180]]}
-          pathOptions={{ stroke: false, fillColor: '#ef4444', fillOpacity: 0.16 }}
+          bounds={[
+            [-90, -180],
+            [BAY_AREA_BOUNDS.minLat, 180],
+          ]}
+          pathOptions={{
+            stroke: false,
+            fillColor: '#ef4444',
+            fillOpacity: 0.16,
+          }}
         />
         <Rectangle
           interactive={false}
-          bounds={[[BAY_AREA_BOUNDS.minLat, -180], [BAY_AREA_BOUNDS.maxLat, BAY_AREA_BOUNDS.minLng]]}
-          pathOptions={{ stroke: false, fillColor: '#ef4444', fillOpacity: 0.16 }}
+          bounds={[
+            [BAY_AREA_BOUNDS.minLat, -180],
+            [BAY_AREA_BOUNDS.maxLat, BAY_AREA_BOUNDS.minLng],
+          ]}
+          pathOptions={{
+            stroke: false,
+            fillColor: '#ef4444',
+            fillOpacity: 0.16,
+          }}
         />
         <Rectangle
           interactive={false}
-          bounds={[[BAY_AREA_BOUNDS.minLat, BAY_AREA_BOUNDS.maxLng], [BAY_AREA_BOUNDS.maxLat, 180]]}
-          pathOptions={{ stroke: false, fillColor: '#ef4444', fillOpacity: 0.16 }}
+          bounds={[
+            [BAY_AREA_BOUNDS.minLat, BAY_AREA_BOUNDS.maxLng],
+            [BAY_AREA_BOUNDS.maxLat, 180],
+          ]}
+          pathOptions={{
+            stroke: false,
+            fillColor: '#ef4444',
+            fillOpacity: 0.16,
+          }}
         />
         <Rectangle
           interactive={false}
-          bounds={[[BAY_AREA_BOUNDS.minLat, BAY_AREA_BOUNDS.minLng], [BAY_AREA_BOUNDS.maxLat, BAY_AREA_BOUNDS.maxLng]]}
+          bounds={[
+            [BAY_AREA_BOUNDS.minLat, BAY_AREA_BOUNDS.minLng],
+            [BAY_AREA_BOUNDS.maxLat, BAY_AREA_BOUNDS.maxLng],
+          ]}
           pathOptions={{ color: '#ef4444', weight: 2, fillOpacity: 0 }}
         />
         <FlyToCoords coords={flyToCoords} />
@@ -143,7 +200,10 @@ export function MapView({
           </Marker>
         ))}
         {previewCoords && (
-          <Marker position={[previewCoords.lat, previewCoords.lng]} icon={previewMarkerIcon}>
+          <Marker
+            position={[previewCoords.lat, previewCoords.lng]}
+            icon={previewMarkerIcon}
+          >
             <Popup>New sighting location</Popup>
           </Marker>
         )}

@@ -25,10 +25,7 @@ export default function Marquee({ children, className = '' }: MarqueeProps) {
 
   return (
     <div ref={maskRef} className={`overflow-hidden ${className}`}>
-      <span
-        ref={trackRef}
-        className={overflows ? 'marquee' : 'block truncate'}
-      >
+      <span ref={trackRef} className={overflows ? 'marquee' : 'block truncate'}>
         {children}
         {overflows && (
           <>

@@ -1,5 +1,5 @@
-import { createContext, useContext, useSyncExternalStore } from 'react'
 import type { User } from '@supabase/supabase-js'
+import { createContext, useContext, useSyncExternalStore } from 'react'
 import { getSupabaseBrowserClient } from './supabase'
 
 interface AuthState {

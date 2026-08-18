@@ -31,7 +31,6 @@ vi.mock('@tanstack/react-start/server', () => ({
   getRequestIP: vi.fn(() => '127.0.0.1'),
 }))
 
-
 const {
   getApprovedLocations,
   getLocationPhotos,
@@ -53,12 +52,24 @@ const {
 function makeChain(resolved: Record<string, unknown>) {
   const chain: Record<string, unknown> = {}
   for (const method of [
-    'select', 'order', 'eq', 'single', 'insert', 'update', 'is', 'upsert', 'delete', 'in', 'gte', 'lte',
+    'select',
+    'order',
+    'eq',
+    'single',
+    'insert',
+    'update',
+    'is',
+    'upsert',
+    'delete',
+    'in',
+    'gte',
+    'lte',
   ]) {
     chain[method] = vi.fn(() => chain)
   }
   // biome-ignore lint/suspicious/noThenProperty: needed for thenable mock in tests
-  chain.then = (resolve: (v: unknown) => void) => Promise.resolve(resolved).then(resolve)
+  chain.then = (resolve: (v: unknown) => void) =>
+    Promise.resolve(resolved).then(resolve)
   return chain
 }
 
@@ -95,20 +106,41 @@ describe('getApprovedLocations', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns locations with photo counts, thumbnail paths, and submitter names', async () => {
-    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
-      makeChain({ data: [sampleLocation], error: null }),
-      makeChain({ data: [
-        { location_id: 'loc-1', storage_path: 'lions/first.jpg', created_at: '2026-03-01T12:00:00Z' },
-        { location_id: 'loc-1', storage_path: 'lions/second.jpg', created_at: '2026-03-02T12:00:00Z' },
-      ], error: null }),
-      makeChain({ data: [
-        { location_id: 'loc-1', submitter_name: 'Jane' },
-      ], error: null }),
-    ))
-
-    const result = await (getApprovedLocations as (a: { data: { mapSlug: string } }) => Promise<{ id: string; photo_count: number; thumbnail_path: string | null; submitted_by: string | null }[]>)(
-      { data: { mapSlug: 'lions' } },
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(
+        makeChain({ data: [sampleLocation], error: null }),
+        makeChain({
+          data: [
+            {
+              location_id: 'loc-1',
+              storage_path: 'lions/first.jpg',
+              created_at: '2026-03-01T12:00:00Z',
+            },
+            {
+              location_id: 'loc-1',
+              storage_path: 'lions/second.jpg',
+              created_at: '2026-03-02T12:00:00Z',
+            },
+          ],
+          error: null,
+        }),
+        makeChain({
+          data: [{ location_id: 'loc-1', submitter_name: 'Jane' }],
+          error: null,
+        }),
+      ),
     )
+
+    const result = await (
+      getApprovedLocations as (a: { data: { mapSlug: string } }) => Promise<
+        {
+          id: string
+          photo_count: number
+          thumbnail_path: string | null
+          submitted_by: string | null
+        }[]
+      >
+    )({ data: { mapSlug: 'lions' } })
 
     expect(result).toHaveLength(1)
     expect(result[0].photo_count).toBe(2)
@@ -117,14 +149,16 @@ describe('getApprovedLocations', () => {
   })
 
   it('throws when the database returns an error', async () => {
-    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
-      makeChain({ data: null, error: { message: 'DB error' } }),
-    ))
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(makeChain({ data: null, error: { message: 'DB error' } })),
+    )
 
     await expect(
-      (getApprovedLocations as (a: { data: { mapSlug: string } }) => Promise<unknown>)(
-        { data: { mapSlug: 'lions' } },
-      ),
+      (
+        getApprovedLocations as (a: {
+          data: { mapSlug: string }
+        }) => Promise<unknown>
+      )({ data: { mapSlug: 'lions' } }),
     ).rejects.toThrow('DB error')
   })
 })
@@ -133,22 +167,27 @@ describe('getLocationPhotos', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns photos for a location', async () => {
-    const photos = [{ id: 'photo-1', location_id: 'loc-1', storage_path: 'test.jpg' }]
-    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
-      makeChain({ data: photos, error: null }),
-    ))
-
-    const result = await (getLocationPhotos as (a: { data: { locationId: string } }) => Promise<unknown[]>)(
-      { data: { locationId: 'loc-1' } },
+    const photos = [
+      { id: 'photo-1', location_id: 'loc-1', storage_path: 'test.jpg' },
+    ]
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(makeChain({ data: photos, error: null })),
     )
+
+    const result = await (
+      getLocationPhotos as (a: {
+        data: { locationId: string }
+      }) => Promise<unknown[]>
+    )({ data: { locationId: 'loc-1' } })
 
     expect(result).toHaveLength(1)
   })
 })
 
 // Typed caller avoids repeated `as unknown as` casts in submitSighting tests
-const callSubmitSighting = submitSighting as unknown as
-  (a: { data: Record<string, unknown> }) => Promise<{ id: string }>
+const callSubmitSighting = submitSighting as unknown as (a: {
+  data: Record<string, unknown>
+}) => Promise<{ id: string }>
 
 describe('submitSighting', () => {
   beforeEach(() => {
@@ -157,70 +196,134 @@ describe('submitSighting', () => {
   })
 
   it('creates a submission', async () => {
-    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
-      makeChain({ count: 0, error: null }),
-      makeChain({ data: { id: 'sub-new' }, error: null }),
-    ))
-
-    const result = await (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<{ id: string }>)(
-      { data: { mapSlug: 'lions', proposedName: 'Test Lion', proposedLat: 37.78, proposedLng: -122.42, photos: [] } },
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(
+        makeChain({ count: 0, error: null }),
+        makeChain({ data: { id: 'sub-new' }, error: null }),
+      ),
     )
+
+    const result = await (
+      submitSighting as unknown as (a: {
+        data: Record<string, unknown>
+      }) => Promise<{ id: string }>
+    )({
+      data: {
+        mapSlug: 'lions',
+        proposedName: 'Test Lion',
+        proposedLat: 37.78,
+        proposedLng: -122.42,
+        photos: [],
+      },
+    })
 
     expect(result.id).toBe('sub-new')
   })
 
   it('inserts photo rows without a locationId', async () => {
     const photosChain = makeChain({ data: null, error: null })
-    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
-      makeChain({ count: 0, error: null }),
-      makeChain({ data: { id: 'sub-photos' }, error: null }),
-      photosChain,
-    ))
-
-    const result = await (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<{ id: string }>)(
-      { data: { mapSlug: 'lions', proposedName: 'Test', proposedLat: 37.78, proposedLng: -122.42, photos: [{ storagePath: 'img1.jpg' }, { storagePath: 'img2.jpg' }] } },
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(
+        makeChain({ count: 0, error: null }),
+        makeChain({ data: { id: 'sub-photos' }, error: null }),
+        photosChain,
+      ),
     )
+
+    const result = await (
+      submitSighting as unknown as (a: {
+        data: Record<string, unknown>
+      }) => Promise<{ id: string }>
+    )({
+      data: {
+        mapSlug: 'lions',
+        proposedName: 'Test',
+        proposedLat: 37.78,
+        proposedLng: -122.42,
+        photos: [{ storagePath: 'img1.jpg' }, { storagePath: 'img2.jpg' }],
+      },
+    })
 
     expect(result.id).toBe('sub-photos')
     expect(photosChain.insert).toHaveBeenCalledWith([
-      expect.objectContaining({ location_id: null, submission_id: 'sub-photos', storage_path: 'img1.jpg', event_id: null }),
-      expect.objectContaining({ location_id: null, submission_id: 'sub-photos', storage_path: 'img2.jpg', event_id: null }),
+      expect.objectContaining({
+        location_id: null,
+        submission_id: 'sub-photos',
+        storage_path: 'img1.jpg',
+        event_id: null,
+      }),
+      expect.objectContaining({
+        location_id: null,
+        submission_id: 'sub-photos',
+        storage_path: 'img2.jpg',
+        event_id: null,
+      }),
     ])
   })
 
   it('inserts photo rows with locationId when provided', async () => {
     const photosChain = makeChain({ data: null, error: null })
-    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
-      makeChain({ count: 0, error: null }),
-      makeChain({ data: { id: 'sub-with-loc' }, error: null }),
-      photosChain,
-    ))
-
-    await (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<{ id: string }>)(
-      { data: { mapSlug: 'lions', locationId: 'loc-1', photos: [{ storagePath: 'photo.jpg' }] } },
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(
+        makeChain({ count: 0, error: null }),
+        makeChain({ data: { id: 'sub-with-loc' }, error: null }),
+        photosChain,
+      ),
     )
 
+    await (
+      submitSighting as unknown as (a: {
+        data: Record<string, unknown>
+      }) => Promise<{ id: string }>
+    )({
+      data: {
+        mapSlug: 'lions',
+        locationId: 'loc-1',
+        photos: [{ storagePath: 'photo.jpg' }],
+      },
+    })
+
     expect(photosChain.insert).toHaveBeenCalledWith([
-      expect.objectContaining({ location_id: 'loc-1', submission_id: 'sub-with-loc', storage_path: 'photo.jpg' }),
+      expect.objectContaining({
+        location_id: 'loc-1',
+        submission_id: 'sub-with-loc',
+        storage_path: 'photo.jpg',
+      }),
     ])
   })
 
   it('throws when insert fails', async () => {
-    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
-      makeChain({ count: 0, error: null }),
-      makeChain({ data: null, error: { message: 'Insert failed' } }),
-    ))
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(
+        makeChain({ count: 0, error: null }),
+        makeChain({ data: null, error: { message: 'Insert failed' } }),
+      ),
+    )
 
     await expect(
-      (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<unknown>)(
-        { data: { mapSlug: 'lions', proposedName: 'Test', proposedLat: 37.78, proposedLng: -122.42, photos: [] } },
-      ),
+      (
+        submitSighting as unknown as (a: {
+          data: Record<string, unknown>
+        }) => Promise<unknown>
+      )({
+        data: {
+          mapSlug: 'lions',
+          proposedName: 'Test',
+          proposedLat: 37.78,
+          proposedLng: -122.42,
+          photos: [],
+        },
+      }),
     ).rejects.toThrow('Insert failed')
   })
 
   it('rejects new sightings without any coordinates', async () => {
     await expect(
-      (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<unknown>)({
+      (
+        submitSighting as unknown as (a: {
+          data: Record<string, unknown>
+        }) => Promise<unknown>
+      )({
         data: {
           mapSlug: 'lions',
           proposedName: 'No-coords Lion',
@@ -232,7 +335,11 @@ describe('submitSighting', () => {
 
   it('rejects new sightings where only photos lack EXIF GPS', async () => {
     await expect(
-      (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<unknown>)({
+      (
+        submitSighting as unknown as (a: {
+          data: Record<string, unknown>
+        }) => Promise<unknown>
+      )({
         data: {
           mapSlug: 'lions',
           proposedName: 'No-coords Lion',
@@ -243,12 +350,16 @@ describe('submitSighting', () => {
   })
 
   it('rejects out-of-bounds coordinates for new sightings', async () => {
-    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
-      makeChain({ count: 0, error: null }),
-    ))
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(makeChain({ count: 0, error: null })),
+    )
 
     await expect(
-      (submitSighting as unknown as (a: { data: Record<string, unknown> }) => Promise<unknown>)({
+      (
+        submitSighting as unknown as (a: {
+          data: Record<string, unknown>
+        }) => Promise<unknown>
+      )({
         data: {
           mapSlug: 'lions',
           proposedLat: 34.05,
@@ -256,25 +367,44 @@ describe('submitSighting', () => {
           photos: [],
         },
       }),
-    ).rejects.toThrow('Please submit sightings within the San Francisco Bay Area.')
+    ).rejects.toThrow(
+      'Please submit sightings within the San Francisco Bay Area.',
+    )
   })
 
   it('rejects when global pending limit is reached', async () => {
-    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
-      makeChain({ count: 100, error: null }),
-    ))
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(makeChain({ count: 100, error: null })),
+    )
 
     await expect(
-      callSubmitSighting({ data: { mapSlug: 'lions', proposedName: 'Test', proposedLat: 37.78, proposedLng: -122.42, photos: [] } }),
+      callSubmitSighting({
+        data: {
+          mapSlug: 'lions',
+          proposedName: 'Test',
+          proposedLat: 37.78,
+          proposedLng: -122.42,
+          photos: [],
+        },
+      }),
     ).rejects.toThrow('Too many pending submissions. Please try again later.')
   })
 
   it('rejects the 6th submission from the same IP within a minute', async () => {
-    const makeSuccessClient = () => mockClient(
-      makeChain({ count: 0, error: null }),
-      makeChain({ data: { id: `sub-${Math.random()}` }, error: null }),
-    )
-    const payload = { data: { mapSlug: 'lions', proposedName: 'Test', proposedLat: 37.78, proposedLng: -122.42, photos: [] } }
+    const makeSuccessClient = () =>
+      mockClient(
+        makeChain({ count: 0, error: null }),
+        makeChain({ data: { id: `sub-${Math.random()}` }, error: null }),
+      )
+    const payload = {
+      data: {
+        mapSlug: 'lions',
+        proposedName: 'Test',
+        proposedLat: 37.78,
+        proposedLng: -122.42,
+        photos: [],
+      },
+    }
 
     // First 5 succeed
     for (let i = 0; i < 5; i++) {
@@ -283,9 +413,9 @@ describe('submitSighting', () => {
     }
 
     // 6th is rate-limited
-    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
-      makeChain({ count: 0, error: null }),
-    ))
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(makeChain({ count: 0, error: null })),
+    )
     await expect(callSubmitSighting(payload)).rejects.toThrow(
       'You are submitting too quickly. Please wait a moment.',
     )
@@ -299,9 +429,11 @@ describe('getPendingSubmissions', () => {
     vi.mocked(requireAuth).mockRejectedValue(new Error('Unauthorized'))
 
     await expect(
-      (getPendingSubmissions as (a: { data: { mapSlug?: string } }) => Promise<unknown>)(
-        { data: {} },
-      ),
+      (
+        getPendingSubmissions as (a: {
+          data: { mapSlug?: string }
+        }) => Promise<unknown>
+      )({ data: {} }),
     ).rejects.toThrow('Unauthorized')
   })
 })
@@ -313,14 +445,19 @@ describe('approveSubmission', () => {
     vi.mocked(requireAuth).mockRejectedValue(new Error('Unauthorized'))
 
     await expect(
-      (approveSubmission as (a: { data: { submissionId: string } }) => Promise<unknown>)(
-        { data: { submissionId: 'sub-1' } },
-      ),
+      (
+        approveSubmission as (a: {
+          data: { submissionId: string }
+        }) => Promise<unknown>
+      )({ data: { submissionId: 'sub-1' } }),
     ).rejects.toThrow('Unauthorized')
   })
 
   it('creates a new location and links photos when no location_id', async () => {
-    vi.mocked(requireAuth).mockResolvedValue({ id: 'admin-1', email: 'admin@test.com' } as never)
+    vi.mocked(requireAuth).mockResolvedValue({
+      id: 'admin-1',
+      email: 'admin@test.com',
+    } as never)
 
     const submission = {
       id: 'sub-1',
@@ -340,23 +477,30 @@ describe('approveSubmission', () => {
 
     const fetchChain = makeChain({ data: submission, error: null })
     const findExistingChain = makeChain({ data: [], error: null })
-    const insertLocationChain = makeChain({ data: { id: 'new-loc-1' }, error: null })
+    const insertLocationChain = makeChain({
+      data: { id: 'new-loc-1' },
+      error: null,
+    })
     const insertEventChain = makeChain({ data: { id: 'event-1' }, error: null })
     const updatePhotosChain = makeChain({ data: null, error: null })
     const updateSubmissionChain = makeChain({ data: null, error: null })
 
-    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
-      fetchChain,
-      findExistingChain,
-      insertLocationChain,
-      insertEventChain,
-      updatePhotosChain,
-      updateSubmissionChain,
-    ))
-
-    const result = await (approveSubmission as (a: { data: { submissionId: string } }) => Promise<{ ok: boolean; locationId: string; eventId: string }>)(
-      { data: { submissionId: 'sub-1' } },
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(
+        fetchChain,
+        findExistingChain,
+        insertLocationChain,
+        insertEventChain,
+        updatePhotosChain,
+        updateSubmissionChain,
+      ),
     )
+
+    const result = await (
+      approveSubmission as (a: {
+        data: { submissionId: string }
+      }) => Promise<{ ok: boolean; locationId: string; eventId: string }>
+    )({ data: { submissionId: 'sub-1' } })
 
     expect(result.ok).toBe(true)
     expect(result.locationId).toBe('new-loc-1')
@@ -370,15 +514,20 @@ describe('approveSubmission', () => {
       address: '123 Test St',
       created_by: 'admin-1',
     })
-    expect(insertEventChain.insert).toHaveBeenCalledWith(expect.objectContaining({
-      map_slug: 'lions',
-      location_id: 'new-loc-1',
-      created_by: 'admin-1',
-    }))
+    expect(insertEventChain.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        map_slug: 'lions',
+        location_id: 'new-loc-1',
+        created_by: 'admin-1',
+      }),
+    )
   })
 
   it('uses existing location_id when present', async () => {
-    vi.mocked(requireAuth).mockResolvedValue({ id: 'admin-1', email: 'admin@test.com' } as never)
+    vi.mocked(requireAuth).mockResolvedValue({
+      id: 'admin-1',
+      email: 'admin@test.com',
+    } as never)
 
     const submission = {
       id: 'sub-2',
@@ -401,16 +550,20 @@ describe('approveSubmission', () => {
     const updatePhotosChain = makeChain({ data: null, error: null })
     const updateSubmissionChain = makeChain({ data: null, error: null })
 
-    vi.mocked(getSupabaseServiceClient).mockReturnValue(mockClient(
-      fetchChain,
-      insertEventChain,
-      updatePhotosChain,
-      updateSubmissionChain,
-    ))
-
-    const result = await (approveSubmission as (a: { data: { submissionId: string } }) => Promise<{ ok: boolean; locationId: string; eventId: string }>)(
-      { data: { submissionId: 'sub-2' } },
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(
+        fetchChain,
+        insertEventChain,
+        updatePhotosChain,
+        updateSubmissionChain,
+      ),
     )
+
+    const result = await (
+      approveSubmission as (a: {
+        data: { submissionId: string }
+      }) => Promise<{ ok: boolean; locationId: string; eventId: string }>
+    )({ data: { submissionId: 'sub-2' } })
 
     expect(result.ok).toBe(true)
     expect(result.locationId).toBe('existing-loc')
@@ -425,9 +578,11 @@ describe('rejectSubmission', () => {
     vi.mocked(requireAuth).mockRejectedValue(new Error('Unauthorized'))
 
     await expect(
-      (rejectSubmission as (a: { data: { submissionId: string } }) => Promise<unknown>)(
-        { data: { submissionId: 'sub-1' } },
-      ),
+      (
+        rejectSubmission as (a: {
+          data: { submissionId: string }
+        }) => Promise<unknown>
+      )({ data: { submissionId: 'sub-1' } }),
     ).rejects.toThrow('Unauthorized')
   })
 })
@@ -439,9 +594,9 @@ describe('deleteLocation', () => {
     vi.mocked(requireAuth).mockRejectedValue(new Error('Unauthorized'))
 
     await expect(
-      (deleteLocation as (a: { data: { id: string } }) => Promise<unknown>)(
-        { data: { id: 'loc-1' } },
-      ),
+      (deleteLocation as (a: { data: { id: string } }) => Promise<unknown>)({
+        data: { id: 'loc-1' },
+      }),
     ).rejects.toThrow('Unauthorized')
   })
 })

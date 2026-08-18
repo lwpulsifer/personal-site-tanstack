@@ -1,17 +1,17 @@
-import { useMemo, useRef, useState, useId } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { marked } from 'marked'
-import { sanitize } from '#/lib/sanitize'
-import type { DbPost, PostStatus } from '#/server/posts'
-import { upsertPost, setPostStatus } from '#/server/posts'
-import { STATUS_STYLES } from '#/components/blog/StatusBadge'
-import { useOnEscapeKey } from '#/lib/hooks/useOnEscapeKey'
-import { TagsInput } from '#/components/blog/TagsInput'
+import { useId, useMemo, useRef, useState } from 'react'
 import {
   DIVIDER,
   ToolbarButton,
   useEditorFormatting,
 } from '#/components/blog/EditorToolbar'
+import { STATUS_STYLES } from '#/components/blog/StatusBadge'
+import { TagsInput } from '#/components/blog/TagsInput'
+import { useOnEscapeKey } from '#/lib/hooks/useOnEscapeKey'
+import { sanitize } from '#/lib/sanitize'
+import type { DbPost, PostStatus } from '#/server/posts'
+import { setPostStatus, upsertPost } from '#/server/posts'
 
 marked.setOptions({ async: false })
 
@@ -67,7 +67,12 @@ type PostFields = {
 
 // ── PostEditor ─────────────────────────────────────────────────────────────────
 
-export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props) {
+export function PostEditor({
+  initial,
+  knownTags = [],
+  onClose,
+  onSaved,
+}: Props) {
   const [fields, setFields] = useState<PostFields>({
     title: initial.title ?? '',
     slug: initial.slug ?? '',
@@ -77,7 +82,9 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
     heroImage: initial.hero_image ?? '',
   })
 
-  const [savedPostId, setSavedPostId] = useState<string | null>(initial.id ?? null)
+  const [savedPostId, setSavedPostId] = useState<string | null>(
+    initial.id ?? null,
+  )
   const [status, setStatus] = useState<EditorStatus>(initial.status ?? 'draft')
   const [tab, setTab] = useState<'write' | 'preview'>('write')
   const slugManuallyEdited = useRef(!!initial.slug)
@@ -88,8 +95,10 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
     setFields((prev) => ({ ...prev, [key]: value }))
   }
 
-  const { applyWrap, applyPrefix, applyLink, applyImage } =
-    useEditorFormatting(textareaRef, (content) => setField('content', content))
+  const { applyWrap, applyPrefix, applyLink, applyImage } = useEditorFormatting(
+    textareaRef,
+    (content) => setField('content', content),
+  )
 
   // ── Mutations ──────────────────────────────────────────────────────────────
 
@@ -134,7 +143,10 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
   const isActing = statusMutation.isPending
 
   return (
-    <div data-testid="post-editor" className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)]">
+    <div
+      data-testid="post-editor"
+      className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)]"
+    >
       {/* ── Toolbar ─────────────────────────────────────────────────────── */}
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
         <div className="flex items-center gap-2">
@@ -150,7 +162,9 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
           <span className="text-sm font-semibold text-[var(--text)]">
             {initial.id ? 'Edit post' : 'New post'}
           </span>
-          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_CLASS[status]}`}>
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_CLASS[status]}`}
+          >
             {STATUS_LABEL[status]}
           </span>
         </div>
@@ -211,7 +225,9 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
             type="button"
             onClick={() => saveMutation.mutate()}
             data-testid="post-save"
-            disabled={isSaving || !fields.title || !fields.slug || !fields.content}
+            disabled={
+              isSaving || !fields.title || !fields.slug || !fields.content
+            }
             className="rounded-full bg-[var(--blue-deep)] px-4 py-1.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50 disabled:hover:translate-y-0"
           >
             {isSaving ? 'Saving…' : 'Save'}
@@ -223,7 +239,10 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
       <div className="shrink-0 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3">
         <div className="mx-auto grid max-w-5xl grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-2">
-            <label htmlFor={`${id}-title`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+            <label
+              htmlFor={`${id}-title`}
+              className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
+            >
               Title
             </label>
             <input
@@ -243,7 +262,10 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
           </div>
 
           <div>
-            <label htmlFor={`${id}-slug`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+            <label
+              htmlFor={`${id}-slug`}
+              className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
+            >
               Slug
             </label>
             <input
@@ -273,7 +295,10 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
           </div>
 
           <div className="sm:col-span-2">
-            <label htmlFor={`${id}-description`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+            <label
+              htmlFor={`${id}-description`}
+              className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
+            >
               Description
             </label>
             <input
@@ -287,7 +312,10 @@ export function PostEditor({ initial, knownTags = [], onClose, onSaved }: Props)
           </div>
 
           <div className="sm:col-span-2">
-            <label htmlFor={`${id}-hero-image`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+            <label
+              htmlFor={`${id}-hero-image`}
+              className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
+            >
               Hero image URL (optional)
             </label>
             <input

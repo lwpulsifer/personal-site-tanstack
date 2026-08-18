@@ -1,14 +1,14 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { createFileRoute } from '@tanstack/react-router'
+import { useId, useMemo, useState } from 'react'
 import { BuyMeACoffee } from '#/components/BuyMeACoffee'
-import { PostEditor } from '#/components/PostEditor'
 import { PostCard } from '#/components/blog/PostCard'
+import { ErrorBoundary } from '#/components/ErrorBoundary'
+import { PostEditor } from '#/components/PostEditor'
 import { useAuth } from '#/lib/auth'
 import { adminPostsQueryOptions, allTagsQueryOptions } from '#/lib/queries'
 import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from '#/lib/site'
-import { getPublishedPosts, type DbPost } from '#/server/posts'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
-import { useMemo, useState, useId } from 'react'
-import { ErrorBoundary } from '#/components/ErrorBoundary'
+import { type DbPost, getPublishedPosts } from '#/server/posts'
 
 const canonical = `${SITE_URL}/blog`
 const pageTitle = `Blog | ${SITE_TITLE}`
@@ -45,7 +45,8 @@ function BlogIndex() {
   })
 
   // Admin sees all posts (including drafts/archived); public sees only published.
-  const displayPosts = isAuthenticated && adminPosts ? adminPosts : publishedPosts
+  const displayPosts =
+    isAuthenticated && adminPosts ? adminPosts : publishedPosts
 
   const allTags = useMemo(
     () => [...new Set(displayPosts.flatMap((p) => p.tags))].sort(),
@@ -57,7 +58,9 @@ function BlogIndex() {
       .filter(
         (p) =>
           !tagFilter ||
-          p.tags.some((t) => t.toLowerCase().startsWith(tagFilter.toLowerCase())),
+          p.tags.some((t) =>
+            t.toLowerCase().startsWith(tagFilter.toLowerCase()),
+          ),
       )
       .sort(
         (a, b) =>
@@ -116,7 +119,10 @@ function BlogIndex() {
           </div>
 
           <div className="flex items-center gap-2">
-            <BuyMeACoffee variant="prominent" label="Like the blog? Buy me a coffee!" />
+            <BuyMeACoffee
+              variant="prominent"
+              label="Like the blog? Buy me a coffee!"
+            />
             {isAuthenticated && (
               <button
                 type="button"
@@ -192,7 +198,9 @@ function BlogIndex() {
               className="island-kicker mb-3 cursor-pointer select-none list-none"
             >
               <span>Archived ({archivedPosts.length})</span>
-              <span className="ml-1 inline-block transition-transform group-open:rotate-90">›</span>
+              <span className="ml-1 inline-block transition-transform group-open:rotate-90">
+                ›
+              </span>
             </summary>
             <div className="grid gap-4 opacity-60 sm:grid-cols-2 lg:grid-cols-3">
               {archivedPosts.map((post) => (

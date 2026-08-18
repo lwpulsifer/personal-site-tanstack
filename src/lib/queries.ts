@@ -1,8 +1,12 @@
 import { queryOptions } from '@tanstack/react-query'
+import {
+  getApprovedLocations,
+  getLocationPhotos,
+  getPendingSubmissions,
+} from '#/server/maps'
+import { getPageViews } from '#/server/pageViews'
 import { getAdminPosts, getAllTags } from '#/server/posts'
 import { getNowPlaying } from '#/server/spotify'
-import { getPageViews } from '#/server/pageViews'
-import { getApprovedLocations, getLocationPhotos, getPendingSubmissions } from '#/server/maps'
 
 export const adminPostsQueryOptions = queryOptions({
   queryKey: ['adminPosts'],

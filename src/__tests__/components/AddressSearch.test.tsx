@@ -1,16 +1,31 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { AddressSearch, type AddressResult } from '#/components/maps/AddressSearch'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  type AddressResult,
+  AddressSearch,
+} from '#/components/maps/AddressSearch'
 
 const sampleResults = [
-  { display_name: '3301 Lyon St, San Francisco, CA', lat: '37.8029', lon: '-122.4484' },
-  { display_name: '123 Main St, San Francisco, CA', lat: '37.7900', lon: '-122.4000' },
+  {
+    display_name: '3301 Lyon St, San Francisco, CA',
+    lat: '37.8029',
+    lon: '-122.4484',
+  },
+  {
+    display_name: '123 Main St, San Francisco, CA',
+    lat: '37.7900',
+    lon: '-122.4000',
+  },
 ]
 
 // Wrapper that manages controlled state so userEvent.type actually updates the input.
-function Wrapper({ onSelect = () => {} }: { onSelect?: (r: AddressResult) => void }) {
+function Wrapper({
+  onSelect = () => {},
+}: {
+  onSelect?: (r: AddressResult) => void
+}) {
   const [value, setValue] = useState('')
   return <AddressSearch value={value} onChange={setValue} onSelect={onSelect} />
 }

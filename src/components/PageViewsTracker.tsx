@@ -1,7 +1,7 @@
-import { useLocation } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { pageViewsQueryOptions } from '#/lib/queries'
+import { useLocation } from '@tanstack/react-router'
 import { useLogPageView } from '#/lib/hooks/useLogPageView'
+import { pageViewsQueryOptions } from '#/lib/queries'
 
 /**
  * Converts a pathname to the URL key used in the DB.

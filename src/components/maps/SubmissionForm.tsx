@@ -1,11 +1,14 @@
-import { useState, useCallback, useRef, useId } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { submitSighting } from '#/server/maps'
+import { useCallback, useId, useRef, useState } from 'react'
 import { extractExifFromImage } from '#/lib/exif'
-import { isHeicFile, convertHeicFileToJpeg } from '#/lib/heic'
+import { convertHeicFileToJpeg, isHeicFile } from '#/lib/heic'
+import {
+  mapLocationsQueryOptions,
+  pendingMapSubmissionsQueryOptions,
+} from '#/lib/queries'
 import { getSupabaseBrowserClient } from '#/lib/supabase'
-import { mapLocationsQueryOptions, pendingMapSubmissionsQueryOptions } from '#/lib/queries'
-import { AddressSearch, type AddressResult } from './AddressSearch'
+import { submitSighting } from '#/server/maps'
+import { type AddressResult, AddressSearch } from './AddressSearch'
 
 export function SubmissionForm({
   mapSlug,
@@ -38,7 +41,11 @@ export function SubmissionForm({
   const [submitterEmail, setSubmitterEmail] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [fileMeta, setFileMeta] = useState<
-    { takenAtLocal: string | null; exifLat: number | null; exifLng: number | null }[]
+    {
+      takenAtLocal: string | null
+      exifLat: number | null
+      exifLng: number | null
+    }[]
   >([])
   const [previews, setPreviews] = useState<string[]>([])
   const previewsRef = useRef<string[]>([])
@@ -48,10 +55,14 @@ export function SubmissionForm({
   const [error, setError] = useState<string | null>(null)
   const id = useId()
 
-  const hasCoords = mode === 'new'
-    ? (lat !== '' && lng !== '' && !Number.isNaN(Number.parseFloat(lat)) && !Number.isNaN(Number.parseFloat(lng)))
-      || fileMeta.some((m) => m.exifLat != null && m.exifLng != null)
-    : true
+  const hasCoords =
+    mode === 'new'
+      ? (lat !== '' &&
+          lng !== '' &&
+          !Number.isNaN(Number.parseFloat(lat)) &&
+          !Number.isNaN(Number.parseFloat(lng))) ||
+        fileMeta.some((m) => m.exifLat != null && m.exifLng != null)
+      : true
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -68,7 +79,8 @@ export function SubmissionForm({
           const { error: uploadError } = await supabase.storage
             .from('map-photos')
             .upload(path, file, { contentType: file.type })
-          if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`)
+          if (uploadError)
+            throw new Error(`Upload failed: ${uploadError.message}`)
           storagePaths.push(path)
         }
       }
@@ -80,10 +92,10 @@ export function SubmissionForm({
         data: {
           mapSlug,
           locationId,
-          proposedName: isNew ? (name || undefined) : undefined,
+          proposedName: isNew ? name || undefined : undefined,
           proposedLat: isNew && lat ? Number.parseFloat(lat) : undefined,
           proposedLng: isNew && lng ? Number.parseFloat(lng) : undefined,
-          proposedAddress: isNew ? (address || undefined) : undefined,
+          proposedAddress: isNew ? address || undefined : undefined,
           occurredAtLocal,
           notes: notes || undefined,
           submitterName: submitterName || undefined,
@@ -100,10 +112,14 @@ export function SubmissionForm({
     onSuccess: () => {
       setSuccess(true)
       setUploading(false)
-      queryClient.invalidateQueries({ queryKey: mapLocationsQueryOptions(mapSlug).queryKey })
+      queryClient.invalidateQueries({
+        queryKey: mapLocationsQueryOptions(mapSlug).queryKey,
+      })
       // If an authenticated user is viewing the map (admin panel visible), refresh
       // pending submissions so the new item appears immediately.
-      queryClient.invalidateQueries({ queryKey: pendingMapSubmissionsQueryOptions(mapSlug).queryKey })
+      queryClient.invalidateQueries({
+        queryKey: pendingMapSubmissionsQueryOptions(mapSlug).queryKey,
+      })
     },
     onError: (err) => {
       setError(err instanceof Error ? err.message : 'Something went wrong')
@@ -111,58 +127,80 @@ export function SubmissionForm({
     },
   })
 
-  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(e.target.files ?? [])
+  const handleFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const selected = Array.from(e.target.files ?? [])
 
-    // Convert HEIC/HEIF to JPEG so photos render in all browsers.
-    setConverting(true)
-    const processed: File[] = []
-    const meta: { takenAtLocal: string | null; exifLat: number | null; exifLng: number | null }[] = []
-    try {
-      for (const file of selected) {
-        const exif = await extractExifFromImage(file)
-        meta.push({
-          takenAtLocal: exif.takenAtLocal,
-          exifLat: exif.coords?.lat ?? null,
-          exifLng: exif.coords?.lng ?? null,
-        })
-        if (isHeicFile(file)) {
-          try {
-            processed.push(await convertHeicFileToJpeg(file))
-          } catch {
-            // If conversion fails, keep the original and show an error so the user can retry.
+      // Convert HEIC/HEIF to JPEG so photos render in all browsers.
+      setConverting(true)
+      const processed: File[] = []
+      const meta: {
+        takenAtLocal: string | null
+        exifLat: number | null
+        exifLng: number | null
+      }[] = []
+      try {
+        for (const file of selected) {
+          const exif = await extractExifFromImage(file)
+          meta.push({
+            takenAtLocal: exif.takenAtLocal,
+            exifLat: exif.coords?.lat ?? null,
+            exifLng: exif.coords?.lng ?? null,
+          })
+          if (isHeicFile(file)) {
+            try {
+              processed.push(await convertHeicFileToJpeg(file))
+            } catch {
+              // If conversion fails, keep the original and show an error so the user can retry.
+              processed.push(file)
+              setError(
+                'Could not convert a HEIC photo to JPEG. Try a different photo or browser.',
+              )
+            }
+          } else {
             processed.push(file)
-            setError('Could not convert a HEIC photo to JPEG. Try a different photo or browser.')
           }
-        } else {
-          processed.push(file)
         }
+      } finally {
+        setConverting(false)
       }
-    } finally {
-      setConverting(false)
-    }
 
-    setFiles(processed)
-    setFileMeta(meta)
+      setFiles(processed)
+      setFileMeta(meta)
 
-    // Generate preview URLs (revoke old ones via ref to avoid stale closure)
-    previewsRef.current.forEach((url) => { URL.revokeObjectURL(url) })
-    const newPreviews = processed.map((f) => URL.createObjectURL(f))
-    previewsRef.current = newPreviews
-    setPreviews(newPreviews)
+      // Generate preview URLs (revoke old ones via ref to avoid stale closure)
+      previewsRef.current.forEach((url) => {
+        URL.revokeObjectURL(url)
+      })
+      const newPreviews = processed.map((f) => URL.createObjectURL(f))
+      previewsRef.current = newPreviews
+      setPreviews(newPreviews)
 
-    // Try to extract GPS from first image
-    if (selected.length > 0 && !lat && !lng && meta[0]?.exifLat != null && meta[0]?.exifLng != null) {
-      setLat(meta[0].exifLat.toString())
-      setLng(meta[0].exifLng.toString())
-      onCoordsChange?.(meta[0].exifLat, meta[0].exifLng)
-    }
-  }, [lat, lng, onCoordsChange])
+      // Try to extract GPS from first image
+      if (
+        selected.length > 0 &&
+        !lat &&
+        !lng &&
+        meta[0]?.exifLat != null &&
+        meta[0]?.exifLng != null
+      ) {
+        setLat(meta[0].exifLat.toString())
+        setLng(meta[0].exifLng.toString())
+        onCoordsChange?.(meta[0].exifLat, meta[0].exifLng)
+      }
+    },
+    [lat, lng, onCoordsChange],
+  )
 
   if (success) {
     return (
-      <div className="island-shell rounded-2xl p-6" data-testid="submission-success">
-        <h3 className="m-0 text-lg font-bold text-[var(--text)]">Thanks for your submission!</h3>
+      <div
+        className="island-shell rounded-2xl p-6"
+        data-testid="submission-success"
+      >
+        <h3 className="m-0 text-lg font-bold text-[var(--text)]">
+          Thanks for your submission!
+        </h3>
         <p className="mt-2 text-sm text-[var(--text-muted)]">
           {mode === 'add-photos'
             ? 'Your photos were submitted for review. They will appear on the location once approved.'
@@ -183,17 +221,32 @@ export function SubmissionForm({
   return (
     <div className="island-shell rounded-2xl p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h3 data-testid="submission-form-heading" className="m-0 text-lg font-bold text-[var(--text)]">
+        <h3
+          data-testid="submission-form-heading"
+          className="m-0 text-lg font-bold text-[var(--text)]"
+        >
           {mode === 'add-photos' ? 'Add Photos' : 'Report a Lion Sighting'}
         </h3>
-        <button type="button" data-testid="close-form-btn" onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text)]">
+        <button
+          type="button"
+          data-testid="close-form-btn"
+          onClick={onClose}
+          className="text-[var(--text-muted)] hover:text-[var(--text)]"
+        >
           &times;
         </button>
       </div>
 
       {mode === 'add-photos' && (
-        <p data-testid="add-photos-hint" className="mb-4 text-sm text-[var(--text-muted)]">
-          Adding photos to: <span className="font-semibold text-[var(--text)]">{name || 'this location'}</span>. Submissions require admin approval.
+        <p
+          data-testid="add-photos-hint"
+          className="mb-4 text-sm text-[var(--text-muted)]"
+        >
+          Adding photos to:{' '}
+          <span className="font-semibold text-[var(--text)]">
+            {name || 'this location'}
+          </span>
+          . Submissions require admin approval.
         </p>
       )}
 
@@ -207,7 +260,10 @@ export function SubmissionForm({
         {mode === 'new' && (
           <>
             <div>
-              <label htmlFor={`${id}-name`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+              <label
+                htmlFor={`${id}-name`}
+                className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
+              >
                 Name / Description
               </label>
               <input
@@ -234,7 +290,10 @@ export function SubmissionForm({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor={`${id}-lat`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+                <label
+                  htmlFor={`${id}-lat`}
+                  className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
+                >
                   Latitude
                 </label>
                 <input
@@ -256,7 +315,10 @@ export function SubmissionForm({
                 />
               </div>
               <div>
-                <label htmlFor={`${id}-lng`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+                <label
+                  htmlFor={`${id}-lng`}
+                  className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
+                >
                   Longitude
                 </label>
                 <input
@@ -280,13 +342,17 @@ export function SubmissionForm({
             </div>
 
             <p className="text-xs text-[var(--text-muted)]">
-              Tip: search for an address, click on the map, or upload a photo with GPS data to set the location.
+              Tip: search for an address, click on the map, or upload a photo
+              with GPS data to set the location.
             </p>
           </>
         )}
 
         <div>
-          <label htmlFor={`${id}-photos`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+          <label
+            htmlFor={`${id}-photos`}
+            className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
+          >
             Photos
           </label>
           <input
@@ -318,7 +384,10 @@ export function SubmissionForm({
         </div>
 
         <div>
-          <label htmlFor={`${id}-notes`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+          <label
+            htmlFor={`${id}-notes`}
+            className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
+          >
             Notes
           </label>
           <textarea
@@ -334,7 +403,10 @@ export function SubmissionForm({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor={`${id}-submitter-name`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+            <label
+              htmlFor={`${id}-submitter-name`}
+              className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
+            >
               Your Name (optional)
             </label>
             <input
@@ -346,7 +418,10 @@ export function SubmissionForm({
             />
           </div>
           <div>
-            <label htmlFor={`${id}-submitter-email`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+            <label
+              htmlFor={`${id}-submitter-email`}
+              className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
+            >
               Your Email (optional)
             </label>
             <input
@@ -359,16 +434,20 @@ export function SubmissionForm({
           </div>
         </div>
         <p className="text-xs text-[var(--text-muted)]">
-          Your name will be shown publicly on the map if provided. Your email is never shared.
+          Your name will be shown publicly on the map if provided. Your email is
+          never shared.
         </p>
 
         {error && (
-          <p data-testid="submission-error" className="text-sm text-red-600">{error}</p>
+          <p data-testid="submission-error" className="text-sm text-red-600">
+            {error}
+          </p>
         )}
 
         {mode === 'new' && !hasCoords && (
           <p className="text-xs text-amber-600">
-            A location is required. Click the map, enter coordinates, or upload a photo with GPS data.
+            A location is required. Click the map, enter coordinates, or upload
+            a photo with GPS data.
           </p>
         )}
 
@@ -378,7 +457,11 @@ export function SubmissionForm({
           disabled={uploading || !hasCoords}
           className="w-full rounded-full bg-[var(--blue-deep)] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
         >
-          {uploading ? 'Submitting...' : mode === 'add-photos' ? 'Submit Photos' : 'Submit Sighting'}
+          {uploading
+            ? 'Submitting...'
+            : mode === 'add-photos'
+              ? 'Submit Photos'
+              : 'Submit Sighting'}
         </button>
       </form>
     </div>

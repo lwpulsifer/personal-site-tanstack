@@ -1,9 +1,11 @@
-import { describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 
 const flyToMock = vi.fn()
 vi.mock('react-leaflet', () => ({
-  MapContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  MapContainer: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
   TileLayer: () => <div data-testid="tile-layer" />,
   Rectangle: () => <div data-testid="map-rectangle" />,
   Marker: ({ children }: { children: React.ReactNode }) => (

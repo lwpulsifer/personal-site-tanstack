@@ -1,13 +1,19 @@
-import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
 import { TagsInput } from '#/components/blog/TagsInput'
 
 const suggestions = ['typescript', 'react', 'testing', 'css']
 
 describe('TagsInput', () => {
   it('renders existing tags as removable chips', () => {
-    render(<TagsInput value={['react', 'css']} onChange={() => {}} suggestions={[]} />)
+    render(
+      <TagsInput
+        value={['react', 'css']}
+        onChange={() => {}}
+        suggestions={[]}
+      />,
+    )
     expect(screen.getByText('react')).toBeTruthy()
     expect(screen.getByText('css')).toBeTruthy()
     expect(screen.getByLabelText('Remove react')).toBeTruthy()
@@ -16,7 +22,9 @@ describe('TagsInput', () => {
 
   it('adds a tag on Enter', async () => {
     const onChange = vi.fn()
-    render(<TagsInput value={[]} onChange={onChange} suggestions={suggestions} />)
+    render(
+      <TagsInput value={[]} onChange={onChange} suggestions={suggestions} />,
+    )
 
     const input = screen.getByPlaceholderText('Add tags…')
     await userEvent.type(input, 'newtag{Enter}')
@@ -25,7 +33,9 @@ describe('TagsInput', () => {
 
   it('adds a tag on comma', async () => {
     const onChange = vi.fn()
-    render(<TagsInput value={[]} onChange={onChange} suggestions={suggestions} />)
+    render(
+      <TagsInput value={[]} onChange={onChange} suggestions={suggestions} />,
+    )
 
     const input = screen.getByPlaceholderText('Add tags…')
     await userEvent.type(input, 'newtag,')
@@ -34,7 +44,13 @@ describe('TagsInput', () => {
 
   it('does not add duplicate tags', async () => {
     const onChange = vi.fn()
-    render(<TagsInput value={['react']} onChange={onChange} suggestions={suggestions} />)
+    render(
+      <TagsInput
+        value={['react']}
+        onChange={onChange}
+        suggestions={suggestions}
+      />,
+    )
 
     const input = screen.getByRole('textbox')
     await userEvent.type(input, 'react{Enter}')
@@ -43,7 +59,13 @@ describe('TagsInput', () => {
 
   it('removes a tag when its remove button is clicked', async () => {
     const onChange = vi.fn()
-    render(<TagsInput value={['react', 'css']} onChange={onChange} suggestions={suggestions} />)
+    render(
+      <TagsInput
+        value={['react', 'css']}
+        onChange={onChange}
+        suggestions={suggestions}
+      />,
+    )
 
     await userEvent.click(screen.getByLabelText('Remove react'))
     expect(onChange).toHaveBeenCalledWith(['css'])
@@ -51,7 +73,13 @@ describe('TagsInput', () => {
 
   it('removes the last tag on Backspace when input is empty', async () => {
     const onChange = vi.fn()
-    render(<TagsInput value={['react', 'css']} onChange={onChange} suggestions={suggestions} />)
+    render(
+      <TagsInput
+        value={['react', 'css']}
+        onChange={onChange}
+        suggestions={suggestions}
+      />,
+    )
 
     const input = screen.getByRole('textbox')
     await userEvent.click(input)
@@ -60,7 +88,9 @@ describe('TagsInput', () => {
   })
 
   it('shows filtered suggestions when typing', async () => {
-    render(<TagsInput value={[]} onChange={() => {}} suggestions={suggestions} />)
+    render(
+      <TagsInput value={[]} onChange={() => {}} suggestions={suggestions} />,
+    )
 
     const input = screen.getByPlaceholderText('Add tags…')
     await userEvent.type(input, 'type')
@@ -69,7 +99,13 @@ describe('TagsInput', () => {
   })
 
   it('excludes already-selected tags from suggestions', async () => {
-    render(<TagsInput value={['typescript']} onChange={() => {}} suggestions={suggestions} />)
+    render(
+      <TagsInput
+        value={['typescript']}
+        onChange={() => {}}
+        suggestions={suggestions}
+      />,
+    )
 
     const input = screen.getByRole('textbox')
     await userEvent.type(input, 'type')

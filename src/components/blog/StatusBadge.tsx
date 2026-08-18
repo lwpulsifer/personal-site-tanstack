@@ -10,7 +10,9 @@ export const STATUS_STYLES: Record<PostStatus, string> = {
 
 export function StatusBadge({ status }: { status: PostStatus }) {
   return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_STYLES[status]}`}>
+    <span
+      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_STYLES[status]}`}
+    >
       {status}
     </span>
   )

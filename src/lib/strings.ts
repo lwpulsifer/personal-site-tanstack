@@ -8,15 +8,33 @@ export function toTestIdPart(value: string) {
 }
 
 const BAD_WORDS = [
-  'ass', 'asshole', 'bastard', 'bitch', 'bollocks', 'cock', 'crap', 'cunt',
-  'damn', 'dick', 'douche', 'fag', 'fuck', 'goddamn', 'hell', 'jerk',
-  'nigger', 'piss', 'prick', 'pussy', 'shit', 'slut', 'twat', 'whore',
+  'ass',
+  'asshole',
+  'bastard',
+  'bitch',
+  'bollocks',
+  'cock',
+  'crap',
+  'cunt',
+  'damn',
+  'dick',
+  'douche',
+  'fag',
+  'fuck',
+  'goddamn',
+  'hell',
+  'jerk',
+  'nigger',
+  'piss',
+  'prick',
+  'pussy',
+  'shit',
+  'slut',
+  'twat',
+  'whore',
 ]
 
-const badWordPattern = new RegExp(
-  `\\b(${BAD_WORDS.join('|')})\\b`,
-  'gi',
-)
+const badWordPattern = new RegExp(`\\b(${BAD_WORDS.join('|')})\\b`, 'gi')
 
 /** Replace bad words in a name with asterisks. Returns null unchanged. */
 export function censorName(name: string | null): string | null {
