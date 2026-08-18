@@ -1,8 +1,8 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { DbBook } from '#/server/books'
 import { BookCard } from '#/components/books/BookCard'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 const baseBook: DbBook = {
   id: '1',
@@ -20,47 +20,35 @@ const baseBook: DbBook = {
   updated_at: '2026-05-15T12:00:00Z',
 }
 
-const noop = () => {}
-
-function withQueryClient(ui: React.ReactElement) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>)
-}
-
 describe('BookCard', () => {
-  it('shows the title, author, and status', () => {
-    render(<BookCard book={baseBook} showAdmin={false} onEdit={noop} />)
+  it('shows the title, author, and rating — nothing else', () => {
+    render(<BookCard book={baseBook} onView={() => {}} />)
     expect(screen.getByText('Project Hail Mary')).toBeTruthy()
     expect(screen.getByText('Andy Weir')).toBeTruthy()
-    expect(screen.getByText('Read')).toBeTruthy()
-  })
-
-  it('shows a star rating when rated', () => {
-    render(<BookCard book={baseBook} showAdmin={false} onEdit={noop} />)
     expect(screen.getByRole('img', { name: 'Rated 5 out of 5' })).toBeTruthy()
+    // No status badge, review snippet, or dates on the cover tile.
+    expect(screen.queryByText('Read')).toBeNull()
+    expect(screen.queryByText('Loved it.')).toBeNull()
   })
 
   it('hides the star rating when unrated', () => {
     const unrated = { ...baseBook, rating: null }
-    render(<BookCard book={unrated} showAdmin={false} onEdit={noop} />)
+    render(<BookCard book={unrated} onView={() => {}} />)
     expect(screen.queryByRole('img', { name: /Rated/ })).toBeNull()
   })
 
   it('shows the cover image when one is provided', () => {
     const withCover = { ...baseBook, cover_url: 'https://example.com/cover.jpg' }
-    const { container } = render(<BookCard book={withCover} showAdmin={false} onEdit={noop} />)
+    const { container } = render(<BookCard book={withCover} onView={() => {}} />)
     const img = container.querySelector('img')
     expect(img?.getAttribute('src')).toBe('https://example.com/cover.jpg')
   })
 
-  it('shows admin actions when showAdmin is true', () => {
-    withQueryClient(<BookCard book={baseBook} showAdmin onEdit={noop} />)
-    expect(screen.getByTestId('book-edit')).toBeTruthy()
-    expect(screen.getByTestId('book-delete')).toBeTruthy()
-  })
-
-  it('hides admin actions when showAdmin is false', () => {
-    render(<BookCard book={baseBook} showAdmin={false} onEdit={noop} />)
-    expect(screen.queryByTestId('book-edit')).toBeNull()
+  it('calls onView when clicked', async () => {
+    const onView = vi.fn()
+    const user = userEvent.setup()
+    render(<BookCard book={baseBook} onView={onView} />)
+    await user.click(screen.getByTestId(`book-card-${baseBook.id}`))
+    expect(onView).toHaveBeenCalledWith(baseBook)
   })
 })
