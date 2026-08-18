@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { upsertBook, deleteBook, type BookStatus, type DbBook } from '#/server/books'
 import { StarRating } from '#/components/books/StarRating'
@@ -34,6 +34,67 @@ function openLibraryCover(isbn: string) {
   return `https://covers.openlibrary.org/b/isbn/${encodeURIComponent(isbn)}-L.jpg`
 }
 
+// Strips whitespace/dashes so both "978-0-593-13520-4" and "9780593135204"
+// resolve to the same lookup key.
+function normalizeIsbn(raw: string) {
+  return raw.replace(/[-\s]/g, '').toUpperCase()
+}
+
+// ISBN-10 (last check digit may be "X") or ISBN-13 — anything else isn't
+// worth firing a lookup for yet.
+function isLookupableIsbn(isbn: string) {
+  return /^\d{9}[\dX]$/.test(isbn) || /^\d{13}$/.test(isbn)
+}
+
+type IsbnLookupStatus = 'idle' | 'loading' | 'found' | 'not-found' | 'error'
+
+type OpenLibraryBook = { title?: string; authors?: { name: string }[] }
+
+function useIsbnLookup(isbn: string) {
+  const [status, setStatus] = useState<IsbnLookupStatus>('idle')
+  const [book, setBook] = useState<OpenLibraryBook | null>(null)
+
+  useEffect(() => {
+    const cleanIsbn = normalizeIsbn(isbn)
+    if (!isLookupableIsbn(cleanIsbn)) {
+      setStatus('idle')
+      return
+    }
+
+    const controller = new AbortController()
+    setStatus('loading')
+    const timeout = setTimeout(() => {
+      fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${cleanIsbn}&jscmd=data&format=json`, {
+        signal: controller.signal,
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error('Lookup request failed')
+          return res.json() as Promise<Record<string, OpenLibraryBook>>
+        })
+        .then((data) => {
+          const found = data[`ISBN:${cleanIsbn}`]
+          if (!found) {
+            setStatus('not-found')
+            return
+          }
+          setStatus('found')
+          setBook(found)
+        })
+        .catch((err: unknown) => {
+          if (err instanceof DOMException && err.name === 'AbortError') return
+          setStatus('error')
+        })
+    }, 600)
+
+    return () => {
+      clearTimeout(timeout)
+      controller.abort()
+    }
+  }, [isbn])
+
+  return { status, book }
+}
+
 export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
   const [title, setTitle] = useState(initial.title ?? '')
   const [author, setAuthor] = useState(initial.author ?? '')
@@ -48,10 +109,22 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
 
   useOnEscapeKey(onClose)
 
-  const coverPreview = useMemo(
-    () => coverUrl || (isbn ? openLibraryCover(isbn) : ''),
-    [coverUrl, isbn],
-  )
+  const { status: isbnStatus, book: lookedUpBook } = useIsbnLookup(isbn)
+
+  useEffect(() => {
+    if (!lookedUpBook) return
+    if (lookedUpBook.title) setTitle((prev) => prev || (lookedUpBook.title as string))
+    if (lookedUpBook.authors?.length) {
+      const names = lookedUpBook.authors.map((a) => a.name).join(', ')
+      setAuthor((prev) => prev || names)
+    }
+  }, [lookedUpBook])
+
+  const coverPreview = useMemo(() => {
+    if (coverUrl) return coverUrl
+    const cleanIsbn = normalizeIsbn(isbn)
+    return cleanIsbn ? openLibraryCover(cleanIsbn) : ''
+  }, [coverUrl, isbn])
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -60,7 +133,7 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
           ...(initial.id ? { id: initial.id } : {}),
           title,
           author,
-          isbn: isbn || undefined,
+          isbn: normalizeIsbn(isbn) || undefined,
           cover_url: coverUrl || undefined,
           status,
           rating: rating ?? undefined,
@@ -146,16 +219,35 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div>
             <label htmlFor={`${id}-isbn`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
-              ISBN (fetches cover)
+              ISBN-10 or ISBN-13
             </label>
             <input
               id={`${id}-isbn`}
               type="text"
               value={isbn}
               onChange={(e) => setIsbn(e.target.value)}
-              placeholder="9780000000000"
+              placeholder="978-0-000-00000-0"
+              data-testid="book-isbn-input"
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
             />
+            {isbnStatus === 'loading' && (
+              <p className="mt-1 text-xs text-[var(--text-muted)]">Looking up…</p>
+            )}
+            {isbnStatus === 'found' && (
+              <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
+                Found — title/author filled in.
+              </p>
+            )}
+            {isbnStatus === 'not-found' && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400" data-testid="isbn-lookup-error">
+                No book found for that ISBN.
+              </p>
+            )}
+            {isbnStatus === 'error' && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400" data-testid="isbn-lookup-error">
+                Couldn't look up that ISBN — check your connection and try again.
+              </p>
+            )}
           </div>
           <div>
             <label htmlFor={`${id}-cover`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">

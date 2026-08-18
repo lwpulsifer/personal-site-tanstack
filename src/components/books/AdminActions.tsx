@@ -2,7 +2,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { deleteBook, setBookStatus, type BookStatus, type DbBook } from '#/server/books'
 import { booksQueryOptions } from '#/lib/queries'
 
-const NEXT_STATUS: Record<BookStatus, { label: string; status: BookStatus; className: string }> = {
+// No entry for READ: it's an end state, so the only way back is via the
+// editor rather than a one-click quick action.
+const NEXT_STATUS: Partial<Record<BookStatus, { label: string; status: BookStatus; className: string }>> = {
   WANT_TO_READ: {
     label: 'Start reading',
     status: 'READING',
@@ -12,11 +14,6 @@ const NEXT_STATUS: Record<BookStatus, { label: string; status: BookStatus; class
     label: 'Mark read',
     status: 'READ',
     className: 'bg-emerald-600 hover:bg-emerald-700',
-  },
-  READ: {
-    label: 'Move to want to read',
-    status: 'WANT_TO_READ',
-    className: 'bg-gray-500 hover:bg-gray-600',
   },
 }
 
@@ -53,15 +50,17 @@ export function AdminActions({
         Edit
       </button>
 
-      <button
-        type="button"
-        data-testid="book-next-status"
-        onClick={() => statusMutation.mutate(next.status)}
-        disabled={isPending}
-        className={`rounded-full px-2.5 py-0.5 text-xs font-semibold text-white transition disabled:opacity-50 ${next.className}`}
-      >
-        {next.label}
-      </button>
+      {next && (
+        <button
+          type="button"
+          data-testid="book-next-status"
+          onClick={() => statusMutation.mutate(next.status)}
+          disabled={isPending}
+          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold text-white transition disabled:opacity-50 ${next.className}`}
+        >
+          {next.label}
+        </button>
+      )}
 
       <button
         type="button"
