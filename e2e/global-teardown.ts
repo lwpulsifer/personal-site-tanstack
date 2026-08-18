@@ -25,6 +25,9 @@ export default async function globalTeardown() {
   await supabase.from('map_submissions').delete().like('proposed_name', 'e2e-test-%')
   await supabase.from('map_locations').delete().like('name', 'e2e-test-%')
 
+  // Delete any books created during e2e tests
+  await supabase.from('books').delete().like('title', 'E2E %')
+
   // Delete the test admin user
   const { data } = await supabase.auth.admin.listUsers()
   for (const email of [ADMIN_EMAIL, AUTH_EMAIL]) {

@@ -1,4 +1,5 @@
 import { queryOptions } from '@tanstack/react-query'
+import { getBooks } from '#/server/books'
 import {
   getApprovedLocations,
   getLocationPhotos,
@@ -16,6 +17,11 @@ export const adminPostsQueryOptions = queryOptions({
 export const allTagsQueryOptions = queryOptions({
   queryKey: ['allTags'],
   queryFn: () => getAllTags(),
+})
+
+export const booksQueryOptions = queryOptions({
+  queryKey: ['books'],
+  queryFn: () => getBooks(),
 })
 
 export const nowPlayingQueryOptions = queryOptions({

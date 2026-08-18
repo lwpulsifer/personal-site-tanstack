@@ -34,6 +34,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      books: {
+        Row: {
+          author: string
+          cover_url: string | null
+          created_at: string
+          finished_at: string | null
+          id: string
+          isbn: string | null
+          rating: number | null
+          review: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["book_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author: string
+          cover_url?: string | null
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          isbn?: string | null
+          rating?: number | null
+          review?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["book_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author?: string
+          cover_url?: string | null
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          isbn?: string | null
+          rating?: number | null
+          review?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["book_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       map_events: {
         Row: {
           created_at: string
@@ -375,6 +420,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      book_status: "WANT_TO_READ" | "READING" | "READ"
       map_submission_status: "pending" | "approved" | "rejected"
       post_status: "PENDING" | "PUBLISHED" | "ARCHIVED"
     }
@@ -507,6 +553,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      book_status: ["WANT_TO_READ", "READING", "READ"],
       map_submission_status: ["pending", "approved", "rejected"],
       post_status: ["PENDING", "PUBLISHED", "ARCHIVED"],
     },

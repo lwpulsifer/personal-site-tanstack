@@ -17,6 +17,7 @@ import { Route as RssDotxmlRouteImport } from './routes/rss[.]xml'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
+import { Route as BooksIndexRouteImport } from './routes/books.index'
 import { Route as LionsIndexRouteImport } from './routes/lions.index'
 
 const IndexRoute = IndexRouteImport.update({
@@ -59,6 +60,11 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
   path: '/blog/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BooksIndexRoute = BooksIndexRouteImport.update({
+  id: '/books/',
+  path: '/books/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LionsIndexRoute = LionsIndexRouteImport.update({
   id: '/lions/',
   path: '/lions/',
@@ -74,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/': typeof BlogIndexRoute
+  '/books/': typeof BooksIndexRoute
   '/lions/': typeof LionsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -85,6 +92,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog': typeof BlogIndexRoute
+  '/books': typeof BooksIndexRoute
   '/lions': typeof LionsIndexRoute
 }
 export interface FileRoutesById {
@@ -97,6 +105,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/': typeof BlogIndexRoute
+  '/books/': typeof BooksIndexRoute
   '/lions/': typeof LionsIndexRoute
 }
 export interface FileRouteTypes {
@@ -110,6 +119,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/blog/$slug'
     | '/blog/'
+    | '/books/'
     | '/lions/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/blog/$slug'
     | '/blog'
+    | '/books'
     | '/lions'
   id:
     | '__root__'
@@ -132,6 +143,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/blog/$slug'
     | '/blog/'
+    | '/books/'
     | '/lions/'
   fileRoutesById: FileRoutesById
 }
@@ -144,6 +156,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   BlogSlugRoute: typeof BlogSlugRoute
   BlogIndexRoute: typeof BlogIndexRoute
+  BooksIndexRoute: typeof BooksIndexRoute
   LionsIndexRoute: typeof LionsIndexRoute
 }
 
@@ -205,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/books/': {
+      id: '/books/'
+      path: '/books'
+      fullPath: '/books/'
+      preLoaderRoute: typeof BooksIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lions/': {
       id: '/lions/'
       path: '/lions'
@@ -224,6 +244,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   BlogSlugRoute: BlogSlugRoute,
   BlogIndexRoute: BlogIndexRoute,
+  BooksIndexRoute: BooksIndexRoute,
   LionsIndexRoute: LionsIndexRoute,
 }
 export const routeTree = rootRouteImport
