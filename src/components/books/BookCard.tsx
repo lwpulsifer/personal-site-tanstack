@@ -1,4 +1,5 @@
 import type { DbBook } from '#/server/books'
+import { CoverImage } from '#/components/books/CoverImage'
 import { StarRating } from '#/components/books/StarRating'
 
 type BookCardProps = {
@@ -21,11 +22,7 @@ export function BookCard({ book, onView, className = '', style }: BookCardProps)
       style={style}
     >
       <div className="aspect-[2/3] w-full overflow-hidden rounded-lg bg-[var(--chip-bg)] shadow-md transition group-hover:shadow-xl">
-        {book.cover_url ? (
-          <img src={book.cover_url} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-3xl opacity-40">📖</div>
-        )}
+        <CoverImage src={book.cover_url} />
       </div>
 
       <h2

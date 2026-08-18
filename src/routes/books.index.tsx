@@ -5,8 +5,8 @@ import { useAuth } from '#/lib/auth'
 import { booksQueryOptions } from '#/lib/queries'
 import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from '#/lib/site'
 import { getBooks, type DbBook } from '#/server/books'
-import { BookCard } from '#/components/books/BookCard'
 import { BookDetail } from '#/components/books/BookDetail'
+import { BookShelf } from '#/components/books/BookShelf'
 import { BookEditor, type BookEditorInitial } from '#/components/books/BookEditor'
 import { ErrorBoundary } from '#/components/ErrorBoundary'
 
@@ -29,9 +29,6 @@ function byDateDesc(dateA: string | null, dateB: string | null) {
   return new Date(dateB ?? 0).valueOf() - new Date(dateA ?? 0).valueOf()
 }
 
-// Reading books lead the main list regardless of date, followed by finished
-// books sorted by when they were finished. Want-to-read books have no
-// meaningful chronological signal, so they get their own list below.
 function groupBooks(books: DbBook[]) {
   const reading = books
     .filter((b) => b.status === 'READING')
@@ -42,7 +39,7 @@ function groupBooks(books: DbBook[]) {
   const wantToRead = books
     .filter((b) => b.status === 'WANT_TO_READ')
     .sort((a, b) => byDateDesc(a.created_at, b.created_at))
-  return { primary: [...reading, ...read], wantToRead }
+  return { reading, read, wantToRead }
 }
 
 function toEditorInitial(book: DbBook): BookEditorInitial {
@@ -67,7 +64,7 @@ function BooksIndex() {
   const queryClient = useQueryClient()
   const [editingBook, setEditingBook] = useState<DbBook | 'new' | null>(null)
   const [viewingBookId, setViewingBookId] = useState<string | null>(null)
-  const { primary, wantToRead } = useMemo(() => groupBooks(books), [books])
+  const { reading, read, wantToRead } = useMemo(() => groupBooks(books), [books])
   // Derived from live query data (rather than holding a copy of the book)
   // so status/review changes made from inside the detail view show up
   // immediately instead of needing the modal to be reopened.
@@ -138,41 +135,27 @@ function BooksIndex() {
           <p className="text-[var(--text-muted)]">No books logged yet.</p>
         ) : (
           <>
-            {primary.length > 0 && (
-              <section
-                data-testid="primary-books"
-                className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6"
-              >
-                {primary.map((book, i) => (
-                  <BookCard
-                    key={book.id}
-                    book={book}
-                    onView={(b) => setViewingBookId(b.id)}
-                    className="rise-in"
-                    style={{ animationDelay: `${i * 60}ms` }}
-                  />
-                ))}
-              </section>
-            )}
-
-            {wantToRead.length > 0 && (
-              <section className="mt-10">
-                <p data-testid="want-to-read-heading" className="island-kicker mb-3">
-                  Want to Read
-                </p>
-                <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-                  {wantToRead.map((book, i) => (
-                    <BookCard
-                      key={book.id}
-                      book={book}
-                      onView={(b) => setViewingBookId(b.id)}
-                      className="rise-in"
-                      style={{ animationDelay: `${i * 60}ms` }}
-                    />
-                  ))}
-                </div>
-              </section>
-            )}
+            <BookShelf
+              label="Reading"
+              shelfKey="reading"
+              books={reading}
+              defaultOpen
+              onView={(b) => setViewingBookId(b.id)}
+            />
+            <BookShelf
+              label="Read"
+              shelfKey="read"
+              books={read}
+              defaultOpen
+              onView={(b) => setViewingBookId(b.id)}
+            />
+            <BookShelf
+              label="Want to Read"
+              shelfKey="want_to_read"
+              books={wantToRead}
+              defaultOpen={false}
+              onView={(b) => setViewingBookId(b.id)}
+            />
           </>
         )}
       </main>
