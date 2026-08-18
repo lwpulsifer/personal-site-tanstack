@@ -20,9 +20,11 @@ const NEXT_STATUS: Partial<Record<BookStatus, { label: string; status: BookStatu
 export function AdminActions({
   book,
   onEdit,
+  onDeleted,
 }: {
   book: DbBook
   onEdit: (book: DbBook) => void
+  onDeleted?: () => void
 }) {
   const queryClient = useQueryClient()
 
@@ -33,7 +35,10 @@ export function AdminActions({
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteBook({ data: { bookId: book.id } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: booksQueryOptions.queryKey }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: booksQueryOptions.queryKey })
+      onDeleted?.()
+    },
   })
 
   const isPending = statusMutation.isPending || deleteMutation.isPending

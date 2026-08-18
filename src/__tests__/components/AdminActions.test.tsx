@@ -1,8 +1,16 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { DbBook } from '#/server/books'
-import { AdminActions } from '#/components/books/AdminActions'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+vi.mock('#/server/books', async () => ({
+  ...(await vi.importActual('#/server/books')),
+  deleteBook: vi.fn().mockResolvedValue({ ok: true }),
+}))
+
+const { AdminActions } = await import('#/components/books/AdminActions')
+const { deleteBook } = await import('#/server/books')
 
 const baseBook: DbBook = {
   id: '1',
@@ -45,5 +53,17 @@ describe('AdminActions', () => {
     // Edit and Delete are still there.
     expect(screen.getByTestId('book-edit')).toBeTruthy()
     expect(screen.getByTestId('book-delete')).toBeTruthy()
+  })
+
+  it('calls onDeleted once the delete mutation succeeds', async () => {
+    vi.stubGlobal('confirm', vi.fn().mockReturnValue(true))
+    const onDeleted = vi.fn()
+    const user = userEvent.setup()
+    withQueryClient(<AdminActions book={baseBook} onEdit={noop} onDeleted={onDeleted} />)
+
+    await user.click(screen.getByTestId('book-delete'))
+
+    expect(deleteBook).toHaveBeenCalledWith({ data: { bookId: baseBook.id } })
+    await waitFor(() => expect(onDeleted).toHaveBeenCalledTimes(1))
   })
 })
