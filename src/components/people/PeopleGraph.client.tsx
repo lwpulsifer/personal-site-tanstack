@@ -20,11 +20,17 @@ type GraphLink = {
 const LINK_DISTANCE: Record<ConnectionKind, number> = {
   partner: 20,
   family: 80,
+  sibling: 80,
+  friend: 80,
+  coworker: 80,
   other: 80,
 }
 const LINK_STRENGTH: Record<ConnectionKind, number> = {
   partner: 1,
   family: 0.2,
+  sibling: 0.2,
+  friend: 0.2,
+  coworker: 0.2,
   other: 0.2,
 }
 

@@ -11,14 +11,20 @@ import {
 const KIND_OPTIONS: { value: ConnectionKind; label: string }[] = [
   { value: 'other', label: 'Other' },
   { value: 'family', label: 'Family' },
+  { value: 'sibling', label: 'Sibling' },
+  { value: 'friend', label: 'Friend' },
+  { value: 'coworker', label: 'Coworker' },
   { value: 'partner', label: 'Partner' },
 ]
 
 // Small visual cue in the connection list — matches the tighter bonding
-// these get in the graph (see PeopleGraph.client.tsx).
+// partners get in the graph (see PeopleGraph.client.tsx).
 const KIND_BADGE_STYLES: Record<ConnectionKind, string> = {
   partner: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
   family: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  sibling: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  friend: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
+  coworker: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
   other: '',
 }
 

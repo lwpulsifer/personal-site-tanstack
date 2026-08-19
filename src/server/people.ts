@@ -70,7 +70,14 @@ const InsertConnectionSchema = z
     personAId: z.string(),
     personBId: z.string(),
     label: z.string().min(1),
-    kind: z.enum(['partner', 'family', 'other']),
+    kind: z.enum([
+      'partner',
+      'family',
+      'sibling',
+      'friend',
+      'coworker',
+      'other',
+    ]),
   })
   .refine((data) => data.personAId !== data.personBId, {
     message: 'A person cannot be connected to themselves',

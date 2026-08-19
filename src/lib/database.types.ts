@@ -481,7 +481,13 @@ export type Database = {
     }
     Enums: {
       book_status: "WANT_TO_READ" | "READING" | "READ"
-      connection_kind: "partner" | "family" | "other"
+      connection_kind:
+        | "partner"
+        | "family"
+        | "sibling"
+        | "friend"
+        | "coworker"
+        | "other"
       map_submission_status: "pending" | "approved" | "rejected"
       post_status: "PENDING" | "PUBLISHED" | "ARCHIVED"
     }
@@ -615,7 +621,14 @@ export const Constants = {
   public: {
     Enums: {
       book_status: ["WANT_TO_READ", "READING", "READ"],
-      connection_kind: ["partner", "family", "other"],
+      connection_kind: [
+        "partner",
+        "family",
+        "sibling",
+        "friend",
+        "coworker",
+        "other",
+      ],
       map_submission_status: ["pending", "approved", "rejected"],
       post_status: ["PENDING", "PUBLISHED", "ARCHIVED"],
     },
