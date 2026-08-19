@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import ForceGraph2D, {
   type ForceGraphMethods,
   type NodeObject,
@@ -16,25 +16,26 @@ type GraphLink = {
   kind: ConnectionKind
 }
 
-// Partners bond tightly; everything else (parent/child, sibling, friend,
-// ...) keeps normal spacing so couples visually cluster in the layout.
+// Three visually distinct tiers: partner bonds tightest, parent/child is a
+// clear middle tier, and everything else (sibling/friend/coworker/family/
+// other) spreads out the most.
 const LINK_DISTANCE: Record<ConnectionKind, number> = {
   partner: 20,
-  family: 80,
-  parent_child: 80,
-  sibling: 80,
-  friend: 80,
-  coworker: 80,
-  other: 80,
+  parent_child: 110,
+  family: 220,
+  sibling: 220,
+  friend: 220,
+  coworker: 220,
+  other: 220,
 }
 const LINK_STRENGTH: Record<ConnectionKind, number> = {
   partner: 1,
-  family: 0.2,
-  parent_child: 0.2,
-  sibling: 0.2,
-  friend: 0.2,
-  coworker: 0.2,
-  other: 0.2,
+  parent_child: 0.3,
+  family: 0.15,
+  sibling: 0.15,
+  friend: 0.15,
+  coworker: 0.15,
+  other: 0.15,
 }
 
 export function PeopleGraph({
@@ -83,6 +84,25 @@ export function PeopleGraph({
     [people],
   )
 
+  const [query, setQuery] = useState('')
+  const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return []
+    return people.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 8)
+  }, [people, query])
+
+  function jumpToPerson(person: DbPerson) {
+    const node = graphData.nodes.find((n) => n.id === person.id)
+    if (node?.x != null && node.y != null) {
+      fgRef.current?.centerAt(node.x, node.y, 800)
+      fgRef.current?.zoom(4, 800)
+    }
+    setHighlightedId(person.id)
+    setQuery('')
+    onSelectPerson?.(person)
+  }
+
   // Canvas fillStyle can't resolve CSS custom properties directly, so resolve
   // the `--text` color once per theme change (via useMemo, keyed on `mode`)
   // rather than on every node on every animation frame.
@@ -100,8 +120,42 @@ export function PeopleGraph({
     <div
       ref={ref}
       data-testid="people-graph"
-      className="h-full w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
+      className="relative h-full w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
     >
+      <div className="absolute left-3 top-3 z-10 w-56">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && matches[0]) jumpToPerson(matches[0])
+          }}
+          placeholder="Jump to person..."
+          aria-label="Jump to person"
+          data-testid="people-search-input"
+          className="w-full rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text)] shadow-sm outline-none focus:border-[var(--blue)]"
+        />
+        {matches.length > 0 && (
+          <ul
+            data-testid="people-search-results"
+            className="mt-1 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg"
+          >
+            {matches.map((p) => (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  data-testid="people-search-result"
+                  onClick={() => jumpToPerson(p)}
+                  className="block w-full px-3 py-1.5 text-left text-sm text-[var(--text)] hover:bg-[var(--hover-bg)]"
+                >
+                  {p.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       {width > 0 && height > 0 && (
         <ForceGraph2D
           ref={fgRef}
@@ -131,6 +185,14 @@ export function PeopleGraph({
             ctx.arc(node.x ?? 0, node.y ?? 0, 4, 0, 2 * Math.PI)
             ctx.fillStyle = '#2563eb'
             ctx.fill()
+
+            if (node.id === highlightedId) {
+              ctx.beginPath()
+              ctx.arc(node.x ?? 0, node.y ?? 0, 8, 0, 2 * Math.PI)
+              ctx.strokeStyle = '#f59e0b'
+              ctx.lineWidth = 2 / globalScale
+              ctx.stroke()
+            }
 
             ctx.font = `${fontSize}px sans-serif`
             ctx.textAlign = 'center'
