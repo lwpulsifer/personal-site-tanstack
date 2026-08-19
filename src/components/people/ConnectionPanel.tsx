@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
+import { CONNECTION_KIND_OPTIONS } from '#/lib/connectionKind'
 import {
   type ConnectionKind,
   type DbConnection,
@@ -8,24 +9,14 @@ import {
   insertConnection,
 } from '#/server/people'
 
-const KIND_OPTIONS: { value: ConnectionKind; label: string }[] = [
-  { value: 'other', label: 'Other' },
-  { value: 'family', label: 'Family' },
-  { value: 'sibling', label: 'Sibling' },
-  { value: 'friend', label: 'Friend' },
-  { value: 'coworker', label: 'Coworker' },
-  { value: 'partner', label: 'Partner' },
-]
-
-// Small visual cue in the connection list — matches the tighter bonding
-// partners get in the graph (see PeopleGraph.client.tsx).
+// Matches the tighter bonding partners get in the graph (see PeopleGraph.client.tsx).
 const KIND_BADGE_STYLES: Record<ConnectionKind, string> = {
   partner: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
   family: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
   sibling: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
   friend: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
   coworker: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
-  other: '',
+  other: 'bg-[var(--chip-bg)] text-[var(--text-muted)]',
 }
 
 export function ConnectionPanel({
@@ -39,8 +30,8 @@ export function ConnectionPanel({
 }) {
   const [personAId, setPersonAId] = useState('')
   const [personBId, setPersonBId] = useState('')
-  const [label, setLabel] = useState('')
   const [kind, setKind] = useState<ConnectionKind>('other')
+  const [label, setLabel] = useState('')
   const peopleById = useMemo(
     () => new Map(people.map((p) => [p.id, p])),
     [people],
@@ -48,7 +39,7 @@ export function ConnectionPanel({
 
   const addMutation = useMutation({
     mutationFn: () =>
-      insertConnection({ data: { personAId, personBId, label, kind } }),
+      insertConnection({ data: { personAId, personBId, kind, label } }),
     onSuccess: () => {
       setLabel('')
       onChanged()
@@ -62,11 +53,7 @@ export function ConnectionPanel({
   })
 
   const canAdd =
-    personAId &&
-    personBId &&
-    personAId !== personBId &&
-    label.trim() &&
-    !addMutation.isPending
+    personAId && personBId && personAId !== personBId && !addMutation.isPending
 
   return (
     <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
@@ -96,15 +83,19 @@ export function ConnectionPanel({
           ))}
         </select>
 
-        <input
-          type="text"
-          aria-label="Relationship"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder="relationship (e.g. brother)"
-          data-testid="connection-label-input"
-          className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
-        />
+        <select
+          aria-label="Relationship type"
+          value={kind}
+          onChange={(e) => setKind(e.target.value as ConnectionKind)}
+          data-testid="connection-kind-select"
+          className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm font-semibold text-[var(--text)] outline-none focus:border-[var(--blue)]"
+        >
+          {CONNECTION_KIND_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
 
         <select
           aria-label="Person B"
@@ -121,19 +112,15 @@ export function ConnectionPanel({
           ))}
         </select>
 
-        <select
-          aria-label="Relationship type"
-          value={kind}
-          onChange={(e) => setKind(e.target.value as ConnectionKind)}
-          data-testid="connection-kind-select"
-          className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
-        >
-          {KIND_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+        <input
+          type="text"
+          aria-label="Comment (optional)"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="comment (optional)"
+          data-testid="connection-label-input"
+          className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
+        />
 
         <button
           type="submit"
@@ -168,15 +155,16 @@ export function ConnectionPanel({
               >
                 <span className="text-[var(--text)]">
                   {personA?.name ?? 'Unknown'}{' '}
-                  <span className="text-[var(--text-muted)]">
-                    — {connection.label} —
+                  <span
+                    data-testid="connection-kind-badge"
+                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${KIND_BADGE_STYLES[connection.kind]}`}
+                  >
+                    {connection.kind}
                   </span>{' '}
                   {personB?.name ?? 'Unknown'}
-                  {connection.kind !== 'other' && (
-                    <span
-                      className={`ml-2 rounded-full px-2 py-0.5 text-xs font-semibold ${KIND_BADGE_STYLES[connection.kind]}`}
-                    >
-                      {connection.kind}
+                  {connection.label && (
+                    <span className="ml-1.5 text-xs italic text-[var(--text-muted)]">
+                      "{connection.label}"
                     </span>
                   )}
                 </span>

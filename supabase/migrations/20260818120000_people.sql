@@ -10,7 +10,7 @@ create table public.people_connections (
   id           uuid        primary key default gen_random_uuid(),
   person_a_id  uuid        not null references public.people(id) on delete cascade,
   person_b_id  uuid        not null references public.people(id) on delete cascade,
-  label        text        not null,
+  label        text,
   created_at   timestamptz not null default now(),
   constraint people_connections_no_self_loop check (person_a_id <> person_b_id)
 );

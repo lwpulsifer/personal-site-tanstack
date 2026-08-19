@@ -3,6 +3,7 @@ import ForceGraph2D, {
   type ForceGraphMethods,
   type NodeObject,
 } from 'react-force-graph-2d'
+import { connectionDisplayText } from '#/lib/connectionKind'
 import { useElementSize } from '#/lib/hooks/useElementSize'
 import { useThemeMode } from '#/lib/hooks/useThemeMode'
 import type { ConnectionKind, DbConnection, DbPerson } from '#/server/people'
@@ -11,7 +12,7 @@ type GraphNode = NodeObject<{ id: string; name: string }>
 type GraphLink = {
   source: string
   target: string
-  label: string
+  displayText: string
   kind: ConnectionKind
 }
 
@@ -54,7 +55,7 @@ export function PeopleGraph({
       links: connections.map((c) => ({
         source: c.person_a_id,
         target: c.person_b_id,
-        label: c.label,
+        displayText: connectionDisplayText(c.kind, c.label),
         kind: c.kind,
       })) as GraphLink[],
     }),
@@ -106,7 +107,7 @@ export function PeopleGraph({
           width={width}
           height={height}
           nodeLabel="name"
-          linkLabel="label"
+          linkLabel="displayText"
           nodeRelSize={5}
           linkColor={(link) =>
             (link as unknown as GraphLink).kind === 'partner'
@@ -147,7 +148,7 @@ export function PeopleGraph({
             ctx.textAlign = 'center'
             ctx.textBaseline = 'middle'
             ctx.fillStyle = 'rgba(100,116,139,0.9)'
-            ctx.fillText((link as unknown as GraphLink).label, midX, midY)
+            ctx.fillText((link as unknown as GraphLink).displayText, midX, midY)
           }}
         />
       )}

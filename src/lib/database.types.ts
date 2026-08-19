@@ -317,7 +317,7 @@ export type Database = {
           created_at: string
           id: string
           kind: Database["public"]["Enums"]["connection_kind"]
-          label: string
+          label: string | null
           person_a_id: string
           person_b_id: string
         }
@@ -325,7 +325,7 @@ export type Database = {
           created_at?: string
           id?: string
           kind?: Database["public"]["Enums"]["connection_kind"]
-          label: string
+          label?: string | null
           person_a_id: string
           person_b_id: string
         }
@@ -333,7 +333,7 @@ export type Database = {
           created_at?: string
           id?: string
           kind?: Database["public"]["Enums"]["connection_kind"]
-          label?: string
+          label?: string | null
           person_a_id?: string
           person_b_id?: string
         }

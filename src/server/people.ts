@@ -69,7 +69,6 @@ const InsertConnectionSchema = z
   .object({
     personAId: z.string(),
     personBId: z.string(),
-    label: z.string().min(1),
     kind: z.enum([
       'partner',
       'family',
@@ -78,6 +77,8 @@ const InsertConnectionSchema = z
       'coworker',
       'other',
     ]),
+    // Ancillary free-text comment on top of `kind`, the core relationship fact.
+    label: z.string().optional(),
   })
   .refine((data) => data.personAId !== data.personBId, {
     message: 'A person cannot be connected to themselves',
@@ -93,8 +94,8 @@ export const insertConnection = createServerFn({ method: 'POST' })
       .insert({
         person_a_id: data.personAId,
         person_b_id: data.personBId,
-        label: data.label,
         kind: data.kind,
+        label: data.label?.trim() || null,
       })
       .select()
       .single()
