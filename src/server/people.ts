@@ -72,6 +72,7 @@ const InsertConnectionSchema = z
     kind: z.enum([
       'partner',
       'family',
+      'parent_child',
       'sibling',
       'friend',
       'coworker',

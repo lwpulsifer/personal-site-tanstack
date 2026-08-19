@@ -488,6 +488,7 @@ export type Database = {
         | "friend"
         | "coworker"
         | "other"
+        | "parent_child"
       map_submission_status: "pending" | "approved" | "rejected"
       post_status: "PENDING" | "PUBLISHED" | "ARCHIVED"
     }
@@ -628,6 +629,7 @@ export const Constants = {
         "friend",
         "coworker",
         "other",
+        "parent_child",
       ],
       map_submission_status: ["pending", "approved", "rejected"],
       post_status: ["PENDING", "PUBLISHED", "ARCHIVED"],

@@ -13,6 +13,7 @@ import {
 const KIND_BADGE_STYLES: Record<ConnectionKind, string> = {
   partner: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
   family: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  parent_child: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
   sibling: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
   friend: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
   coworker: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',

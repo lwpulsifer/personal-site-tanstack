@@ -6,6 +6,7 @@ export const CONNECTION_KIND_OPTIONS: {
 }[] = [
   { value: 'other', label: 'Other' },
   { value: 'family', label: 'Family' },
+  { value: 'parent_child', label: 'Parent-Child' },
   { value: 'sibling', label: 'Sibling' },
   { value: 'friend', label: 'Friend' },
   { value: 'coworker', label: 'Coworker' },
