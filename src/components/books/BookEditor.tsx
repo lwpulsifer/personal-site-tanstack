@@ -1,8 +1,13 @@
-import { useEffect, useId, useMemo, useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
-import { upsertBook, deleteBook, type BookStatus, type DbBook } from '#/server/books'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { useId, useMemo, useRef, useState } from 'react'
 import { StarRating } from '#/components/books/StarRating'
 import { useOnEscapeKey } from '#/lib/hooks/useOnEscapeKey'
+import {
+  type BookStatus,
+  type DbBook,
+  deleteBook,
+  upsertBook,
+} from '#/server/books'
 
 export type BookEditorInitial = {
   id?: string
@@ -50,57 +55,49 @@ type IsbnLookupStatus = 'idle' | 'loading' | 'found' | 'not-found' | 'error'
 
 type OpenLibraryBook = { title?: string; authors?: { name: string }[] }
 
-function useIsbnLookup(isbn: string) {
-  const [status, setStatus] = useState<IsbnLookupStatus>('idle')
-  const [book, setBook] = useState<OpenLibraryBook | null>(null)
+async function fetchIsbnLookup(
+  cleanIsbn: string,
+  signal: AbortSignal,
+): Promise<OpenLibraryBook | null> {
+  const res = await fetch(
+    `https://openlibrary.org/api/books?bibkeys=ISBN:${cleanIsbn}&jscmd=data&format=json`,
+    { signal },
+  )
+  if (!res.ok) throw new Error('Lookup request failed')
+  const data = (await res.json()) as Record<string, OpenLibraryBook>
+  return data[`ISBN:${cleanIsbn}`] ?? null
+}
 
-  useEffect(() => {
-    const cleanIsbn = normalizeIsbn(isbn)
-    if (!isLookupableIsbn(cleanIsbn)) {
-      setStatus('idle')
-      return
-    }
-
-    const controller = new AbortController()
-    setStatus('loading')
-    const timeout = setTimeout(() => {
-      fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${cleanIsbn}&jscmd=data&format=json`, {
-        signal: controller.signal,
-      })
-        .then((res) => {
-          if (!res.ok) throw new Error('Lookup request failed')
-          return res.json() as Promise<Record<string, OpenLibraryBook>>
-        })
-        .then((data) => {
-          const found = data[`ISBN:${cleanIsbn}`]
-          if (!found) {
-            setStatus('not-found')
-            return
-          }
-          setStatus('found')
-          setBook(found)
-        })
-        .catch((err: unknown) => {
-          if (err instanceof DOMException && err.name === 'AbortError') return
-          setStatus('error')
-        })
-    }, 600)
-
-    return () => {
-      clearTimeout(timeout)
-      controller.abort()
-    }
-  }, [isbn])
-
-  return { status, book }
+function deriveIsbnStatus(
+  lookupEnabled: boolean,
+  query: Pick<
+    ReturnType<typeof useQuery<OpenLibraryBook | null>>,
+    'isFetching' | 'isError' | 'isSuccess' | 'data'
+  >,
+): IsbnLookupStatus {
+  if (!lookupEnabled) return 'idle'
+  if (query.isFetching) return 'loading'
+  if (query.isError) return 'error'
+  if (query.data) return 'found'
+  if (query.isSuccess) return 'not-found'
+  return 'idle'
 }
 
 export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
   const [title, setTitle] = useState(initial.title ?? '')
   const [author, setAuthor] = useState(initial.author ?? '')
   const [isbn, setIsbn] = useState(initial.isbn ?? '')
+  // Debounced separately from `isbn` so the lookup query doesn't fire on
+  // every keystroke — updated from the input's onChange handler itself
+  // rather than an effect reacting to `isbn`.
+  const [debouncedIsbn, setDebouncedIsbn] = useState(initial.isbn ?? '')
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  )
   const [coverUrl, setCoverUrl] = useState(initial.cover_url ?? '')
-  const [status, setStatus] = useState<BookStatus>(initial.status ?? 'WANT_TO_READ')
+  const [status, setStatus] = useState<BookStatus>(
+    initial.status ?? 'WANT_TO_READ',
+  )
   const [rating, setRating] = useState<number | null>(initial.rating ?? null)
   const [review, setReview] = useState(initial.review ?? '')
   const [startedAt, setStartedAt] = useState(initial.started_at ?? '')
@@ -109,16 +106,40 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
 
   useOnEscapeKey(onClose)
 
-  const { status: isbnStatus, book: lookedUpBook } = useIsbnLookup(isbn)
+  function handleIsbnChange(value: string) {
+    setIsbn(value)
+    clearTimeout(debounceTimerRef.current)
+    debounceTimerRef.current = setTimeout(() => setDebouncedIsbn(value), 600)
+  }
 
-  useEffect(() => {
-    if (!lookedUpBook) return
-    if (lookedUpBook.title) setTitle((prev) => prev || (lookedUpBook.title as string))
-    if (lookedUpBook.authors?.length) {
-      const names = lookedUpBook.authors.map((a) => a.name).join(', ')
+  const cleanIsbn = normalizeIsbn(debouncedIsbn)
+  const lookupEnabled = isLookupableIsbn(cleanIsbn)
+  const isbnLookupQuery = useQuery({
+    queryKey: ['isbnLookup', cleanIsbn],
+    queryFn: ({ signal }) => fetchIsbnLookup(cleanIsbn, signal),
+    enabled: lookupEnabled,
+    retry: false,
+  })
+  const lookedUpBook = isbnLookupQuery.data
+  const isbnStatus = deriveIsbnStatus(lookupEnabled, isbnLookupQuery)
+
+  // Autofill blank title/author fields once per lookup result. Comparing
+  // against the last-applied result and calling setState during render
+  // (React's supported "adjust state when a value changes" pattern) keeps
+  // this a plain render-time sync instead of an effect.
+  const [lastAppliedBook, setLastAppliedBook] = useState<
+    OpenLibraryBook | null | undefined
+  >(undefined)
+  if (lookedUpBook && lookedUpBook !== lastAppliedBook) {
+    setLastAppliedBook(lookedUpBook)
+    const foundTitle = lookedUpBook.title
+    const authors = lookedUpBook.authors
+    if (foundTitle) setTitle((prev) => prev || foundTitle)
+    if (authors?.length) {
+      const names = authors.map((a) => a.name).join(', ')
       setAuthor((prev) => prev || names)
     }
-  }, [lookedUpBook])
+  }
 
   const coverPreview = useMemo(() => {
     if (coverUrl) return coverUrl
@@ -180,15 +201,24 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
         <div className="flex gap-4">
           <div className="h-28 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-[var(--chip-bg)]">
             {coverPreview ? (
-              <img src={coverPreview} alt="" className="h-full w-full object-cover" />
+              <img
+                src={coverPreview}
+                alt=""
+                className="h-full w-full object-cover"
+              />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-2xl opacity-40">📖</div>
+              <div className="flex h-full w-full items-center justify-center text-2xl opacity-40">
+                📖
+              </div>
             )}
           </div>
 
           <div className="flex-1 space-y-2.5">
             <div>
-              <label htmlFor={`${id}-title`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+              <label
+                htmlFor={`${id}-title`}
+                className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
+              >
                 Title
               </label>
               <input
@@ -201,7 +231,10 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
               />
             </div>
             <div>
-              <label htmlFor={`${id}-author`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+              <label
+                htmlFor={`${id}-author`}
+                className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
+              >
                 Author
               </label>
               <input
@@ -218,20 +251,25 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
 
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor={`${id}-isbn`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+            <label
+              htmlFor={`${id}-isbn`}
+              className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
+            >
               ISBN-10 or ISBN-13
             </label>
             <input
               id={`${id}-isbn`}
               type="text"
               value={isbn}
-              onChange={(e) => setIsbn(e.target.value)}
+              onChange={(e) => handleIsbnChange(e.target.value)}
               placeholder="978-0-000-00000-0"
               data-testid="book-isbn-input"
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
             />
             {isbnStatus === 'loading' && (
-              <p className="mt-1 text-xs text-[var(--text-muted)]">Looking up…</p>
+              <p className="mt-1 text-xs text-[var(--text-muted)]">
+                Looking up…
+              </p>
             )}
             {isbnStatus === 'found' && (
               <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
@@ -239,18 +277,28 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
               </p>
             )}
             {isbnStatus === 'not-found' && (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400" data-testid="isbn-lookup-error">
+              <p
+                className="mt-1 text-xs text-red-600 dark:text-red-400"
+                data-testid="isbn-lookup-error"
+              >
                 No book found for that ISBN.
               </p>
             )}
             {isbnStatus === 'error' && (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400" data-testid="isbn-lookup-error">
-                Couldn't look up that ISBN — check your connection and try again.
+              <p
+                className="mt-1 text-xs text-red-600 dark:text-red-400"
+                data-testid="isbn-lookup-error"
+              >
+                Couldn't look up that ISBN — check your connection and try
+                again.
               </p>
             )}
           </div>
           <div>
-            <label htmlFor={`${id}-cover`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+            <label
+              htmlFor={`${id}-cover`}
+              className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
+            >
               Cover URL override
             </label>
             <input
@@ -266,7 +314,9 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
 
         <div className="mt-3 flex flex-wrap items-center gap-4">
           <div>
-            <span className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">Status</span>
+            <span className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+              Status
+            </span>
             <div className="flex rounded-full border border-[var(--border)] bg-[var(--chip-bg)] p-0.5 text-xs">
               {STATUS_OPTIONS.map((opt) => (
                 <button
@@ -287,7 +337,9 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
           </div>
 
           <div>
-            <span className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">Rating</span>
+            <span className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+              Rating
+            </span>
             <StarRating rating={rating} onChange={setRating} size="md" />
           </div>
         </div>
@@ -295,7 +347,10 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
         {status !== 'WANT_TO_READ' && (
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor={`${id}-started`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+              <label
+                htmlFor={`${id}-started`}
+                className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
+              >
                 Started
               </label>
               <input
@@ -308,7 +363,10 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
             </div>
             {status === 'READ' && (
               <div>
-                <label htmlFor={`${id}-finished`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+                <label
+                  htmlFor={`${id}-finished`}
+                  className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
+                >
                   Finished
                 </label>
                 <input
@@ -324,7 +382,10 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
         )}
 
         <div className="mt-3">
-          <label htmlFor={`${id}-review`} className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+          <label
+            htmlFor={`${id}-review`}
+            className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
+          >
             Review / notes
           </label>
           <textarea

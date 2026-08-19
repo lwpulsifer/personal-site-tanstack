@@ -294,6 +294,63 @@ export type Database = {
           },
         ]
       }
+      people: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      people_connections: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          person_a_id: string
+          person_b_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          person_a_id: string
+          person_b_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          person_a_id?: string
+          person_b_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_connections_person_a_id_fkey"
+            columns: ["person_a_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_connections_person_b_id_fkey"
+            columns: ["person_b_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_status_update: {
         Row: {
           changed_at: string

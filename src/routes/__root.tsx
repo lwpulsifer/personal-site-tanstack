@@ -1,6 +1,11 @@
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { createRootRoute, HeadContent, Scripts } from '@tanstack/react-router'
+import {
+  createRootRoute,
+  HeadContent,
+  Link,
+  Scripts,
+} from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { useEffect } from 'react'
 import Footer from '../components/Footer'
@@ -52,8 +57,31 @@ export const Route = createRootRoute({
       },
     ],
   }),
+  notFoundComponent: NotFound,
   shellComponent: RootDocument,
 })
+
+function NotFound() {
+  return (
+    <main className="page-wrap flex min-h-[calc(100dvh-8rem)] items-center justify-center px-4 py-16">
+      <div className="island-shell rise-in w-full max-w-sm rounded-[2rem] px-8 py-10 text-center">
+        <p className="island-kicker mb-3">404</p>
+        <h1 className="display-title mb-4 text-2xl font-bold text-[var(--text)]">
+          Page not found
+        </h1>
+        <p className="mb-8 text-sm text-[var(--text-muted)]">
+          There's nothing here.
+        </p>
+        <Link
+          to="/"
+          className="rounded-full border border-[rgba(37,99,235,0.3)] bg-[rgba(59,130,246,0.1)] px-5 py-2.5 text-sm font-semibold text-[var(--blue-deep)] no-underline transition hover:-translate-y-0.5 hover:bg-[rgba(59,130,246,0.18)]"
+        >
+          Back to home
+        </Link>
+      </div>
+    </main>
+  )
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   const { user } = Route.useLoaderData()
