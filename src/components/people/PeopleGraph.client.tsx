@@ -16,25 +16,26 @@ type GraphLink = {
   kind: ConnectionKind
 }
 
-// Partners bond tightly; everything else (parent/child, sibling, friend,
-// ...) keeps normal spacing so couples visually cluster in the layout.
+// Partners bond tightly; parent/child stays at its existing (non-tight)
+// spacing; sibling/friend/coworker/family/other get extra room so the
+// overall graph reads less cluttered.
 const LINK_DISTANCE: Record<ConnectionKind, number> = {
   partner: 20,
-  family: 80,
   parent_child: 80,
-  sibling: 80,
-  friend: 80,
-  coworker: 80,
-  other: 80,
+  family: 160,
+  sibling: 160,
+  friend: 160,
+  coworker: 160,
+  other: 160,
 }
 const LINK_STRENGTH: Record<ConnectionKind, number> = {
   partner: 1,
-  family: 0.2,
   parent_child: 0.2,
-  sibling: 0.2,
-  friend: 0.2,
-  coworker: 0.2,
-  other: 0.2,
+  family: 0.15,
+  sibling: 0.15,
+  friend: 0.15,
+  coworker: 0.15,
+  other: 0.15,
 }
 
 export function PeopleGraph({
