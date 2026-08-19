@@ -1,11 +1,26 @@
 import { useMutation } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import {
+  type ConnectionKind,
   type DbConnection,
   type DbPerson,
   deleteConnection,
   insertConnection,
 } from '#/server/people'
+
+const KIND_OPTIONS: { value: ConnectionKind; label: string }[] = [
+  { value: 'other', label: 'Other' },
+  { value: 'family', label: 'Family' },
+  { value: 'partner', label: 'Partner' },
+]
+
+// Small visual cue in the connection list — matches the tighter bonding
+// these get in the graph (see PeopleGraph.client.tsx).
+const KIND_BADGE_STYLES: Record<ConnectionKind, string> = {
+  partner: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+  family: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  other: '',
+}
 
 export function ConnectionPanel({
   people,
@@ -19,6 +34,7 @@ export function ConnectionPanel({
   const [personAId, setPersonAId] = useState('')
   const [personBId, setPersonBId] = useState('')
   const [label, setLabel] = useState('')
+  const [kind, setKind] = useState<ConnectionKind>('other')
   const peopleById = useMemo(
     () => new Map(people.map((p) => [p.id, p])),
     [people],
@@ -26,7 +42,7 @@ export function ConnectionPanel({
 
   const addMutation = useMutation({
     mutationFn: () =>
-      insertConnection({ data: { personAId, personBId, label } }),
+      insertConnection({ data: { personAId, personBId, label, kind } }),
     onSuccess: () => {
       setLabel('')
       onChanged()
@@ -99,6 +115,20 @@ export function ConnectionPanel({
           ))}
         </select>
 
+        <select
+          aria-label="Relationship type"
+          value={kind}
+          onChange={(e) => setKind(e.target.value as ConnectionKind)}
+          data-testid="connection-kind-select"
+          className="rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
+        >
+          {KIND_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+
         <button
           type="submit"
           data-testid="add-connection-btn"
@@ -136,6 +166,13 @@ export function ConnectionPanel({
                     — {connection.label} —
                   </span>{' '}
                   {personB?.name ?? 'Unknown'}
+                  {connection.kind !== 'other' && (
+                    <span
+                      className={`ml-2 rounded-full px-2 py-0.5 text-xs font-semibold ${KIND_BADGE_STYLES[connection.kind]}`}
+                    >
+                      {connection.kind}
+                    </span>
+                  )}
                 </span>
                 <button
                   type="button"

@@ -1,11 +1,12 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import type { Tables } from '#/lib/database.types'
+import type { Enums, Tables } from '#/lib/database.types'
 import { getSupabaseServiceClient } from '#/lib/supabase'
 import { requireAuth } from '#/server/auth.server'
 
 export type DbPerson = Tables<'people'>
 export type DbConnection = Tables<'people_connections'>
+export type ConnectionKind = Enums<'connection_kind'>
 
 // Everything here is admin-only — including reads — since this is a private
 // social graph, unlike books/maps which have a public-read surface.
@@ -69,6 +70,7 @@ const InsertConnectionSchema = z
     personAId: z.string(),
     personBId: z.string(),
     label: z.string().min(1),
+    kind: z.enum(['partner', 'family', 'other']),
   })
   .refine((data) => data.personAId !== data.personBId, {
     message: 'A person cannot be connected to themselves',
@@ -85,6 +87,7 @@ export const insertConnection = createServerFn({ method: 'POST' })
         person_a_id: data.personAId,
         person_b_id: data.personBId,
         label: data.label,
+        kind: data.kind,
       })
       .select()
       .single()

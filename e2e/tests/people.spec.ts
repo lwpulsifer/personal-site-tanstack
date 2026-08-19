@@ -42,12 +42,14 @@ test.describe('admin: people graph', () => {
 
     await page.getByTestId('connection-person-a-select').selectOption({ label: nameA })
     await page.getByTestId('connection-person-b-select').selectOption({ label: nameB })
-    await fillStable(page.getByTestId('connection-label-input'), 'friend', 15_000)
+    await fillStable(page.getByTestId('connection-label-input'), 'spouse', 15_000)
+    await page.getByTestId('connection-kind-select').selectOption('partner')
     await page.getByTestId('add-connection-btn').click()
 
     const connectionItem = page.getByTestId('connection-list-item').filter({ hasText: nameA })
-    await authExpect(connectionItem).toContainText('friend', { timeout: 20_000 })
+    await authExpect(connectionItem).toContainText('spouse', { timeout: 20_000 })
     await authExpect(connectionItem).toContainText(nameB)
+    await authExpect(connectionItem).toContainText('partner')
 
     await connectionItem.getByTestId('delete-connection-btn').click()
     await authExpect(connectionItem).toHaveCount(0, { timeout: 20_000 })

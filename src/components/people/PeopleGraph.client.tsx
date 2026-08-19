@@ -1,11 +1,32 @@
-import { useMemo } from 'react'
-import ForceGraph2D, { type NodeObject } from 'react-force-graph-2d'
+import { useEffect, useMemo, useRef } from 'react'
+import ForceGraph2D, {
+  type ForceGraphMethods,
+  type NodeObject,
+} from 'react-force-graph-2d'
 import { useElementSize } from '#/lib/hooks/useElementSize'
 import { useThemeMode } from '#/lib/hooks/useThemeMode'
-import type { DbConnection, DbPerson } from '#/server/people'
+import type { ConnectionKind, DbConnection, DbPerson } from '#/server/people'
 
 type GraphNode = NodeObject<{ id: string; name: string }>
-type GraphLink = { source: string; target: string; label: string }
+type GraphLink = {
+  source: string
+  target: string
+  label: string
+  kind: ConnectionKind
+}
+
+// Partners bond tightly; everything else (parent/child, sibling, friend,
+// ...) keeps normal spacing so couples visually cluster in the layout.
+const LINK_DISTANCE: Record<ConnectionKind, number> = {
+  partner: 20,
+  family: 80,
+  other: 80,
+}
+const LINK_STRENGTH: Record<ConnectionKind, number> = {
+  partner: 1,
+  family: 0.2,
+  other: 0.2,
+}
 
 export function PeopleGraph({
   people,
@@ -17,6 +38,9 @@ export function PeopleGraph({
   onSelectPerson?: (person: DbPerson) => void
 }) {
   const { ref, width, height } = useElementSize<HTMLDivElement>()
+  const fgRef = useRef<ForceGraphMethods<GraphNode, GraphLink> | undefined>(
+    undefined,
+  )
 
   const graphData = useMemo(
     () => ({
@@ -25,10 +49,25 @@ export function PeopleGraph({
         source: c.person_a_id,
         target: c.person_b_id,
         label: c.label,
+        kind: c.kind,
       })) as GraphLink[],
     }),
     [people, connections],
   )
+
+  // The force simulation is an imperative object outside React's tree (like
+  // Leaflet's map instance) — configure its per-link distance/strength via
+  // accessor functions the simulation calls on every tick. Keyed on whether
+  // ForceGraph2D is actually mounted yet (it only renders once sized), since
+  // that's when `fgRef` first has something to configure.
+  const isGraphMounted = width > 0 && height > 0
+  useEffect(() => {
+    if (!isGraphMounted) return
+    const linkForce = fgRef.current?.d3Force('link')
+    linkForce
+      ?.distance((link: GraphLink) => LINK_DISTANCE[link.kind])
+      .strength((link: GraphLink) => LINK_STRENGTH[link.kind])
+  }, [isGraphMounted])
 
   const peopleById = useMemo(
     () => new Map(people.map((p) => [p.id, p])),
@@ -56,13 +95,21 @@ export function PeopleGraph({
     >
       {width > 0 && height > 0 && (
         <ForceGraph2D
+          ref={fgRef}
           graphData={graphData}
           width={width}
           height={height}
           nodeLabel="name"
           linkLabel="label"
           nodeRelSize={5}
-          linkColor={() => 'rgba(148,163,184,0.6)'}
+          linkColor={(link) =>
+            (link as unknown as GraphLink).kind === 'partner'
+              ? 'rgba(244,63,94,0.7)'
+              : 'rgba(148,163,184,0.6)'
+          }
+          linkWidth={(link) =>
+            (link as unknown as GraphLink).kind === 'partner' ? 2 : 1
+          }
           linkDirectionalParticles={0}
           onNodeClick={(node) => {
             const person = peopleById.get(String(node.id))

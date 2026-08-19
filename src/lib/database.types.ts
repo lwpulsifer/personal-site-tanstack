@@ -316,6 +316,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          kind: Database["public"]["Enums"]["connection_kind"]
           label: string
           person_a_id: string
           person_b_id: string
@@ -323,6 +324,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          kind?: Database["public"]["Enums"]["connection_kind"]
           label: string
           person_a_id: string
           person_b_id: string
@@ -330,6 +332,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          kind?: Database["public"]["Enums"]["connection_kind"]
           label?: string
           person_a_id?: string
           person_b_id?: string
@@ -478,6 +481,7 @@ export type Database = {
     }
     Enums: {
       book_status: "WANT_TO_READ" | "READING" | "READ"
+      connection_kind: "partner" | "family" | "other"
       map_submission_status: "pending" | "approved" | "rejected"
       post_status: "PENDING" | "PUBLISHED" | "ARCHIVED"
     }
@@ -611,6 +615,7 @@ export const Constants = {
   public: {
     Enums: {
       book_status: ["WANT_TO_READ", "READING", "READ"],
+      connection_kind: ["partner", "family", "other"],
       map_submission_status: ["pending", "approved", "rejected"],
       post_status: ["PENDING", "PUBLISHED", "ARCHIVED"],
     },
