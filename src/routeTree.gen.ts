@@ -15,6 +15,8 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as RssDotxmlRouteImport } from './routes/rss[.]xml'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as SpotifycallbackRouteImport } from './routes/spotifycallback'
+import { Route as SpotifysyncRouteImport } from './routes/spotifysync'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as BooksIndexRouteImport } from './routes/books.index'
@@ -51,6 +53,16 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SpotifycallbackRoute = SpotifycallbackRouteImport.update({
+  id: '/spotifycallback',
+  path: '/spotifycallback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SpotifysyncRoute = SpotifysyncRouteImport.update({
+  id: '/spotifysync',
+  path: '/spotifysync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BlogIndexRoute = BlogIndexRouteImport.update({
   id: '/blog/',
   path: '/blog/',
@@ -84,6 +96,8 @@ export interface FileRoutesByFullPath {
   '/logout': typeof LogoutRoute
   '/rss.xml': typeof RssDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/spotifycallback': typeof SpotifycallbackRoute
+  '/spotifysync': typeof SpotifysyncRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/': typeof BlogIndexRoute
   '/books/': typeof BooksIndexRoute
@@ -97,6 +111,8 @@ export interface FileRoutesByTo {
   '/logout': typeof LogoutRoute
   '/rss.xml': typeof RssDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/spotifycallback': typeof SpotifycallbackRoute
+  '/spotifysync': typeof SpotifysyncRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog': typeof BlogIndexRoute
   '/books': typeof BooksIndexRoute
@@ -111,6 +127,8 @@ export interface FileRoutesById {
   '/logout': typeof LogoutRoute
   '/rss.xml': typeof RssDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/spotifycallback': typeof SpotifycallbackRoute
+  '/spotifysync': typeof SpotifysyncRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/': typeof BlogIndexRoute
   '/books/': typeof BooksIndexRoute
@@ -126,6 +144,8 @@ export interface FileRouteTypes {
     | '/logout'
     | '/rss.xml'
     | '/sitemap.xml'
+    | '/spotifycallback'
+    | '/spotifysync'
     | '/blog/$slug'
     | '/blog/'
     | '/books/'
@@ -139,6 +159,8 @@ export interface FileRouteTypes {
     | '/logout'
     | '/rss.xml'
     | '/sitemap.xml'
+    | '/spotifycallback'
+    | '/spotifysync'
     | '/blog/$slug'
     | '/blog'
     | '/books'
@@ -152,6 +174,8 @@ export interface FileRouteTypes {
     | '/logout'
     | '/rss.xml'
     | '/sitemap.xml'
+    | '/spotifycallback'
+    | '/spotifysync'
     | '/blog/$slug'
     | '/blog/'
     | '/books/'
@@ -166,6 +190,8 @@ export interface RootRouteChildren {
   LogoutRoute: typeof LogoutRoute
   RssDotxmlRoute: typeof RssDotxmlRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  SpotifycallbackRoute: typeof SpotifycallbackRoute
+  SpotifysyncRoute: typeof SpotifysyncRoute
   BlogSlugRoute: typeof BlogSlugRoute
   BlogIndexRoute: typeof BlogIndexRoute
   BooksIndexRoute: typeof BooksIndexRoute
@@ -217,6 +243,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/spotifycallback': {
+      id: '/spotifycallback'
+      path: '/spotifycallback'
+      fullPath: '/spotifycallback'
+      preLoaderRoute: typeof SpotifycallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/spotifysync': {
+      id: '/spotifysync'
+      path: '/spotifysync'
+      fullPath: '/spotifysync'
+      preLoaderRoute: typeof SpotifysyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/blog/': {
       id: '/blog/'
       path: '/blog'
@@ -262,6 +302,8 @@ const rootRouteChildren: RootRouteChildren = {
   LogoutRoute: LogoutRoute,
   RssDotxmlRoute: RssDotxmlRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  SpotifycallbackRoute: SpotifycallbackRoute,
+  SpotifysyncRoute: SpotifysyncRoute,
   BlogSlugRoute: BlogSlugRoute,
   BlogIndexRoute: BlogIndexRoute,
   BooksIndexRoute: BooksIndexRoute,

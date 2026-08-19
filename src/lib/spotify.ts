@@ -3,9 +3,13 @@ const client_secret = process.env.SPOTIFY_CLIENT_SECRET
 const refresh_token = process.env.SPOTIFY_REFRESH_TOKEN
 
 const basic = Buffer.from(`${client_id}:${client_secret}`).toString('base64')
+const AUTHORIZE_ENDPOINT = `https://accounts.spotify.com/authorize`
 const TOKEN_ENDPOINT = `https://accounts.spotify.com/api/token`
 const NOW_PLAYING_ENDPOINT = `https://api.spotify.com/v1/me/player/currently-playing`
 const TOP_TRACKS_ENDPOINT = `https://api.spotify.com/v1/me/top/tracks`
+
+// Matches what NowPlaying/TopTracks actually read.
+const SPOTIFY_SCOPES = 'user-read-currently-playing user-top-read'
 
 async function getAccessToken(): Promise<{ access_token: string }> {
   const response = await fetch(TOKEN_ENDPOINT, {
@@ -90,4 +94,51 @@ export async function fetchTopTracks(limit = 10): Promise<TopTrack[]> {
       songUrl: track.external_urls.spotify,
     }),
   )
+}
+
+// ── Re-authorization ────────────────────────────────────────────────────────
+// One-off admin flow for minting a fresh refresh token when Spotify revokes
+// the current one (see /spotifysync, /spotifycallback).
+
+export function getSpotifyAuthorizeUrl(redirectUri: string): string {
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: client_id ?? '',
+    scope: SPOTIFY_SCOPES,
+    redirect_uri: redirectUri,
+  })
+  return `${AUTHORIZE_ENDPOINT}?${params.toString()}`
+}
+
+export type SpotifyTokenExchangeResult =
+  | { ok: true; refreshToken: string }
+  | { ok: false; error: string; errorDescription?: string }
+
+export async function exchangeSpotifyAuthCode(
+  code: string,
+  redirectUri: string,
+): Promise<SpotifyTokenExchangeResult> {
+  const response = await fetch(TOKEN_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${basic}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: redirectUri,
+    }).toString(),
+  })
+  const body = await response.json()
+
+  if (!response.ok || !body.refresh_token) {
+    return {
+      ok: false,
+      error: body.error ?? `HTTP ${response.status}`,
+      errorDescription: body.error_description,
+    }
+  }
+
+  return { ok: true, refreshToken: body.refresh_token }
 }
