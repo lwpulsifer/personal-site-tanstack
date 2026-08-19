@@ -294,6 +294,66 @@ export type Database = {
           },
         ]
       }
+      people: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      people_connections: {
+        Row: {
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["connection_kind"]
+          label: string | null
+          person_a_id: string
+          person_b_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["connection_kind"]
+          label?: string | null
+          person_a_id: string
+          person_b_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["connection_kind"]
+          label?: string | null
+          person_a_id?: string
+          person_b_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_connections_person_a_id_fkey"
+            columns: ["person_a_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_connections_person_b_id_fkey"
+            columns: ["person_b_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_status_update: {
         Row: {
           changed_at: string
@@ -421,6 +481,14 @@ export type Database = {
     }
     Enums: {
       book_status: "WANT_TO_READ" | "READING" | "READ"
+      connection_kind:
+        | "partner"
+        | "family"
+        | "sibling"
+        | "friend"
+        | "coworker"
+        | "other"
+        | "parent_child"
       map_submission_status: "pending" | "approved" | "rejected"
       post_status: "PENDING" | "PUBLISHED" | "ARCHIVED"
     }
@@ -554,6 +622,15 @@ export const Constants = {
   public: {
     Enums: {
       book_status: ["WANT_TO_READ", "READING", "READ"],
+      connection_kind: [
+        "partner",
+        "family",
+        "sibling",
+        "friend",
+        "coworker",
+        "other",
+        "parent_child",
+      ],
       map_submission_status: ["pending", "approved", "rejected"],
       post_status: ["PENDING", "PUBLISHED", "ARCHIVED"],
     },
