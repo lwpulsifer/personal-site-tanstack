@@ -16,21 +16,21 @@ type GraphLink = {
   kind: ConnectionKind
 }
 
-// Partners bond tightly; parent/child stays at its existing (non-tight)
-// spacing; sibling/friend/coworker/family/other get extra room so the
-// overall graph reads less cluttered.
+// Three visually distinct tiers: partner bonds tightest, parent/child is a
+// clear middle tier, and everything else (sibling/friend/coworker/family/
+// other) spreads out the most.
 const LINK_DISTANCE: Record<ConnectionKind, number> = {
   partner: 20,
-  parent_child: 80,
-  family: 160,
-  sibling: 160,
-  friend: 160,
-  coworker: 160,
-  other: 160,
+  parent_child: 110,
+  family: 220,
+  sibling: 220,
+  friend: 220,
+  coworker: 220,
+  other: 220,
 }
 const LINK_STRENGTH: Record<ConnectionKind, number> = {
   partner: 1,
-  parent_child: 0.2,
+  parent_child: 0.3,
   family: 0.15,
   sibling: 0.15,
   friend: 0.15,
