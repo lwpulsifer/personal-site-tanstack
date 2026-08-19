@@ -61,4 +61,32 @@ test.describe('admin: people graph', () => {
       await authExpect(personItem).toHaveCount(0, { timeout: 20_000 })
     }
   })
+
+  test('search jumps to a person and selects them', async ({ page }) => {
+    const name = uniqueName('SearchTarget')
+
+    await page.goto('/people')
+    await ensureHydrated(page)
+    await authExpect(page.getByTestId('people-graph')).toBeVisible({ timeout: 20_000 })
+
+    await fillStable(page.getByTestId('person-name-input'), name, 15_000)
+    await page.getByTestId('add-person-btn').click()
+    await authExpect(page.getByTestId('person-list')).toContainText(name, { timeout: 20_000 })
+
+    const searchInput = page.getByTestId('people-search-input')
+    await fillStable(searchInput, 'SearchTarget', 15_000)
+    const result = page.getByTestId('people-search-result').filter({ hasText: name })
+    await authExpect(result).toBeVisible({ timeout: 20_000 })
+    await result.click()
+
+    await authExpect(searchInput).toHaveValue('')
+    await authExpect(page.getByTestId('people-search-results')).toHaveCount(0)
+    await authExpect(page.locator('text=Selected:')).toContainText(name)
+
+    // Clean up
+    const personItem = page.getByTestId('person-list-item').filter({ hasText: name })
+    page.once('dialog', (dialog) => dialog.accept())
+    await personItem.getByTestId('delete-person-btn').click()
+    await authExpect(personItem).toHaveCount(0, { timeout: 20_000 })
+  })
 })

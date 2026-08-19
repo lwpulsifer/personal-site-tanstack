@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import ForceGraph2D, {
   type ForceGraphMethods,
   type NodeObject,
@@ -83,6 +83,25 @@ export function PeopleGraph({
     [people],
   )
 
+  const [query, setQuery] = useState('')
+  const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return []
+    return people.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 8)
+  }, [people, query])
+
+  function jumpToPerson(person: DbPerson) {
+    const node = graphData.nodes.find((n) => n.id === person.id)
+    if (node?.x != null && node.y != null) {
+      fgRef.current?.centerAt(node.x, node.y, 800)
+      fgRef.current?.zoom(4, 800)
+    }
+    setHighlightedId(person.id)
+    setQuery('')
+    onSelectPerson?.(person)
+  }
+
   // Canvas fillStyle can't resolve CSS custom properties directly, so resolve
   // the `--text` color once per theme change (via useMemo, keyed on `mode`)
   // rather than on every node on every animation frame.
@@ -100,8 +119,42 @@ export function PeopleGraph({
     <div
       ref={ref}
       data-testid="people-graph"
-      className="h-full w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
+      className="relative h-full w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
     >
+      <div className="absolute left-3 top-3 z-10 w-56">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && matches[0]) jumpToPerson(matches[0])
+          }}
+          placeholder="Jump to person..."
+          aria-label="Jump to person"
+          data-testid="people-search-input"
+          className="w-full rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text)] shadow-sm outline-none focus:border-[var(--blue)]"
+        />
+        {matches.length > 0 && (
+          <ul
+            data-testid="people-search-results"
+            className="mt-1 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg"
+          >
+            {matches.map((p) => (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  data-testid="people-search-result"
+                  onClick={() => jumpToPerson(p)}
+                  className="block w-full px-3 py-1.5 text-left text-sm text-[var(--text)] hover:bg-[var(--hover-bg)]"
+                >
+                  {p.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       {width > 0 && height > 0 && (
         <ForceGraph2D
           ref={fgRef}
@@ -131,6 +184,14 @@ export function PeopleGraph({
             ctx.arc(node.x ?? 0, node.y ?? 0, 4, 0, 2 * Math.PI)
             ctx.fillStyle = '#2563eb'
             ctx.fill()
+
+            if (node.id === highlightedId) {
+              ctx.beginPath()
+              ctx.arc(node.x ?? 0, node.y ?? 0, 8, 0, 2 * Math.PI)
+              ctx.strokeStyle = '#f59e0b'
+              ctx.lineWidth = 2 / globalScale
+              ctx.stroke()
+            }
 
             ctx.font = `${fontSize}px sans-serif`
             ctx.textAlign = 'center'
