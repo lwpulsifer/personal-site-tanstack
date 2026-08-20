@@ -7,22 +7,22 @@ export function PersonPanel({
   onChanged,
 }: {
   people: DbPerson[]
-  onChanged: () => void
+  onChanged: (createdPerson?: DbPerson) => void
 }) {
   const [name, setName] = useState('')
   const id = useId()
 
   const addMutation = useMutation({
     mutationFn: () => insertPerson({ data: { name } }),
-    onSuccess: () => {
+    onSuccess: (person) => {
       setName('')
-      onChanged()
+      onChanged(person)
     },
   })
 
   const deleteMutation = useMutation({
     mutationFn: (personId: string) => deletePerson({ data: { personId } }),
-    onSuccess: onChanged,
+    onSuccess: () => onChanged(),
   })
 
   return (

@@ -27,7 +27,7 @@ export function ConnectionPanel({
 }: {
   people: DbPerson[]
   connections: DbConnection[]
-  onChanged: () => void
+  onChanged: (createdConnection?: DbConnection) => void
 }) {
   const [personAId, setPersonAId] = useState('')
   const [personBId, setPersonBId] = useState('')
@@ -41,16 +41,16 @@ export function ConnectionPanel({
   const addMutation = useMutation({
     mutationFn: () =>
       insertConnection({ data: { personAId, personBId, kind, label } }),
-    onSuccess: () => {
+    onSuccess: (connection) => {
       setLabel('')
-      onChanged()
+      onChanged(connection)
     },
   })
 
   const deleteMutation = useMutation({
     mutationFn: (connectionId: string) =>
       deleteConnection({ data: { connectionId } }),
-    onSuccess: onChanged,
+    onSuccess: () => onChanged(),
   })
 
   const canAdd =

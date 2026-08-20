@@ -11,6 +11,7 @@ import {
 import { useElementSize } from '#/lib/hooks/useElementSize'
 import { useThemeMode } from '#/lib/hooks/useThemeMode'
 import type { ConnectionKind, DbConnection, DbPerson } from '#/server/people'
+import type { GraphFocusRequest } from './graphFocus'
 
 type GraphNode = NodeObject<{ id: string; name: string }>
 type GraphLink = {
@@ -60,16 +61,29 @@ export function PeopleGraph({
   people,
   connections,
   onSelectPerson,
+  focusRequest,
 }: {
   people: DbPerson[]
   connections: DbConnection[]
   onSelectPerson?: (person: DbPerson) => void
+  focusRequest?: GraphFocusRequest | null
 }) {
   const { ref, width, height } = useElementSize<HTMLDivElement>()
   const fgRef = useRef<ForceGraphMethods<GraphNode, GraphLink> | undefined>(
     undefined,
   )
   const hasCenteredOnSelfRef = useRef(false)
+
+  // A focus request (e.g. "just added this person/connection") is applied
+  // the next time the force simulation settles, since a brand-new node has
+  // no x/y position until the simulation places it. Tracked via ref (not
+  // state) since it's consumed imperatively from onEngineStop, not rendered.
+  const pendingFocusRef = useRef<GraphFocusRequest | null>(null)
+  const lastFocusRequestId = useRef<number | null>(null)
+  if (focusRequest && focusRequest.requestId !== lastFocusRequestId.current) {
+    lastFocusRequestId.current = focusRequest.requestId
+    pendingFocusRef.current = focusRequest
+  }
 
   // Filters the graph down to a person and everyone reachable from them by
   // repeatedly following connections of a single kind (e.g. "family" ->
@@ -317,14 +331,34 @@ export function PeopleGraph({
             if (person) onSelectPerson?.(person)
           }}
           onEngineStop={() => {
-            if (hasCenteredOnSelfRef.current) return
-            hasCenteredOnSelfRef.current = true
-            const self = people.find((p) => p.name === SELF_PERSON_NAME)
-            const node = self
-              ? graphData.nodes.find((n) => n.id === self.id)
-              : undefined
-            if (node?.x != null && node.y != null) {
-              fgRef.current?.centerAt(node.x, node.y, 0)
+            if (!hasCenteredOnSelfRef.current) {
+              hasCenteredOnSelfRef.current = true
+              const self = people.find((p) => p.name === SELF_PERSON_NAME)
+              const selfNode = self
+                ? graphData.nodes.find((n) => n.id === self.id)
+                : undefined
+              if (selfNode?.x != null && selfNode.y != null) {
+                fgRef.current?.centerAt(selfNode.x, selfNode.y, 0)
+              }
+            }
+
+            const focus = pendingFocusRef.current
+            if (!focus) return
+            pendingFocusRef.current = null
+            if (focus.kind === 'person') {
+              const node = graphData.nodes.find((n) => n.id === focus.personId)
+              if (node?.x != null && node.y != null) {
+                fgRef.current?.centerAt(node.x, node.y, 800)
+                fgRef.current?.zoom(4, 800)
+                setHighlightedId(focus.personId)
+              }
+            } else {
+              fgRef.current?.zoomToFit(
+                800,
+                80,
+                (node) =>
+                  node.id === focus.personAId || node.id === focus.personBId,
+              )
             }
           }}
           nodeCanvasObject={(node, ctx, globalScale) => {
