@@ -38,9 +38,19 @@ const LINK_DISTANCE: Record<ConnectionKind, number> = {
 const NODE_COLLISION_RADIUS = 45
 
 // Below this zoom level (pixels per graph-unit) name/relationship labels are
-// hidden entirely, so a fully zoomed-out graph reads as clean dots and lines
-// instead of an unreadable jumble of overlapping text.
-const LABEL_ZOOM_THRESHOLD = 3
+// hidden, so a fully zoomed-out graph reads as clean dots and lines instead
+// of an unreadable jumble of overlapping text. Nodes near the center of the
+// viewport always show their label regardless of zoom (see
+// CENTER_LABEL_RADIUS_PX below), so this only governs the periphery.
+const LABEL_ZOOM_THRESHOLD = 1.5
+
+// Nodes within this many screen pixels of the viewport center always show
+// their label, even when zoomed out past LABEL_ZOOM_THRESHOLD.
+const CENTER_LABEL_RADIUS_PX = 120
+
+// The person this graph is "you" — always centered when the graph first
+// loads. Matched by exact name.
+const SELF_PERSON_NAME = 'Liam (me)'
 const LINK_STRENGTH: Record<ConnectionKind, number> = {
   partner: 1,
   parent_child: 0.3,
@@ -64,6 +74,15 @@ export function PeopleGraph({
   const fgRef = useRef<ForceGraphMethods<GraphNode, GraphLink> | undefined>(
     undefined,
   )
+  const hasCenteredOnSelfRef = useRef(false)
+
+  // Screen-space distance (not graph-space) so the "always show" radius
+  // stays a constant number of pixels regardless of zoom level.
+  function isNearViewportCenter(x: number, y: number, globalScale: number) {
+    const center = fgRef.current?.centerAt() ?? { x: 0, y: 0 }
+    const screenDist = Math.hypot(x - center.x, y - center.y) * globalScale
+    return screenDist <= CENTER_LABEL_RADIUS_PX
+  }
 
   // Filters the graph down to a person and everyone reachable from them by
   // repeatedly following connections of a single kind (e.g. "family" ->
@@ -310,6 +329,17 @@ export function PeopleGraph({
             const person = peopleById.get(String(node.id))
             if (person) onSelectPerson?.(person)
           }}
+          onEngineStop={() => {
+            if (hasCenteredOnSelfRef.current) return
+            hasCenteredOnSelfRef.current = true
+            const self = people.find((p) => p.name === SELF_PERSON_NAME)
+            const node = self
+              ? graphData.nodes.find((n) => n.id === self.id)
+              : undefined
+            if (node?.x != null && node.y != null) {
+              fgRef.current?.centerAt(node.x, node.y, 0)
+            }
+          }}
           nodeCanvasObject={(node, ctx, globalScale) => {
             const label = (node as GraphNode).name
             const fontSize = 12 / globalScale
@@ -326,7 +356,10 @@ export function PeopleGraph({
               ctx.stroke()
             }
 
-            if (globalScale >= LABEL_ZOOM_THRESHOLD) {
+            if (
+              globalScale >= LABEL_ZOOM_THRESHOLD ||
+              isNearViewportCenter(node.x ?? 0, node.y ?? 0, globalScale)
+            ) {
               ctx.font = `${fontSize}px sans-serif`
               ctx.textAlign = 'center'
               ctx.textBaseline = 'top'
@@ -336,12 +369,17 @@ export function PeopleGraph({
           }}
           linkCanvasObjectMode={() => 'after'}
           linkCanvasObject={(link, ctx, globalScale) => {
-            if (globalScale < LABEL_ZOOM_THRESHOLD) return
             const source = link.source as GraphNode
             const target = link.target as GraphNode
             if (typeof source !== 'object' || typeof target !== 'object') return
             const midX = ((source.x ?? 0) + (target.x ?? 0)) / 2
             const midY = ((source.y ?? 0) + (target.y ?? 0)) / 2
+            if (
+              globalScale < LABEL_ZOOM_THRESHOLD &&
+              !isNearViewportCenter(midX, midY, globalScale)
+            ) {
+              return
+            }
             const fontSize = 10 / globalScale
             ctx.font = `${fontSize}px sans-serif`
             ctx.textAlign = 'center'
