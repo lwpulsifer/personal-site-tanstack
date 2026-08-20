@@ -15,3 +15,9 @@ export function isLookupableIsbn(isbn: string) {
 export function getOpenLibraryCoverUrl(isbn: string) {
   return `https://covers.openlibrary.org/b/isbn/${encodeURIComponent(normalizeIsbn(isbn))}-L.jpg?default=false`
 }
+
+// For results (e.g. from the title search API) that carry a cover id but no
+// ISBN to derive a cover URL from.
+export function getOpenLibraryCoverUrlById(coverId: number) {
+  return `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`
+}
