@@ -1,7 +1,9 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useId, useMemo, useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
+import { CoverImage } from '#/components/books/CoverImage'
 import { StarRating } from '#/components/books/StarRating'
 import { useOnEscapeKey } from '#/lib/hooks/useOnEscapeKey'
+import { isLookupableIsbn, normalizeIsbn } from '#/lib/openLibrary'
 import {
   type BookStatus,
   type DbBook,
@@ -34,22 +36,6 @@ const STATUS_OPTIONS: { value: BookStatus; label: string }[] = [
   { value: 'READING', label: 'Reading' },
   { value: 'READ', label: 'Read' },
 ]
-
-function openLibraryCover(isbn: string) {
-  return `https://covers.openlibrary.org/b/isbn/${encodeURIComponent(isbn)}-L.jpg`
-}
-
-// Strips whitespace/dashes so both "978-0-593-13520-4" and "9780593135204"
-// resolve to the same lookup key.
-function normalizeIsbn(raw: string) {
-  return raw.replace(/[-\s]/g, '').toUpperCase()
-}
-
-// ISBN-10 (last check digit may be "X") or ISBN-13 — anything else isn't
-// worth firing a lookup for yet.
-function isLookupableIsbn(isbn: string) {
-  return /^\d{9}[\dX]$/.test(isbn) || /^\d{13}$/.test(isbn)
-}
 
 type IsbnLookupStatus = 'idle' | 'loading' | 'found' | 'not-found' | 'error'
 
@@ -141,12 +127,6 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
     }
   }
 
-  const coverPreview = useMemo(() => {
-    if (coverUrl) return coverUrl
-    const cleanIsbn = normalizeIsbn(isbn)
-    return cleanIsbn ? openLibraryCover(cleanIsbn) : ''
-  }, [coverUrl, isbn])
-
   const saveMutation = useMutation({
     mutationFn: () =>
       upsertBook({
@@ -200,17 +180,11 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
 
         <div className="flex gap-4">
           <div className="h-28 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-[var(--chip-bg)]">
-            {coverPreview ? (
-              <img
-                src={coverPreview}
-                alt=""
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-2xl opacity-40">
-                📖
-              </div>
-            )}
+            <CoverImage
+              src={coverUrl || null}
+              isbn={isbn}
+              iconClassName="text-2xl"
+            />
           </div>
 
           <div className="flex-1 space-y-2.5">

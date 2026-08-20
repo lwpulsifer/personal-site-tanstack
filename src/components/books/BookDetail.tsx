@@ -1,9 +1,9 @@
-import type { DbBook } from '#/server/books'
-import { StarRating } from '#/components/books/StarRating'
 import { AdminActions } from '#/components/books/AdminActions'
 import { STATUS_LABEL, STATUS_STYLES } from '#/components/books/bookStatus'
 import { CoverImage } from '#/components/books/CoverImage'
+import { StarRating } from '#/components/books/StarRating'
 import { useOnEscapeKey } from '#/lib/hooks/useOnEscapeKey'
+import type { DbBook } from '#/server/books'
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', {
@@ -21,7 +21,12 @@ type BookDetailProps = {
   onEdit: (book: DbBook) => void
 }
 
-export function BookDetail({ book, showAdmin, onClose, onEdit }: BookDetailProps) {
+export function BookDetail({
+  book,
+  showAdmin,
+  onClose,
+  onEdit,
+}: BookDetailProps) {
   useOnEscapeKey(onClose)
 
   return (
@@ -33,7 +38,7 @@ export function BookDetail({ book, showAdmin, onClose, onEdit }: BookDetailProps
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex gap-4">
             <div className="h-36 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-[var(--chip-bg)]">
-              <CoverImage src={book.cover_url} />
+              <CoverImage src={book.cover_url} isbn={book.isbn} />
             </div>
 
             <div className="min-w-0">
@@ -48,7 +53,9 @@ export function BookDetail({ book, showAdmin, onClose, onEdit }: BookDetailProps
               >
                 {book.title}
               </h2>
-              <p className="m-0 text-sm text-[var(--text-muted)]">{book.author}</p>
+              <p className="m-0 text-sm text-[var(--text-muted)]">
+                {book.author}
+              </p>
               {book.rating != null && <StarRating rating={book.rating} />}
             </div>
           </div>
@@ -80,7 +87,9 @@ export function BookDetail({ book, showAdmin, onClose, onEdit }: BookDetailProps
         </dl>
 
         <div>
-          <p className="mb-1 text-xs font-semibold text-[var(--text-muted)]">Review</p>
+          <p className="mb-1 text-xs font-semibold text-[var(--text-muted)]">
+            Review
+          </p>
           {book.review ? (
             <p
               data-testid="book-detail-review"
@@ -89,11 +98,15 @@ export function BookDetail({ book, showAdmin, onClose, onEdit }: BookDetailProps
               {book.review}
             </p>
           ) : (
-            <p className="text-sm italic text-[var(--text-muted)]">No review yet.</p>
+            <p className="text-sm italic text-[var(--text-muted)]">
+              No review yet.
+            </p>
           )}
         </div>
 
-        {showAdmin && <AdminActions book={book} onEdit={onEdit} onDeleted={onClose} />}
+        {showAdmin && (
+          <AdminActions book={book} onEdit={onEdit} onDeleted={onClose} />
+        )}
       </div>
     </div>
   )

@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import type { DbBook } from '#/server/books'
 import { BookCard } from '#/components/books/BookCard'
 import { CoverImage } from '#/components/books/CoverImage'
+import type { DbBook } from '#/server/books'
 
-const GRID_CLASSES = 'grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6'
+const GRID_CLASSES =
+  'grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6'
 
 // Degrees each successive cover fans out from center, so a 3-cover stack
 // spreads -7/0/+7 degrees and looks like a loosely spread pile of books.
@@ -23,7 +24,11 @@ function StackedCovers({ books }: { books: DbBook[] }) {
             zIndex: i,
           }}
         >
-          <CoverImage src={book.cover_url} iconClassName="text-lg" />
+          <CoverImage
+            src={book.cover_url}
+            isbn={book.isbn}
+            iconClassName="text-lg"
+          />
         </div>
       ))}
     </div>
@@ -40,7 +45,13 @@ type BookShelfProps = {
 
 // A collapsible "shelf" of books. Collapsed, it renders as a stack of
 // fanned covers you can click to expand into a full-width grid.
-export function BookShelf({ label, shelfKey, books, defaultOpen, onView }: BookShelfProps) {
+export function BookShelf({
+  label,
+  shelfKey,
+  books,
+  defaultOpen,
+  onView,
+}: BookShelfProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
 
   if (books.length === 0) return null
@@ -55,7 +66,9 @@ export function BookShelf({ label, shelfKey, books, defaultOpen, onView }: BookS
         className="mb-3 flex items-center gap-2"
       >
         <span className="island-kicker">{label}</span>
-        <span className="text-xs text-[var(--text-muted)]">({books.length})</span>
+        <span className="text-xs text-[var(--text-muted)]">
+          ({books.length})
+        </span>
         <span
           aria-hidden="true"
           className={`text-xs text-[var(--text-muted)] transition-transform ${isOpen ? 'rotate-90' : ''}`}

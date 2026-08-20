@@ -1,6 +1,6 @@
-import type { DbBook } from '#/server/books'
 import { CoverImage } from '#/components/books/CoverImage'
 import { StarRating } from '#/components/books/StarRating'
+import type { DbBook } from '#/server/books'
 
 type BookCardProps = {
   book: DbBook
@@ -12,7 +12,12 @@ type BookCardProps = {
 // A compact "book cover" tile: image, title, author, rating — nothing else.
 // Everything else (status, dates, review, admin actions) lives behind the
 // click, in BookDetail.
-export function BookCard({ book, onView, className = '', style }: BookCardProps) {
+export function BookCard({
+  book,
+  onView,
+  className = '',
+  style,
+}: BookCardProps) {
   return (
     <button
       type="button"
@@ -22,7 +27,7 @@ export function BookCard({ book, onView, className = '', style }: BookCardProps)
       style={style}
     >
       <div className="aspect-[2/3] w-full overflow-hidden rounded-lg bg-[var(--chip-bg)] shadow-md transition group-hover:shadow-xl">
-        <CoverImage src={book.cover_url} />
+        <CoverImage src={book.cover_url} isbn={book.isbn} />
       </div>
 
       <h2
@@ -31,7 +36,9 @@ export function BookCard({ book, onView, className = '', style }: BookCardProps)
       >
         {book.title}
       </h2>
-      <p className="m-0 line-clamp-1 text-xs text-[var(--text-muted)]">{book.author}</p>
+      <p className="m-0 line-clamp-1 text-xs text-[var(--text-muted)]">
+        {book.author}
+      </p>
       <div className="mt-1">
         <StarRating rating={book.rating} />
       </div>
