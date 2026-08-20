@@ -37,6 +37,7 @@
     "@tanstack/react-start": "^1.166.16",
     "@tanstack/router-plugin": "^1.166.13",
     "@types/marked": "^5.0.2",
+    "d3-force-3d": "^3.0.6",
     "exifreader": "^4.37.0",
     "heic2any": "^0.0.4",
     "leaflet": "^1.9.4",
