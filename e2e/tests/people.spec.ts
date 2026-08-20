@@ -155,4 +155,64 @@ test.describe('admin: people graph', () => {
       await authExpect(personItem).toHaveCount(0, { timeout: 20_000 })
     }
   })
+
+  test('can edit a person and a connection', async ({ page }) => {
+    const nameA = uniqueName('EditA')
+    const nameB = uniqueName('EditB')
+    const nameC = uniqueName('EditC')
+    const renamedA = uniqueName('EditARenamed')
+
+    await page.goto('/people')
+    await ensureHydrated(page)
+
+    for (const name of [nameA, nameB, nameC]) {
+      await fillStable(page.getByTestId('person-name-input'), name, 15_000)
+      await page.getByTestId('add-person-btn').click()
+      await authExpect(page.getByTestId('person-list')).toContainText(name, { timeout: 20_000 })
+    }
+
+    // Edit the person's name.
+    const personItem = page.getByTestId('person-list-item').filter({ hasText: nameA })
+    await personItem.getByTestId('edit-person-btn').click()
+    await fillStable(page.getByTestId('person-edit-name-input'), renamedA, 15_000)
+    await page.getByTestId('save-person-btn').click()
+    await authExpect(page.getByTestId('person-list')).toContainText(renamedA, {
+      timeout: 20_000,
+    })
+    await authExpect(page.getByTestId('person-list')).not.toContainText(nameA)
+
+    // Add a connection, then edit its kind, comment, and other person.
+    await page.getByTestId('connection-person-a-select').selectOption({ label: renamedA })
+    await page.getByTestId('connection-person-b-select').selectOption({ label: nameB })
+    await page.getByTestId('connection-kind-select').selectOption('friend')
+    await page.getByTestId('add-connection-btn').click()
+
+    const connectionItem = page
+      .getByTestId('connection-list-item')
+      .filter({ hasText: renamedA })
+    await authExpect(connectionItem).toContainText('friend', { timeout: 20_000 })
+
+    await connectionItem.getByTestId('edit-connection-btn').click()
+    await page.getByTestId('connection-edit-person-b-select').selectOption({ label: nameC })
+    await page.getByTestId('connection-edit-kind-select').selectOption('coworker')
+    await fillStable(page.getByTestId('connection-edit-label-input'), 'promoted together', 15_000)
+    await page.getByTestId('save-connection-btn').click()
+
+    const updatedConnectionItem = page
+      .getByTestId('connection-list-item')
+      .filter({ hasText: renamedA })
+    await authExpect(updatedConnectionItem).toContainText('coworker', { timeout: 20_000 })
+    await authExpect(updatedConnectionItem).toContainText(nameC)
+    await authExpect(updatedConnectionItem).toContainText('promoted together')
+
+    // Clean up
+    await updatedConnectionItem.getByTestId('delete-connection-btn').click()
+    await authExpect(updatedConnectionItem).toHaveCount(0, { timeout: 20_000 })
+    for (const name of [renamedA, nameB, nameC]) {
+      const item = page.getByTestId('person-list-item').filter({ hasText: name })
+      page.once('dialog', (dialog) => dialog.accept())
+      await item.getByTestId('delete-person-btn').click()
+      await authExpect(item).toHaveCount(0, { timeout: 20_000 })
+    }
+  })
 })
