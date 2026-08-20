@@ -37,6 +37,10 @@ const STATUS_OPTIONS: { value: BookStatus; label: string }[] = [
   { value: 'READ', label: 'Read' },
 ]
 
+function openLibraryCoverById(coverId: number) {
+  return `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`
+}
+
 type IsbnLookupStatus = 'idle' | 'loading' | 'found' | 'not-found' | 'error'
 
 type OpenLibraryBook = { title?: string; authors?: { name: string }[] }
@@ -69,6 +73,58 @@ function deriveIsbnStatus(
   return 'idle'
 }
 
+type TitleSearchResult = {
+  key: string
+  title: string
+  author: string
+  isbn?: string
+  coverId?: number
+}
+
+type TitleSearchStatus = 'idle' | 'loading' | 'found' | 'not-found' | 'error'
+
+async function fetchTitleSearch(
+  query: string,
+  signal: AbortSignal,
+): Promise<TitleSearchResult[]> {
+  const res = await fetch(
+    `https://openlibrary.org/search.json?title=${encodeURIComponent(query)}&fields=key,title,author_name,isbn,cover_i&limit=5`,
+    { signal },
+  )
+  if (!res.ok) throw new Error('Search request failed')
+  const data = (await res.json()) as {
+    docs?: {
+      key: string
+      title: string
+      author_name?: string[]
+      isbn?: string[]
+      cover_i?: number
+    }[]
+  }
+  return (data.docs ?? []).map((doc) => ({
+    key: doc.key,
+    title: doc.title,
+    author: doc.author_name?.join(', ') ?? '',
+    isbn: doc.isbn?.[0],
+    coverId: doc.cover_i,
+  }))
+}
+
+function deriveTitleSearchStatus(
+  searchEnabled: boolean,
+  query: Pick<
+    ReturnType<typeof useQuery<TitleSearchResult[]>>,
+    'isFetching' | 'isError' | 'isSuccess' | 'data'
+  >,
+): TitleSearchStatus {
+  if (!searchEnabled) return 'idle'
+  if (query.isFetching) return 'loading'
+  if (query.isError) return 'error'
+  if (query.data?.length) return 'found'
+  if (query.isSuccess) return 'not-found'
+  return 'idle'
+}
+
 export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
   const [title, setTitle] = useState(initial.title ?? '')
   const [author, setAuthor] = useState(initial.author ?? '')
@@ -80,6 +136,13 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   )
+  // Starts blank (not `initial.title`) so opening the editor on an existing
+  // book never fires a search on its own — only actually typing does.
+  const [debouncedTitleQuery, setDebouncedTitleQuery] = useState('')
+  const titleDebounceTimerRef = useRef<
+    ReturnType<typeof setTimeout> | undefined
+  >(undefined)
+  const [titleResultsOpen, setTitleResultsOpen] = useState(false)
   const [coverUrl, setCoverUrl] = useState(initial.cover_url ?? '')
   const [status, setStatus] = useState<BookStatus>(
     initial.status ?? 'WANT_TO_READ',
@@ -98,6 +161,29 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
     debounceTimerRef.current = setTimeout(() => setDebouncedIsbn(value), 600)
   }
 
+  function handleTitleChange(value: string) {
+    setTitle(value)
+    setTitleResultsOpen(true)
+    clearTimeout(titleDebounceTimerRef.current)
+    titleDebounceTimerRef.current = setTimeout(
+      () => setDebouncedTitleQuery(value),
+      400,
+    )
+  }
+
+  function selectTitleResult(result: TitleSearchResult) {
+    setTitle(result.title)
+    if (result.author) setAuthor(result.author)
+    if (result.isbn) {
+      setIsbn(result.isbn)
+      setDebouncedIsbn(result.isbn)
+    } else if (result.coverId) {
+      const coverId = result.coverId
+      setCoverUrl((prev) => prev || openLibraryCoverById(coverId))
+    }
+    setTitleResultsOpen(false)
+  }
+
   const cleanIsbn = normalizeIsbn(debouncedIsbn)
   const lookupEnabled = isLookupableIsbn(cleanIsbn)
   const isbnLookupQuery = useQuery({
@@ -108,6 +194,20 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
   })
   const lookedUpBook = isbnLookupQuery.data
   const isbnStatus = deriveIsbnStatus(lookupEnabled, isbnLookupQuery)
+
+  const trimmedTitleQuery = debouncedTitleQuery.trim()
+  const titleSearchEnabled = titleResultsOpen && trimmedTitleQuery.length >= 2
+  const titleSearchQuery = useQuery({
+    queryKey: ['titleSearch', trimmedTitleQuery],
+    queryFn: ({ signal }) => fetchTitleSearch(trimmedTitleQuery, signal),
+    enabled: titleSearchEnabled,
+    retry: false,
+  })
+  const titleSearchStatus = deriveTitleSearchStatus(
+    titleSearchEnabled,
+    titleSearchQuery,
+  )
+  const titleResults = titleSearchQuery.data ?? []
 
   // Autofill blank title/author fields once per lookup result. Comparing
   // against the last-applied result and calling setState during render
@@ -188,7 +288,7 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
           </div>
 
           <div className="flex-1 space-y-2.5">
-            <div>
+            <div className="relative">
               <label
                 htmlFor={`${id}-title`}
                 className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
@@ -199,10 +299,58 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
                 id={`${id}-title`}
                 type="text"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => handleTitleChange(e.target.value)}
+                onFocus={() => setTitleResultsOpen(true)}
+                onBlur={() => setTitleResultsOpen(false)}
+                autoComplete="off"
                 data-testid="book-title-input"
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
               />
+              {titleSearchStatus === 'loading' && (
+                <p className="mt-1 text-xs text-[var(--text-muted)]">
+                  Searching…
+                </p>
+              )}
+              {titleSearchStatus === 'not-found' && (
+                <p className="mt-1 text-xs text-[var(--text-muted)]">
+                  No matches for that title.
+                </p>
+              )}
+              {titleSearchStatus === 'error' && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                  Couldn't search Open Library — check your connection and try
+                  again.
+                </p>
+              )}
+              {titleResultsOpen && titleResults.length > 0 && (
+                <ul
+                  data-testid="title-search-results"
+                  className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-lg"
+                >
+                  {titleResults.map((result) => (
+                    <li key={result.key}>
+                      <button
+                        type="button"
+                        data-testid={`title-search-result-${result.key}`}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => selectTitleResult(result)}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--hover-bg)]"
+                      >
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-medium text-[var(--text)]">
+                            {result.title}
+                          </span>
+                          {result.author && (
+                            <span className="block truncate text-xs text-[var(--text-muted)]">
+                              {result.author}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             <div>
               <label
