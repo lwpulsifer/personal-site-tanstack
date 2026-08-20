@@ -24,18 +24,23 @@ type GraphLink = {
 // clear middle tier, and everything else (sibling/friend/coworker/family/
 // other) spreads out the most.
 const LINK_DISTANCE: Record<ConnectionKind, number> = {
-  partner: 40,
-  parent_child: 180,
-  family: 340,
-  sibling: 340,
-  friend: 340,
-  coworker: 340,
-  other: 340,
+  partner: 60,
+  parent_child: 260,
+  family: 480,
+  sibling: 480,
+  friend: 480,
+  coworker: 480,
+  other: 480,
 }
 
 // Node radius (matches the circle drawn in nodeCanvasObject) plus label
 // width, so the collision force keeps names from overlapping each other.
-const NODE_COLLISION_RADIUS = 30
+const NODE_COLLISION_RADIUS = 45
+
+// Below this zoom level (pixels per graph-unit) name/relationship labels are
+// hidden entirely, so a fully zoomed-out graph reads as clean dots and lines
+// instead of an unreadable jumble of overlapping text.
+const LABEL_ZOOM_THRESHOLD = 3
 const LINK_STRENGTH: Record<ConnectionKind, number> = {
   partner: 1,
   parent_child: 0.3,
@@ -147,7 +152,7 @@ export function PeopleGraph({
     // Stronger mutual repulsion so unconnected clusters push apart instead
     // of bunching in the center, plus a collision force so node circles and
     // their name labels never sit on top of each other.
-    fgRef.current?.d3Force('charge')?.strength(-260).distanceMax(600)
+    fgRef.current?.d3Force('charge')?.strength(-450).distanceMax(900)
     fgRef.current?.d3Force('collide', forceCollide(NODE_COLLISION_RADIUS))
   }, [isGraphMounted])
 
@@ -321,14 +326,17 @@ export function PeopleGraph({
               ctx.stroke()
             }
 
-            ctx.font = `${fontSize}px sans-serif`
-            ctx.textAlign = 'center'
-            ctx.textBaseline = 'top'
-            ctx.fillStyle = textColor
-            ctx.fillText(label, node.x ?? 0, (node.y ?? 0) + 6)
+            if (globalScale >= LABEL_ZOOM_THRESHOLD) {
+              ctx.font = `${fontSize}px sans-serif`
+              ctx.textAlign = 'center'
+              ctx.textBaseline = 'top'
+              ctx.fillStyle = textColor
+              ctx.fillText(label, node.x ?? 0, (node.y ?? 0) + 6)
+            }
           }}
           linkCanvasObjectMode={() => 'after'}
           linkCanvasObject={(link, ctx, globalScale) => {
+            if (globalScale < LABEL_ZOOM_THRESHOLD) return
             const source = link.source as GraphNode
             const target = link.target as GraphNode
             if (typeof source !== 'object' || typeof target !== 'object') return
