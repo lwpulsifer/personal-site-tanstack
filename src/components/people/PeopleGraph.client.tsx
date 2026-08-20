@@ -18,6 +18,7 @@ type GraphLink = {
   source: string
   target: string
   displayText: string
+  tooltipText: string
   kind: ConnectionKind
 }
 
@@ -42,7 +43,7 @@ const NODE_COLLISION_RADIUS = 45
 // hidden, so a fully zoomed-out graph reads as clean dots and lines instead
 // of an unreadable jumble of overlapping text. Labels appear once you zoom
 // in past this level.
-const LABEL_ZOOM_THRESHOLD = 1.5
+const LABEL_ZOOM_THRESHOLD = 0.6
 
 // The person this graph is "you" — always centered when the graph first
 // loads. Matched by exact name.
@@ -140,20 +141,31 @@ export function PeopleGraph({
     [connections, reachableIds, activeFilter],
   )
 
+  const peopleById = useMemo(
+    () => new Map(people.map((p) => [p.id, p])),
+    [people],
+  )
+
   const graphData = useMemo(
     () => ({
       nodes: visiblePeople.map((p) => ({
         id: p.id,
         name: p.name,
       })) as GraphNode[],
-      links: visibleConnections.map((c) => ({
-        source: c.person_a_id,
-        target: c.person_b_id,
-        displayText: connectionDisplayText(c.kind, c.label),
-        kind: c.kind,
-      })) as GraphLink[],
+      links: visibleConnections.map((c) => {
+        const displayText = connectionDisplayText(c.kind, c.label)
+        const nameA = peopleById.get(c.person_a_id)?.name ?? 'Unknown'
+        const nameB = peopleById.get(c.person_b_id)?.name ?? 'Unknown'
+        return {
+          source: c.person_a_id,
+          target: c.person_b_id,
+          displayText,
+          tooltipText: `${nameA} — ${nameB}: ${displayText}`,
+          kind: c.kind,
+        }
+      }) as GraphLink[],
     }),
-    [visiblePeople, visibleConnections],
+    [visiblePeople, visibleConnections, peopleById],
   )
 
   // The force simulation is an imperative object outside React's tree (like
@@ -175,11 +187,6 @@ export function PeopleGraph({
     fgRef.current?.d3Force('charge')?.strength(-450).distanceMax(900)
     fgRef.current?.d3Force('collide', forceCollide(NODE_COLLISION_RADIUS))
   }, [isGraphMounted])
-
-  const peopleById = useMemo(
-    () => new Map(people.map((p) => [p.id, p])),
-    [people],
-  )
 
   const [query, setQuery] = useState('')
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
@@ -315,7 +322,7 @@ export function PeopleGraph({
           width={width}
           height={height}
           nodeLabel="name"
-          linkLabel="displayText"
+          linkLabel="tooltipText"
           nodeRelSize={5}
           linkColor={(link) =>
             (link as unknown as GraphLink).kind === 'partner'
