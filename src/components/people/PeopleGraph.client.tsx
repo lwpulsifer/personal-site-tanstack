@@ -3,7 +3,10 @@ import ForceGraph2D, {
   type ForceGraphMethods,
   type NodeObject,
 } from 'react-force-graph-2d'
-import { connectionDisplayText } from '#/lib/connectionKind'
+import {
+  CONNECTION_KIND_OPTIONS,
+  connectionDisplayText,
+} from '#/lib/connectionKind'
 import { useElementSize } from '#/lib/hooks/useElementSize'
 import { useThemeMode } from '#/lib/hooks/useThemeMode'
 import type { ConnectionKind, DbConnection, DbPerson } from '#/server/people'
@@ -52,17 +55,75 @@ export function PeopleGraph({
     undefined,
   )
 
+  // Filters the graph down to a person and everyone reachable from them by
+  // repeatedly following connections of a single kind (e.g. "family" ->
+  // family-of-family-of-family...), rather than just their direct connections.
+  const [filterPersonId, setFilterPersonId] = useState('')
+  const [filterKind, setFilterKind] = useState<ConnectionKind>(
+    CONNECTION_KIND_OPTIONS[0].value,
+  )
+  const [activeFilter, setActiveFilter] = useState<{
+    personId: string
+    kind: ConnectionKind
+  } | null>(null)
+
+  const reachableIds = useMemo(() => {
+    if (!activeFilter) return null
+    const adjacency = new Map<string, Set<string>>()
+    for (const c of connections) {
+      if (c.kind !== activeFilter.kind) continue
+      if (!adjacency.has(c.person_a_id)) adjacency.set(c.person_a_id, new Set())
+      if (!adjacency.has(c.person_b_id)) adjacency.set(c.person_b_id, new Set())
+      adjacency.get(c.person_a_id)?.add(c.person_b_id)
+      adjacency.get(c.person_b_id)?.add(c.person_a_id)
+    }
+    const visited = new Set<string>([activeFilter.personId])
+    const queue = [activeFilter.personId]
+    while (queue.length > 0) {
+      const current = queue.shift()
+      if (!current) break
+      for (const neighbor of adjacency.get(current) ?? []) {
+        if (!visited.has(neighbor)) {
+          visited.add(neighbor)
+          queue.push(neighbor)
+        }
+      }
+    }
+    return visited
+  }, [activeFilter, connections])
+
+  const visiblePeople = useMemo(
+    () =>
+      reachableIds ? people.filter((p) => reachableIds.has(p.id)) : people,
+    [people, reachableIds],
+  )
+  const visibleConnections = useMemo(
+    () =>
+      reachableIds && activeFilter
+        ? connections.filter(
+            (c) =>
+              c.kind === activeFilter.kind &&
+              reachableIds.has(c.person_a_id) &&
+              reachableIds.has(c.person_b_id),
+          )
+        : connections,
+    [connections, reachableIds, activeFilter],
+  )
+
   const graphData = useMemo(
     () => ({
-      nodes: people.map((p) => ({ id: p.id, name: p.name })) as GraphNode[],
-      links: connections.map((c) => ({
+      nodes: visiblePeople.map((p) => ({
+        id: p.id,
+        name: p.name,
+      })) as GraphNode[],
+      links: visibleConnections.map((c) => ({
         source: c.person_a_id,
         target: c.person_b_id,
         displayText: connectionDisplayText(c.kind, c.label),
         kind: c.kind,
       })) as GraphLink[],
     }),
-    [people, connections],
+    [visiblePeople, visibleConnections],
   )
 
   // The force simulation is an imperative object outside React's tree (like
@@ -89,8 +150,10 @@ export function PeopleGraph({
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return []
-    return people.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 8)
-  }, [people, query])
+    return visiblePeople
+      .filter((p) => p.name.toLowerCase().includes(q))
+      .slice(0, 8)
+  }, [visiblePeople, query])
 
   function jumpToPerson(person: DbPerson) {
     const node = graphData.nodes.find((n) => n.id === person.id)
@@ -154,6 +217,59 @@ export function PeopleGraph({
             ))}
           </ul>
         )}
+      </div>
+
+      <div className="absolute right-3 top-3 z-10 flex w-60 flex-col gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-sm">
+        <select
+          aria-label="Filter: person"
+          value={filterPersonId}
+          onChange={(e) => setFilterPersonId(e.target.value)}
+          data-testid="people-filter-person-select"
+          className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs text-[var(--text)] outline-none focus:border-[var(--blue)]"
+        >
+          <option value="">Person…</option>
+          {people.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Filter: relationship type"
+          value={filterKind}
+          onChange={(e) => setFilterKind(e.target.value as ConnectionKind)}
+          data-testid="people-filter-kind-select"
+          className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs text-[var(--text)] outline-none focus:border-[var(--blue)]"
+        >
+          {CONNECTION_KIND_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            disabled={!filterPersonId}
+            onClick={() =>
+              setActiveFilter({ personId: filterPersonId, kind: filterKind })
+            }
+            data-testid="people-filter-apply-btn"
+            className="flex-1 rounded-full bg-[var(--blue-deep)] px-2 py-1 text-xs font-semibold text-white transition hover:bg-[var(--blue-darker)] disabled:opacity-50"
+          >
+            Filter
+          </button>
+          {activeFilter && (
+            <button
+              type="button"
+              onClick={() => setActiveFilter(null)}
+              data-testid="people-filter-clear-btn"
+              className="rounded-full border border-[var(--border)] px-2 py-1 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--hover-bg)]"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {width > 0 && height > 0 && (
