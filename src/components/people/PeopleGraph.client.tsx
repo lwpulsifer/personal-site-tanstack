@@ -1,3 +1,4 @@
+import { forceCollide } from 'd3-force-3d'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ForceGraph2D, {
   type ForceGraphMethods,
@@ -23,14 +24,18 @@ type GraphLink = {
 // clear middle tier, and everything else (sibling/friend/coworker/family/
 // other) spreads out the most.
 const LINK_DISTANCE: Record<ConnectionKind, number> = {
-  partner: 20,
-  parent_child: 110,
-  family: 220,
-  sibling: 220,
-  friend: 220,
-  coworker: 220,
-  other: 220,
+  partner: 40,
+  parent_child: 180,
+  family: 340,
+  sibling: 340,
+  friend: 340,
+  coworker: 340,
+  other: 340,
 }
+
+// Node radius (matches the circle drawn in nodeCanvasObject) plus label
+// width, so the collision force keeps names from overlapping each other.
+const NODE_COLLISION_RADIUS = 30
 const LINK_STRENGTH: Record<ConnectionKind, number> = {
   partner: 1,
   parent_child: 0.3,
@@ -138,6 +143,12 @@ export function PeopleGraph({
     linkForce
       ?.distance((link: GraphLink) => LINK_DISTANCE[link.kind])
       .strength((link: GraphLink) => LINK_STRENGTH[link.kind])
+
+    // Stronger mutual repulsion so unconnected clusters push apart instead
+    // of bunching in the center, plus a collision force so node circles and
+    // their name labels never sit on top of each other.
+    fgRef.current?.d3Force('charge')?.strength(-260).distanceMax(600)
+    fgRef.current?.d3Force('collide', forceCollide(NODE_COLLISION_RADIUS))
   }, [isGraphMounted])
 
   const peopleById = useMemo(
