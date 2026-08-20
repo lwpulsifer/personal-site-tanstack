@@ -52,6 +52,21 @@ export const insertPerson = createServerFn({ method: 'POST' })
     return person as DbPerson
   })
 
+export const updatePerson = createServerFn({ method: 'POST' })
+  .inputValidator(z.object({ personId: z.string(), name: z.string().min(1) }))
+  .handler(async ({ data }) => {
+    await requireAuth()
+    const supabase = getSupabaseServiceClient()
+    const { data: person, error } = await supabase
+      .from('people')
+      .update({ name: data.name })
+      .eq('id', data.personId)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    return person as DbPerson
+  })
+
 export const deletePerson = createServerFn({ method: 'POST' })
   .inputValidator(z.object({ personId: z.string() }))
   .handler(async ({ data }) => {
@@ -65,19 +80,21 @@ export const deletePerson = createServerFn({ method: 'POST' })
     return { ok: true }
   })
 
+const ConnectionKindSchema = z.enum([
+  'partner',
+  'family',
+  'parent_child',
+  'sibling',
+  'friend',
+  'coworker',
+  'other',
+])
+
 const InsertConnectionSchema = z
   .object({
     personAId: z.string(),
     personBId: z.string(),
-    kind: z.enum([
-      'partner',
-      'family',
-      'parent_child',
-      'sibling',
-      'friend',
-      'coworker',
-      'other',
-    ]),
+    kind: ConnectionKindSchema,
     // Ancillary free-text comment on top of `kind`, the core relationship fact.
     label: z.string().optional(),
   })
@@ -98,6 +115,38 @@ export const insertConnection = createServerFn({ method: 'POST' })
         kind: data.kind,
         label: data.label?.trim() || null,
       })
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    return connection as DbConnection
+  })
+
+const UpdateConnectionSchema = z
+  .object({
+    connectionId: z.string(),
+    personAId: z.string(),
+    personBId: z.string(),
+    kind: ConnectionKindSchema,
+    label: z.string().optional(),
+  })
+  .refine((data) => data.personAId !== data.personBId, {
+    message: 'A person cannot be connected to themselves',
+  })
+
+export const updateConnection = createServerFn({ method: 'POST' })
+  .inputValidator(UpdateConnectionSchema)
+  .handler(async ({ data }) => {
+    await requireAuth()
+    const supabase = getSupabaseServiceClient()
+    const { data: connection, error } = await supabase
+      .from('people_connections')
+      .update({
+        person_a_id: data.personAId,
+        person_b_id: data.personBId,
+        kind: data.kind,
+        label: data.label?.trim() || null,
+      })
+      .eq('id', data.connectionId)
       .select()
       .single()
     if (error) throw new Error(error.message)

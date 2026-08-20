@@ -1,3 +1,4 @@
+import { forceCollide } from 'd3-force-3d'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ForceGraph2D, {
   type ForceGraphMethods,
@@ -10,12 +11,14 @@ import {
 import { useElementSize } from '#/lib/hooks/useElementSize'
 import { useThemeMode } from '#/lib/hooks/useThemeMode'
 import type { ConnectionKind, DbConnection, DbPerson } from '#/server/people'
+import type { GraphFocusRequest } from './graphFocus'
 
 type GraphNode = NodeObject<{ id: string; name: string }>
 type GraphLink = {
   source: string
   target: string
   displayText: string
+  tooltipText: string
   kind: ConnectionKind
 }
 
@@ -23,14 +26,28 @@ type GraphLink = {
 // clear middle tier, and everything else (sibling/friend/coworker/family/
 // other) spreads out the most.
 const LINK_DISTANCE: Record<ConnectionKind, number> = {
-  partner: 20,
-  parent_child: 110,
-  family: 220,
-  sibling: 220,
-  friend: 220,
-  coworker: 220,
-  other: 220,
+  partner: 60,
+  parent_child: 260,
+  family: 480,
+  sibling: 480,
+  friend: 480,
+  coworker: 480,
+  other: 480,
 }
+
+// Node radius (matches the circle drawn in nodeCanvasObject) plus label
+// width, so the collision force keeps names from overlapping each other.
+const NODE_COLLISION_RADIUS = 45
+
+// Below this zoom level (pixels per graph-unit) name/relationship labels are
+// hidden, so a fully zoomed-out graph reads as clean dots and lines instead
+// of an unreadable jumble of overlapping text. Labels appear once you zoom
+// in past this level.
+const LABEL_ZOOM_THRESHOLD = 0.2
+
+// The person this graph is "you" — always centered when the graph first
+// loads. Matched by exact name.
+const SELF_PERSON_NAME = 'Liam (me)'
 const LINK_STRENGTH: Record<ConnectionKind, number> = {
   partner: 1,
   parent_child: 0.3,
@@ -45,15 +62,29 @@ export function PeopleGraph({
   people,
   connections,
   onSelectPerson,
+  focusRequest,
 }: {
   people: DbPerson[]
   connections: DbConnection[]
   onSelectPerson?: (person: DbPerson) => void
+  focusRequest?: GraphFocusRequest | null
 }) {
   const { ref, width, height } = useElementSize<HTMLDivElement>()
   const fgRef = useRef<ForceGraphMethods<GraphNode, GraphLink> | undefined>(
     undefined,
   )
+  const hasCenteredOnSelfRef = useRef(false)
+
+  // A focus request (e.g. "just added this person/connection") is applied
+  // the next time the force simulation settles, since a brand-new node has
+  // no x/y position until the simulation places it. Tracked via ref (not
+  // state) since it's consumed imperatively from onEngineStop, not rendered.
+  const pendingFocusRef = useRef<GraphFocusRequest | null>(null)
+  const lastFocusRequestId = useRef<number | null>(null)
+  if (focusRequest && focusRequest.requestId !== lastFocusRequestId.current) {
+    lastFocusRequestId.current = focusRequest.requestId
+    pendingFocusRef.current = focusRequest
+  }
 
   // Filters the graph down to a person and everyone reachable from them by
   // repeatedly following connections of a single kind (e.g. "family" ->
@@ -110,20 +141,31 @@ export function PeopleGraph({
     [connections, reachableIds, activeFilter],
   )
 
+  const peopleById = useMemo(
+    () => new Map(people.map((p) => [p.id, p])),
+    [people],
+  )
+
   const graphData = useMemo(
     () => ({
       nodes: visiblePeople.map((p) => ({
         id: p.id,
         name: p.name,
       })) as GraphNode[],
-      links: visibleConnections.map((c) => ({
-        source: c.person_a_id,
-        target: c.person_b_id,
-        displayText: connectionDisplayText(c.kind, c.label),
-        kind: c.kind,
-      })) as GraphLink[],
+      links: visibleConnections.map((c) => {
+        const displayText = connectionDisplayText(c.kind, c.label)
+        const nameA = peopleById.get(c.person_a_id)?.name ?? 'Unknown'
+        const nameB = peopleById.get(c.person_b_id)?.name ?? 'Unknown'
+        return {
+          source: c.person_a_id,
+          target: c.person_b_id,
+          displayText,
+          tooltipText: `${nameA} — ${nameB}: ${displayText}`,
+          kind: c.kind,
+        }
+      }) as GraphLink[],
     }),
-    [visiblePeople, visibleConnections],
+    [visiblePeople, visibleConnections, peopleById],
   )
 
   // The force simulation is an imperative object outside React's tree (like
@@ -138,12 +180,13 @@ export function PeopleGraph({
     linkForce
       ?.distance((link: GraphLink) => LINK_DISTANCE[link.kind])
       .strength((link: GraphLink) => LINK_STRENGTH[link.kind])
-  }, [isGraphMounted])
 
-  const peopleById = useMemo(
-    () => new Map(people.map((p) => [p.id, p])),
-    [people],
-  )
+    // Stronger mutual repulsion so unconnected clusters push apart instead
+    // of bunching in the center, plus a collision force so node circles and
+    // their name labels never sit on top of each other.
+    fgRef.current?.d3Force('charge')?.strength(-450).distanceMax(900)
+    fgRef.current?.d3Force('collide', forceCollide(NODE_COLLISION_RADIUS))
+  }, [isGraphMounted])
 
   const [query, setQuery] = useState('')
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
@@ -279,7 +322,7 @@ export function PeopleGraph({
           width={width}
           height={height}
           nodeLabel="name"
-          linkLabel="displayText"
+          linkLabel="tooltipText"
           nodeRelSize={5}
           linkColor={(link) =>
             (link as unknown as GraphLink).kind === 'partner'
@@ -293,6 +336,37 @@ export function PeopleGraph({
           onNodeClick={(node) => {
             const person = peopleById.get(String(node.id))
             if (person) onSelectPerson?.(person)
+          }}
+          onEngineStop={() => {
+            if (!hasCenteredOnSelfRef.current) {
+              hasCenteredOnSelfRef.current = true
+              const self = people.find((p) => p.name === SELF_PERSON_NAME)
+              const selfNode = self
+                ? graphData.nodes.find((n) => n.id === self.id)
+                : undefined
+              if (selfNode?.x != null && selfNode.y != null) {
+                fgRef.current?.centerAt(selfNode.x, selfNode.y, 0)
+              }
+            }
+
+            const focus = pendingFocusRef.current
+            if (!focus) return
+            pendingFocusRef.current = null
+            if (focus.kind === 'person') {
+              const node = graphData.nodes.find((n) => n.id === focus.personId)
+              if (node?.x != null && node.y != null) {
+                fgRef.current?.centerAt(node.x, node.y, 800)
+                fgRef.current?.zoom(4, 800)
+                setHighlightedId(focus.personId)
+              }
+            } else {
+              fgRef.current?.zoomToFit(
+                800,
+                80,
+                (node) =>
+                  node.id === focus.personAId || node.id === focus.personBId,
+              )
+            }
           }}
           nodeCanvasObject={(node, ctx, globalScale) => {
             const label = (node as GraphNode).name
@@ -310,14 +384,17 @@ export function PeopleGraph({
               ctx.stroke()
             }
 
-            ctx.font = `${fontSize}px sans-serif`
-            ctx.textAlign = 'center'
-            ctx.textBaseline = 'top'
-            ctx.fillStyle = textColor
-            ctx.fillText(label, node.x ?? 0, (node.y ?? 0) + 6)
+            if (globalScale >= LABEL_ZOOM_THRESHOLD) {
+              ctx.font = `${fontSize}px sans-serif`
+              ctx.textAlign = 'center'
+              ctx.textBaseline = 'top'
+              ctx.fillStyle = textColor
+              ctx.fillText(label, node.x ?? 0, (node.y ?? 0) + 6)
+            }
           }}
           linkCanvasObjectMode={() => 'after'}
           linkCanvasObject={(link, ctx, globalScale) => {
+            if (globalScale < LABEL_ZOOM_THRESHOLD) return
             const source = link.source as GraphNode
             const target = link.target as GraphNode
             if (typeof source !== 'object' || typeof target !== 'object') return

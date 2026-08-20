@@ -2,6 +2,7 @@ import { createClientOnlyFn } from '@tanstack/react-start'
 import { lazy, Suspense } from 'react'
 import { useHydrated } from '#/lib/hooks/useHydrated'
 import type { DbConnection, DbPerson } from '#/server/people'
+import type { GraphFocusRequest } from './graphFocus'
 import { PeopleGraphSkeleton } from './PeopleGraphSkeleton'
 
 const importPeopleGraphClient = createClientOnlyFn(
@@ -16,10 +17,12 @@ export function PeopleGraph({
   people,
   connections,
   onSelectPerson,
+  focusRequest,
 }: {
   people: DbPerson[]
   connections: DbConnection[]
   onSelectPerson?: (person: DbPerson) => void
+  focusRequest?: GraphFocusRequest | null
 }) {
   const hydrated = useHydrated()
 
@@ -33,6 +36,7 @@ export function PeopleGraph({
         people={people}
         connections={connections}
         onSelectPerson={onSelectPerson}
+        focusRequest={focusRequest}
       />
     </Suspense>
   )

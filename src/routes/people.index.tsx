@@ -2,12 +2,17 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { useState } from 'react'
 import { ConnectionPanel } from '#/components/people/ConnectionPanel'
+import type { GraphFocusRequest } from '#/components/people/graphFocus'
 import { PeopleGraph } from '#/components/people/PeopleGraph'
 import { PersonPanel } from '#/components/people/PersonPanel'
 import { peopleGraphQueryOptions } from '#/lib/queries'
 import { SITE_TITLE } from '#/lib/site'
 import { getServerUser } from '#/server/auth'
-import { type DbPerson, getPeopleGraph } from '#/server/people'
+import {
+  type DbConnection,
+  type DbPerson,
+  getPeopleGraph,
+} from '#/server/people'
 
 const pageTitle = `People | ${SITE_TITLE}`
 
@@ -30,11 +35,37 @@ function PeopleIndex() {
   const { data = loaderData } = useQuery(peopleGraphQueryOptions)
   const queryClient = useQueryClient()
   const [selectedPerson, setSelectedPerson] = useState<DbPerson | null>(null)
+  const [focusRequest, setFocusRequest] = useState<GraphFocusRequest | null>(
+    null,
+  )
 
   function invalidate() {
     queryClient.invalidateQueries({
       queryKey: peopleGraphQueryOptions.queryKey,
     })
+  }
+
+  function handlePersonChanged(createdPerson?: DbPerson) {
+    invalidate()
+    if (createdPerson) {
+      setFocusRequest({
+        kind: 'person',
+        personId: createdPerson.id,
+        requestId: Date.now(),
+      })
+    }
+  }
+
+  function handleConnectionChanged(createdConnection?: DbConnection) {
+    invalidate()
+    if (createdConnection) {
+      setFocusRequest({
+        kind: 'connection',
+        personAId: createdConnection.person_a_id,
+        personBId: createdConnection.person_b_id,
+        requestId: Date.now(),
+      })
+    }
   }
 
   return (
@@ -54,6 +85,7 @@ function PeopleIndex() {
           people={data.people}
           connections={data.connections}
           onSelectPerson={setSelectedPerson}
+          focusRequest={focusRequest}
         />
       </div>
 
@@ -65,11 +97,11 @@ function PeopleIndex() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <PersonPanel people={data.people} onChanged={invalidate} />
+        <PersonPanel people={data.people} onChanged={handlePersonChanged} />
         <ConnectionPanel
           people={data.people}
           connections={data.connections}
-          onChanged={invalidate}
+          onChanged={handleConnectionChanged}
         />
       </div>
     </main>
