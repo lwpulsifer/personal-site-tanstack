@@ -168,6 +168,38 @@ export function PeopleGraph({
     [visiblePeople, visibleConnections, peopleById],
   )
 
+  // force-graph has no built-in "make this node the layout center" option,
+  // but node positions can be pinned via fx/fy, and doing so re-centers the
+  // whole layout around it (everyone else settles relative to the pin)
+  // rather than just panning the camera to wherever the node happened to
+  // land. Whoever's currently pinned is tracked so the previous focus gets
+  // released before pinning the new one — otherwise multiple fixed points
+  // fight the simulation.
+  const pinnedPersonIdRef = useRef<string | null>(null)
+  function focusOnPerson(personId: string, opts: { animate?: boolean } = {}) {
+    const duration = (opts.animate ?? true) ? 800 : 0
+
+    if (pinnedPersonIdRef.current && pinnedPersonIdRef.current !== personId) {
+      const prevNode = graphData.nodes.find(
+        (n) => n.id === pinnedPersonIdRef.current,
+      )
+      if (prevNode) {
+        prevNode.fx = undefined
+        prevNode.fy = undefined
+      }
+    }
+
+    const node = graphData.nodes.find((n) => n.id === personId)
+    if (!node) return
+    node.fx = 0
+    node.fy = 0
+    pinnedPersonIdRef.current = personId
+
+    fgRef.current?.d3ReheatSimulation()
+    fgRef.current?.centerAt(0, 0, duration)
+    fgRef.current?.zoom(4, duration)
+  }
+
   // The force simulation is an imperative object outside React's tree (like
   // Leaflet's map instance) — configure its per-link distance/strength via
   // accessor functions the simulation calls on every tick. Keyed on whether
@@ -199,11 +231,7 @@ export function PeopleGraph({
   }, [visiblePeople, query])
 
   function jumpToPerson(person: DbPerson) {
-    const node = graphData.nodes.find((n) => n.id === person.id)
-    if (node?.x != null && node.y != null) {
-      fgRef.current?.centerAt(node.x, node.y, 800)
-      fgRef.current?.zoom(4, 800)
-    }
+    focusOnPerson(person.id)
     setHighlightedId(person.id)
     setQuery('')
     onSelectPerson?.(person)
@@ -341,24 +369,15 @@ export function PeopleGraph({
             if (!hasCenteredOnSelfRef.current) {
               hasCenteredOnSelfRef.current = true
               const self = people.find((p) => p.name === SELF_PERSON_NAME)
-              const selfNode = self
-                ? graphData.nodes.find((n) => n.id === self.id)
-                : undefined
-              if (selfNode?.x != null && selfNode.y != null) {
-                fgRef.current?.centerAt(selfNode.x, selfNode.y, 0)
-              }
+              if (self) focusOnPerson(self.id, { animate: false })
             }
 
             const focus = pendingFocusRef.current
             if (!focus) return
             pendingFocusRef.current = null
             if (focus.kind === 'person') {
-              const node = graphData.nodes.find((n) => n.id === focus.personId)
-              if (node?.x != null && node.y != null) {
-                fgRef.current?.centerAt(node.x, node.y, 800)
-                fgRef.current?.zoom(4, 800)
-                setHighlightedId(focus.personId)
-              }
+              focusOnPerson(focus.personId)
+              setHighlightedId(focus.personId)
             } else {
               fgRef.current?.zoomToFit(
                 800,
