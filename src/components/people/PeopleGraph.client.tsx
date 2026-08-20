@@ -39,14 +39,9 @@ const NODE_COLLISION_RADIUS = 45
 
 // Below this zoom level (pixels per graph-unit) name/relationship labels are
 // hidden, so a fully zoomed-out graph reads as clean dots and lines instead
-// of an unreadable jumble of overlapping text. Nodes near the center of the
-// viewport always show their label regardless of zoom (see
-// CENTER_LABEL_RADIUS_PX below), so this only governs the periphery.
+// of an unreadable jumble of overlapping text. Labels appear once you zoom
+// in past this level.
 const LABEL_ZOOM_THRESHOLD = 1.5
-
-// Nodes within this many screen pixels of the viewport center always show
-// their label, even when zoomed out past LABEL_ZOOM_THRESHOLD.
-const CENTER_LABEL_RADIUS_PX = 120
 
 // The person this graph is "you" — always centered when the graph first
 // loads. Matched by exact name.
@@ -75,14 +70,6 @@ export function PeopleGraph({
     undefined,
   )
   const hasCenteredOnSelfRef = useRef(false)
-
-  // Screen-space distance (not graph-space) so the "always show" radius
-  // stays a constant number of pixels regardless of zoom level.
-  function isNearViewportCenter(x: number, y: number, globalScale: number) {
-    const center = fgRef.current?.centerAt() ?? { x: 0, y: 0 }
-    const screenDist = Math.hypot(x - center.x, y - center.y) * globalScale
-    return screenDist <= CENTER_LABEL_RADIUS_PX
-  }
 
   // Filters the graph down to a person and everyone reachable from them by
   // repeatedly following connections of a single kind (e.g. "family" ->
@@ -356,10 +343,7 @@ export function PeopleGraph({
               ctx.stroke()
             }
 
-            if (
-              globalScale >= LABEL_ZOOM_THRESHOLD ||
-              isNearViewportCenter(node.x ?? 0, node.y ?? 0, globalScale)
-            ) {
+            if (globalScale >= LABEL_ZOOM_THRESHOLD) {
               ctx.font = `${fontSize}px sans-serif`
               ctx.textAlign = 'center'
               ctx.textBaseline = 'top'
@@ -369,17 +353,12 @@ export function PeopleGraph({
           }}
           linkCanvasObjectMode={() => 'after'}
           linkCanvasObject={(link, ctx, globalScale) => {
+            if (globalScale < LABEL_ZOOM_THRESHOLD) return
             const source = link.source as GraphNode
             const target = link.target as GraphNode
             if (typeof source !== 'object' || typeof target !== 'object') return
             const midX = ((source.x ?? 0) + (target.x ?? 0)) / 2
             const midY = ((source.y ?? 0) + (target.y ?? 0)) / 2
-            if (
-              globalScale < LABEL_ZOOM_THRESHOLD &&
-              !isNearViewportCenter(midX, midY, globalScale)
-            ) {
-              return
-            }
             const fontSize = 10 / globalScale
             ctx.font = `${fontSize}px sans-serif`
             ctx.textAlign = 'center'
