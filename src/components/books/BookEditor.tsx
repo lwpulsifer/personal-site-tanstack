@@ -1,9 +1,14 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useId, useRef, useState } from 'react'
+import { useId, useState } from 'react'
 import { CoverImage } from '#/components/books/CoverImage'
 import { StarRating } from '#/components/books/StarRating'
+import { useDebouncedValue } from '#/lib/hooks/useDebouncedValue'
 import { useOnEscapeKey } from '#/lib/hooks/useOnEscapeKey'
-import { isLookupableIsbn, normalizeIsbn } from '#/lib/openLibrary'
+import {
+  getOpenLibraryCoverUrlById,
+  isLookupableIsbn,
+  normalizeIsbn,
+} from '#/lib/openLibrary'
 import {
   type BookStatus,
   type DbBook,
@@ -37,11 +42,26 @@ const STATUS_OPTIONS: { value: BookStatus; label: string }[] = [
   { value: 'READ', label: 'Read' },
 ]
 
-function openLibraryCoverById(coverId: number) {
-  return `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`
-}
+type LookupStatus = 'idle' | 'loading' | 'found' | 'not-found' | 'error'
 
-type IsbnLookupStatus = 'idle' | 'loading' | 'found' | 'not-found' | 'error'
+// Shared by the ISBN lookup and the title search below — both fetch from
+// Open Library and reduce to the same idle/loading/found/not-found/error
+// shape, differing only in what counts as "found" for their result type.
+function deriveLookupStatus<T>(
+  enabled: boolean,
+  query: Pick<
+    ReturnType<typeof useQuery<T>>,
+    'isFetching' | 'isError' | 'isSuccess' | 'data'
+  >,
+  hasResult: (data: T) => boolean,
+): LookupStatus {
+  if (!enabled) return 'idle'
+  if (query.isFetching) return 'loading'
+  if (query.isError) return 'error'
+  if (query.data !== undefined && hasResult(query.data)) return 'found'
+  if (query.isSuccess) return 'not-found'
+  return 'idle'
+}
 
 type OpenLibraryBook = { title?: string; authors?: { name: string }[] }
 
@@ -58,21 +78,6 @@ async function fetchIsbnLookup(
   return data[`ISBN:${cleanIsbn}`] ?? null
 }
 
-function deriveIsbnStatus(
-  lookupEnabled: boolean,
-  query: Pick<
-    ReturnType<typeof useQuery<OpenLibraryBook | null>>,
-    'isFetching' | 'isError' | 'isSuccess' | 'data'
-  >,
-): IsbnLookupStatus {
-  if (!lookupEnabled) return 'idle'
-  if (query.isFetching) return 'loading'
-  if (query.isError) return 'error'
-  if (query.data) return 'found'
-  if (query.isSuccess) return 'not-found'
-  return 'idle'
-}
-
 type TitleSearchResult = {
   key: string
   title: string
@@ -80,8 +85,6 @@ type TitleSearchResult = {
   isbn?: string
   coverId?: number
 }
-
-type TitleSearchStatus = 'idle' | 'loading' | 'found' | 'not-found' | 'error'
 
 async function fetchTitleSearch(
   query: string,
@@ -110,38 +113,22 @@ async function fetchTitleSearch(
   }))
 }
 
-function deriveTitleSearchStatus(
-  searchEnabled: boolean,
-  query: Pick<
-    ReturnType<typeof useQuery<TitleSearchResult[]>>,
-    'isFetching' | 'isError' | 'isSuccess' | 'data'
-  >,
-): TitleSearchStatus {
-  if (!searchEnabled) return 'idle'
-  if (query.isFetching) return 'loading'
-  if (query.isError) return 'error'
-  if (query.data?.length) return 'found'
-  if (query.isSuccess) return 'not-found'
-  return 'idle'
-}
-
 export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
   const [title, setTitle] = useState(initial.title ?? '')
   const [author, setAuthor] = useState(initial.author ?? '')
   const [isbn, setIsbn] = useState(initial.isbn ?? '')
   // Debounced separately from `isbn` so the lookup query doesn't fire on
-  // every keystroke — updated from the input's onChange handler itself
-  // rather than an effect reacting to `isbn`.
-  const [debouncedIsbn, setDebouncedIsbn] = useState(initial.isbn ?? '')
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined,
+  // every keystroke.
+  const [debouncedIsbn, updateDebouncedIsbn] = useDebouncedValue(
+    600,
+    initial.isbn ?? '',
   )
   // Starts blank (not `initial.title`) so opening the editor on an existing
   // book never fires a search on its own — only actually typing does.
-  const [debouncedTitleQuery, setDebouncedTitleQuery] = useState('')
-  const titleDebounceTimerRef = useRef<
-    ReturnType<typeof setTimeout> | undefined
-  >(undefined)
+  const [debouncedTitleQuery, updateDebouncedTitleQuery] = useDebouncedValue(
+    400,
+    '',
+  )
   const [titleResultsOpen, setTitleResultsOpen] = useState(false)
   const [coverUrl, setCoverUrl] = useState(initial.cover_url ?? '')
   const [status, setStatus] = useState<BookStatus>(
@@ -157,29 +144,27 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
 
   function handleIsbnChange(value: string) {
     setIsbn(value)
-    clearTimeout(debounceTimerRef.current)
-    debounceTimerRef.current = setTimeout(() => setDebouncedIsbn(value), 600)
+    updateDebouncedIsbn(value)
   }
 
   function handleTitleChange(value: string) {
     setTitle(value)
     setTitleResultsOpen(true)
-    clearTimeout(titleDebounceTimerRef.current)
-    titleDebounceTimerRef.current = setTimeout(
-      () => setDebouncedTitleQuery(value),
-      400,
-    )
+    updateDebouncedTitleQuery(value)
   }
 
+  // Title/author come straight from the search result, so this doesn't need
+  // to wait on (or trust) a second, separate ISBN lookup to fill them in —
+  // it only needs the isbn itself for storage and, if there's no isbn, the
+  // cover id for a cover image.
   function selectTitleResult(result: TitleSearchResult) {
     setTitle(result.title)
     if (result.author) setAuthor(result.author)
     if (result.isbn) {
       setIsbn(result.isbn)
-      setDebouncedIsbn(result.isbn)
     } else if (result.coverId) {
       const coverId = result.coverId
-      setCoverUrl((prev) => prev || openLibraryCoverById(coverId))
+      setCoverUrl((prev) => prev || getOpenLibraryCoverUrlById(coverId))
     }
     setTitleResultsOpen(false)
   }
@@ -193,7 +178,11 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
     retry: false,
   })
   const lookedUpBook = isbnLookupQuery.data
-  const isbnStatus = deriveIsbnStatus(lookupEnabled, isbnLookupQuery)
+  const isbnStatus = deriveLookupStatus<OpenLibraryBook | null>(
+    lookupEnabled,
+    isbnLookupQuery,
+    (book) => book != null,
+  )
 
   const trimmedTitleQuery = debouncedTitleQuery.trim()
   const titleSearchEnabled = titleResultsOpen && trimmedTitleQuery.length >= 2
@@ -203,9 +192,10 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
     enabled: titleSearchEnabled,
     retry: false,
   })
-  const titleSearchStatus = deriveTitleSearchStatus(
+  const titleSearchStatus = deriveLookupStatus<TitleSearchResult[]>(
     titleSearchEnabled,
     titleSearchQuery,
+    (results) => results.length > 0,
   )
   const titleResults = titleSearchQuery.data ?? []
 
