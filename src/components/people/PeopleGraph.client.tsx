@@ -42,7 +42,7 @@ const NODE_COLLISION_RADIUS = 45
 // hidden, so a fully zoomed-out graph reads as clean dots and lines instead
 // of an unreadable jumble of overlapping text. Labels appear once you zoom
 // in past this level.
-const LABEL_ZOOM_THRESHOLD = 4
+const LABEL_ZOOM_THRESHOLD = 1.5
 
 // The person this graph is "you" — always centered when the graph first
 // loads. Matched by exact name.
