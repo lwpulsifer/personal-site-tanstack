@@ -32,7 +32,7 @@ export const Route = createFileRoute('/people/')({
 
 function PeopleIndex() {
   const loaderData = Route.useLoaderData()
-  const { data = loaderData } = useQuery(peopleGraphQueryOptions)
+  const { data = loaderData, isFetching } = useQuery(peopleGraphQueryOptions)
   const queryClient = useQueryClient()
   const [selectedPerson, setSelectedPerson] = useState<DbPerson | null>(null)
   const [focusRequest, setFocusRequest] = useState<GraphFocusRequest | null>(
@@ -101,6 +101,7 @@ function PeopleIndex() {
         <ConnectionPanel
           people={data.people}
           connections={data.connections}
+          isStale={isFetching}
           onChanged={handleConnectionChanged}
         />
       </div>

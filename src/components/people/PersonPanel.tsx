@@ -66,7 +66,9 @@ export function PersonPanel({
   const [debouncedQuery, setDebouncedQuery] = useDebouncedValue(300, '')
 
   const queryClient = useQueryClient()
-  const { data } = useQuery(searchPeopleQueryOptions(debouncedQuery))
+  const { data, isFetching } = useQuery(
+    searchPeopleQueryOptions(debouncedQuery),
+  )
   const people = data?.people ?? []
 
   function invalidateSearch() {
@@ -179,7 +181,9 @@ export function PersonPanel({
           {debouncedQuery ? 'No matches.' : 'No people yet.'}
         </p>
       ) : (
-        <div className="max-h-80 overflow-y-auto">
+        <div
+          className={`max-h-80 overflow-y-auto transition-opacity duration-150 ${isFetching ? 'opacity-50' : 'opacity-100'}`}
+        >
           <ul data-testid="person-list" className="flex flex-col gap-1.5">
             {people.map((person) =>
               editingId === person.id ? (

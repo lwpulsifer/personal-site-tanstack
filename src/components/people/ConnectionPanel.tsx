@@ -85,10 +85,12 @@ const ConnectionListItem = memo(function ConnectionListItem({
 export function ConnectionPanel({
   people,
   connections,
+  isStale = false,
   onChanged,
 }: {
   people: DbPerson[]
   connections: DbConnection[]
+  isStale?: boolean
   onChanged: (createdConnection?: DbConnection) => void
 }) {
   const [personAId, setPersonAId] = useState('')
@@ -277,7 +279,9 @@ export function ConnectionPanel({
           {connectionSearch ? 'No matches.' : 'No connections yet.'}
         </p>
       ) : (
-        <div className="max-h-80 overflow-y-auto">
+        <div
+          className={`max-h-80 overflow-y-auto transition-opacity duration-150 ${isStale ? 'opacity-50' : 'opacity-100'}`}
+        >
           <ul data-testid="connection-list" className="flex flex-col gap-1.5">
             {filteredConnections.map((connection) => {
               if (editingId === connection.id) {
