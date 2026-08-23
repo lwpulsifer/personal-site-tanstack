@@ -228,10 +228,6 @@ export function PeopleGraph({
 
   const pendingFocusRef = useRef<GraphFocusRequest | null>(null)
   const lastFocusRequestId = useRef<number | null>(null)
-  if (focusRequest && focusRequest.requestId !== lastFocusRequestId.current) {
-    lastFocusRequestId.current = focusRequest.requestId
-    pendingFocusRef.current = focusRequest
-  }
 
   const [activeFilter, setActiveFilter] = useState<{
     personId: string
@@ -362,6 +358,38 @@ export function PeopleGraph({
     }),
     [visiblePeople, visibleConnections, peopleById],
   )
+
+  // Apply focus requests immediately when target nodes are already placed,
+  // otherwise queue for onEngineStop (new nodes have no position yet).
+  useEffect(() => {
+    if (!focusRequest) return
+    if (focusRequest.requestId === lastFocusRequestId.current) return
+    lastFocusRequestId.current = focusRequest.requestId
+
+    if (focusRequest.kind === 'person') {
+      const node = graphData.nodes.find((n) => n.id === focusRequest.personId)
+      if (node?.x != null && node.y != null) {
+        fgRef.current?.centerAt(node.x, node.y, 800)
+        fgRef.current?.zoom(4, 800)
+        setHighlightedId(focusRequest.personId)
+      } else {
+        pendingFocusRef.current = focusRequest
+      }
+    } else {
+      const nodeA = graphData.nodes.find((n) => n.id === focusRequest.personAId)
+      const nodeB = graphData.nodes.find((n) => n.id === focusRequest.personBId)
+      if (nodeA?.x != null && nodeB?.x != null) {
+        fgRef.current?.zoomToFit(
+          800,
+          80,
+          (n) =>
+            n.id === focusRequest.personAId || n.id === focusRequest.personBId,
+        )
+      } else {
+        pendingFocusRef.current = focusRequest
+      }
+    }
+  }, [focusRequest, graphData])
 
   const isGraphMounted = width > 0 && height > 0
   useEffect(() => {

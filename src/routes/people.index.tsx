@@ -56,6 +56,15 @@ function PeopleIndex() {
     }
   }
 
+  function handlePersonSelected(person: DbPerson) {
+    setSelectedPerson(person)
+    setFocusRequest({
+      kind: 'person',
+      personId: person.id,
+      requestId: Date.now(),
+    })
+  }
+
   function handleConnectionChanged(createdConnection?: DbConnection) {
     invalidate()
     if (createdConnection) {
@@ -97,7 +106,10 @@ function PeopleIndex() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <PersonPanel onChanged={handlePersonChanged} />
+        <PersonPanel
+          onChanged={handlePersonChanged}
+          onSelect={handlePersonSelected}
+        />
         <ConnectionPanel
           people={data.people}
           connections={data.connections}

@@ -13,11 +13,13 @@ const PersonListItem = memo(function PersonListItem({
   person,
   onEdit,
   onDelete,
+  onSelect,
   disabled,
 }: {
   person: DbPerson
   onEdit: (person: DbPerson) => void
   onDelete: (id: string) => void
+  onSelect?: (person: DbPerson) => void
   disabled: boolean
 }) {
   return (
@@ -25,7 +27,13 @@ const PersonListItem = memo(function PersonListItem({
       data-testid="person-list-item"
       className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-[var(--hover-bg)]"
     >
-      <span className="text-[var(--text)]">{person.name}</span>
+      <button
+        type="button"
+        onClick={() => onSelect?.(person)}
+        className="min-w-0 flex-1 truncate text-left text-[var(--text)]"
+      >
+        {person.name}
+      </button>
       <span className="flex gap-1.5">
         <button
           type="button"
@@ -55,8 +63,10 @@ const PersonListItem = memo(function PersonListItem({
 
 export function PersonPanel({
   onChanged,
+  onSelect,
 }: {
   onChanged: (createdPerson?: DbPerson) => void
+  onSelect?: (person: DbPerson) => void
 }) {
   const [name, setName] = useState('')
   const formId = useId()
@@ -229,6 +239,7 @@ export function PersonPanel({
                   person={person}
                   onEdit={startEditing}
                   onDelete={handleDelete}
+                  onSelect={onSelect}
                   disabled={deleteMutation.isPending}
                 />
               ),
