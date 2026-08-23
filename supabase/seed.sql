@@ -50,13 +50,20 @@ VALUES
 
 -- ── Local dev admin user (admin@local.dev / password123) ──────────────────────
 
-INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, created_at, updated_at, aud, role)
+-- Auth token columns default to NULL, but GoTrue scans them as plain
+-- strings (not nullable) — a NULL here breaks every auth query for this
+-- user with an opaque "Database error querying schema". Set them to ''.
+INSERT INTO auth.users (
+  id, instance_id, email, encrypted_password, email_confirmed_at, created_at, updated_at, aud, role,
+  confirmation_token, recovery_token, email_change_token_new, email_change
+)
 VALUES (
   'a0000000-0000-0000-0000-000000000001',
   '00000000-0000-0000-0000-000000000000',
   'admin@local.dev',
   crypt('password123', gen_salt('bf')),
-  now(), now(), now(), 'authenticated', 'authenticated'
+  now(), now(), now(), 'authenticated', 'authenticated',
+  '', '', '', ''
 );
 
 INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, created_at, updated_at)
