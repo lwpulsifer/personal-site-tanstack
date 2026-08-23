@@ -147,6 +147,7 @@ function BooksIndex() {
               shelfKey="read"
               books={read}
               defaultOpen
+              maxVisible={10}
               onView={(b) => setViewingBookId(b.id)}
             />
             <BookShelf
