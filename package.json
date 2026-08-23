@@ -35,6 +35,7 @@
     "@tanstack/react-router-devtools": "^1.166.9",
     "@tanstack/react-router-ssr-query": "^1.166.9",
     "@tanstack/react-start": "^1.166.16",
+    "@tanstack/react-virtual": "^3.14.10",
     "@tanstack/router-plugin": "^1.166.13",
     "@types/marked": "^5.0.2",
     "d3-force-3d": "^3.0.6",

@@ -97,7 +97,7 @@ function PeopleIndex() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <PersonPanel people={data.people} onChanged={handlePersonChanged} />
+        <PersonPanel onChanged={handlePersonChanged} />
         <ConnectionPanel
           people={data.people}
           connections={data.connections}

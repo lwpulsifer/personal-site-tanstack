@@ -165,3 +165,30 @@ export const deleteConnection = createServerFn({ method: 'POST' })
     if (error) throw new Error(error.message)
     return { ok: true }
   })
+
+export const searchPeople = createServerFn({ method: 'GET' })
+  .inputValidator(
+    z.object({
+      query: z.string().optional(),
+      limit: z.number().min(1).max(200).default(100),
+      offset: z.number().min(0).default(0),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await requireAuth()
+    const supabase = getSupabaseServiceClient()
+    let q = supabase
+      .from('people')
+      .select('*', { count: 'exact' })
+      .order('name')
+    if (data.query?.trim()) {
+      q = q.ilike('name', `%${data.query.trim()}%`)
+    }
+    const {
+      data: people,
+      error,
+      count,
+    } = await q.range(data.offset, data.offset + data.limit - 1)
+    if (error) throw new Error(error.message)
+    return { people: (people ?? []) as DbPerson[], total: count ?? 0 }
+  })
