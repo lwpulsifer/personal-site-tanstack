@@ -1,4 +1,4 @@
-import { forceCollide } from 'd3-force-3d'
+import { forceCollide, forceRadial } from 'd3-force-3d'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ForceGraph2D, {
   type ForceGraphMethods,
@@ -26,7 +26,7 @@ type GraphLink = {
 // clear middle tier, and everything else (sibling/friend/coworker/family/
 // other) spreads out the most.
 const LINK_DISTANCE: Record<ConnectionKind, number> = {
-  partner: 60,
+  partner: 28,
   parent_child: 260,
   family: 480,
   sibling: 480,
@@ -38,6 +38,16 @@ const LINK_DISTANCE: Record<ConnectionKind, number> = {
 // Node radius (matches the circle drawn in nodeCanvasObject) plus label
 // width, so the collision force keeps names from overlapping each other.
 const NODE_COLLISION_RADIUS = 45
+
+// Partners get a much smaller collision radius than everyone else, so the
+// short partner link distance above can actually pull couples in close
+// instead of being fought back apart by the general collision spacing.
+const PARTNER_COLLISION_RADIUS = 16
+
+// Ring spacing for the radial layout: each additional hop away from "me" in
+// the connection graph gets pushed out to a bigger radius, so relationships
+// that are further from me are also physically further away on screen.
+const RADIAL_STEP = 280
 
 // Below this zoom level (pixels per graph-unit) name/relationship labels are
 // hidden, so a fully zoomed-out graph reads as clean dots and lines instead
@@ -146,6 +156,54 @@ export function PeopleGraph({
     [people],
   )
 
+  // Nodes with a "partner" connection get pulled tighter together (see the
+  // collide force below) so couples visually read as a single unit.
+  const partnerNodeIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const c of visibleConnections) {
+      if (c.kind !== 'partner') continue
+      ids.add(c.person_a_id)
+      ids.add(c.person_b_id)
+    }
+    return ids
+  }, [visibleConnections])
+
+  const selfId = useMemo(
+    () => people.find((p) => p.name === SELF_PERSON_NAME)?.id ?? null,
+    [people],
+  )
+
+  // Hop-distance from "me" through the visible connections, via BFS. Used to
+  // lay the graph out in rings around me: further relationships (more hops
+  // away) sit physically further out. Nodes not reachable from me (or when
+  // there's no "me" node) fall back to Infinity, so the radial force below
+  // leaves them alone and the existing charge/link forces place them.
+  const distanceFromSelf = useMemo(() => {
+    const distances = new Map<string, number>()
+    if (!selfId) return distances
+    const adjacency = new Map<string, Set<string>>()
+    for (const c of visibleConnections) {
+      if (!adjacency.has(c.person_a_id)) adjacency.set(c.person_a_id, new Set())
+      if (!adjacency.has(c.person_b_id)) adjacency.set(c.person_b_id, new Set())
+      adjacency.get(c.person_a_id)?.add(c.person_b_id)
+      adjacency.get(c.person_b_id)?.add(c.person_a_id)
+    }
+    distances.set(selfId, 0)
+    const queue = [selfId]
+    while (queue.length > 0) {
+      const current = queue.shift()
+      if (!current) break
+      const currentDistance = distances.get(current) ?? 0
+      for (const neighbor of adjacency.get(current) ?? []) {
+        if (!distances.has(neighbor)) {
+          distances.set(neighbor, currentDistance + 1)
+          queue.push(neighbor)
+        }
+      }
+    }
+    return distances
+  }, [selfId, visibleConnections])
+
   const graphData = useMemo(
     () => ({
       nodes: visiblePeople.map((p) => ({
@@ -185,8 +243,56 @@ export function PeopleGraph({
     // of bunching in the center, plus a collision force so node circles and
     // their name labels never sit on top of each other.
     fgRef.current?.d3Force('charge')?.strength(-450).distanceMax(900)
-    fgRef.current?.d3Force('collide', forceCollide(NODE_COLLISION_RADIUS))
-  }, [isGraphMounted])
+    fgRef.current?.d3Force(
+      'collide',
+      forceCollide((node: unknown) =>
+        partnerNodeIds.has((node as GraphNode).id)
+          ? PARTNER_COLLISION_RADIUS
+          : NODE_COLLISION_RADIUS,
+      ),
+    )
+
+    // Orient the graph around "me": pin my node at the origin, and pull
+    // every other node toward a ring whose radius grows with hop-distance
+    // from me, so relationships further away (in the connection graph) end
+    // up physically further away on screen. Nodes with no path to me (or
+    // when there's no "me" node) get no radial pull and are placed by the
+    // link/charge forces alone.
+    for (const node of graphData.nodes as (GraphNode & {
+      fx?: number
+      fy?: number
+    })[]) {
+      if (node.id === selfId) {
+        node.fx = 0
+        node.fy = 0
+      } else {
+        node.fx = undefined
+        node.fy = undefined
+      }
+    }
+    fgRef.current?.d3Force(
+      'radial',
+      selfId
+        ? forceRadial(
+            (node: unknown) => {
+              const distance = distanceFromSelf.get((node as GraphNode).id)
+              return distance == null ? 0 : distance * RADIAL_STEP
+            },
+            0,
+            0,
+          ).strength((node: unknown) => {
+            const id = (node as GraphNode).id
+            return distanceFromSelf.has(id) && id !== selfId ? 0.3 : 0
+          })
+        : null,
+    )
+  }, [
+    isGraphMounted,
+    graphData.nodes,
+    selfId,
+    distanceFromSelf,
+    partnerNodeIds,
+  ])
 
   const [query, setQuery] = useState('')
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
@@ -340,13 +446,9 @@ export function PeopleGraph({
           onEngineStop={() => {
             if (!hasCenteredOnSelfRef.current) {
               hasCenteredOnSelfRef.current = true
-              const self = people.find((p) => p.name === SELF_PERSON_NAME)
-              const selfNode = self
-                ? graphData.nodes.find((n) => n.id === self.id)
-                : undefined
-              if (selfNode?.x != null && selfNode.y != null) {
-                fgRef.current?.centerAt(selfNode.x, selfNode.y, 0)
-              }
+              // My node is pinned at the origin by the radial layout, so
+              // centering on me is just centering the camera at (0, 0).
+              if (selfId) fgRef.current?.centerAt(0, 0, 0)
             }
 
             const focus = pendingFocusRef.current
