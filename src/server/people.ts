@@ -20,8 +20,14 @@ export const getPeopleGraph = createServerFn({ method: 'GET' }).handler(
       { data: people, error: peopleError },
       { data: connections, error: connectionsError },
     ] = await Promise.all([
-      supabase.from('people').select('*').order('name'),
-      supabase.from('people_connections').select('*').order('created_at'),
+      supabase
+        .from('people')
+        .select('*')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('people_connections')
+        .select('*')
+        .order('created_at', { ascending: false }),
     ])
 
     if (peopleError) throw new Error(peopleError.message)
@@ -164,4 +170,31 @@ export const deleteConnection = createServerFn({ method: 'POST' })
       .eq('id', data.connectionId)
     if (error) throw new Error(error.message)
     return { ok: true }
+  })
+
+export const searchPeople = createServerFn({ method: 'GET' })
+  .inputValidator(
+    z.object({
+      query: z.string().optional(),
+      limit: z.number().min(1).max(200).default(100),
+      offset: z.number().min(0).default(0),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await requireAuth()
+    const supabase = getSupabaseServiceClient()
+    let q = supabase
+      .from('people')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+    if (data.query?.trim()) {
+      q = q.ilike('name', `%${data.query.trim()}%`)
+    }
+    const {
+      data: people,
+      error,
+      count,
+    } = await q.range(data.offset, data.offset + data.limit - 1)
+    if (error) throw new Error(error.message)
+    return { people: (people ?? []) as DbPerson[], total: count ?? 0 }
   })

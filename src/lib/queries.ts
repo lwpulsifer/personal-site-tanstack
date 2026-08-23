@@ -6,7 +6,7 @@ import {
   getPendingSubmissions,
 } from '#/server/maps'
 import { getPageViews } from '#/server/pageViews'
-import { getPeopleGraph } from '#/server/people'
+import { getPeopleGraph, searchPeople } from '#/server/people'
 import { getAdminPosts, getAllTags } from '#/server/posts'
 import { getNowPlaying } from '#/server/spotify'
 
@@ -29,6 +29,12 @@ export const peopleGraphQueryOptions = queryOptions({
   queryKey: ['peopleGraph'],
   queryFn: () => getPeopleGraph(),
 })
+
+export const searchPeopleQueryOptions = (query = '', limit = 100, offset = 0) =>
+  queryOptions({
+    queryKey: ['searchPeople', query, limit, offset],
+    queryFn: () => searchPeople({ data: { query, limit, offset } }),
+  })
 
 export const nowPlayingQueryOptions = queryOptions({
   queryKey: ['nowPlaying'],
