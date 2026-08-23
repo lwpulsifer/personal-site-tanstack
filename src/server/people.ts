@@ -20,8 +20,14 @@ export const getPeopleGraph = createServerFn({ method: 'GET' }).handler(
       { data: people, error: peopleError },
       { data: connections, error: connectionsError },
     ] = await Promise.all([
-      supabase.from('people').select('*').order('name'),
-      supabase.from('people_connections').select('*').order('created_at'),
+      supabase
+        .from('people')
+        .select('*')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('people_connections')
+        .select('*')
+        .order('created_at', { ascending: false }),
     ])
 
     if (peopleError) throw new Error(peopleError.message)
@@ -180,7 +186,7 @@ export const searchPeople = createServerFn({ method: 'GET' })
     let q = supabase
       .from('people')
       .select('*', { count: 'exact' })
-      .order('name')
+      .order('created_at', { ascending: false })
     if (data.query?.trim()) {
       q = q.ilike('name', `%${data.query.trim()}%`)
     }
