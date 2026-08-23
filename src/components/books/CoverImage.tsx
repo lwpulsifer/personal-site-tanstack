@@ -20,11 +20,16 @@ export function CoverImage({
   isbn?: string | null
   iconClassName?: string
 }) {
-  const [failed, setFailed] = useState(false)
   const cleanIsbn = isbn ? normalizeIsbn(isbn) : ''
   const resolvedSrc =
     src ||
     (isLookupableIsbn(cleanIsbn) ? getOpenLibraryCoverUrl(cleanIsbn) : null)
+
+  // Tracks which src errored, rather than a plain boolean, so a src that's
+  // since changed (e.g. the cover was fixed via an edit) isn't stuck
+  // showing the placeholder from a previous, unrelated failure.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  const failed = failedSrc !== null && failedSrc === resolvedSrc
 
   if (!resolvedSrc || failed) {
     return (
@@ -42,7 +47,7 @@ export function CoverImage({
       loading="lazy"
       decoding="async"
       className="h-full w-full object-cover"
-      onError={() => setFailed(true)}
+      onError={() => setFailedSrc(resolvedSrc)}
     />
   )
 }
