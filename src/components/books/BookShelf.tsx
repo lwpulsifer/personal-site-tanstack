@@ -18,16 +18,16 @@ function StackedCovers({ books }: { books: DbBook[] }) {
       {covers.map((book, i) => (
         <div
           key={book.id}
-          className="absolute inset-0 overflow-hidden rounded-md bg-[var(--chip-bg)] shadow-md ring-1 ring-black/10"
+          className="absolute inset-0"
           style={{
             transform: `rotate(${(i - (covers.length - 1) / 2) * FAN_ROTATE_STEP_DEG}deg) translateX(${i * 3}px)`,
             zIndex: i,
           }}
         >
           <CoverImage
-            src={book.cover_url}
-            isbn={book.isbn}
+            book={book}
             iconClassName="text-lg"
+            className="h-full w-full rounded-md bg-[var(--chip-bg)] shadow-md ring-1 ring-black/10"
           />
         </div>
       ))}
@@ -41,6 +41,9 @@ type BookShelfProps = {
   books: DbBook[]
   defaultOpen: boolean
   onView: (book: DbBook) => void
+  // Caps how many cards render initially when the shelf is expanded, with a
+  // "Show more" button to reveal the rest. Unlimited if omitted.
+  maxVisible?: number
 }
 
 // A collapsible "shelf" of books. Collapsed, it renders as a stack of
@@ -51,10 +54,15 @@ export function BookShelf({
   books,
   defaultOpen,
   onView,
+  maxVisible,
 }: BookShelfProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
+  const [showAll, setShowAll] = useState(false)
 
   if (books.length === 0) return null
+
+  const isTruncated = !!maxVisible && !showAll && books.length > maxVisible
+  const visibleBooks = isTruncated ? books.slice(0, maxVisible) : books
 
   return (
     <section className="mb-10">
@@ -78,17 +86,30 @@ export function BookShelf({
       </button>
 
       {isOpen ? (
-        <div data-testid={`shelf-books-${shelfKey}`} className={GRID_CLASSES}>
-          {books.map((book, i) => (
-            <BookCard
-              key={book.id}
-              book={book}
-              onView={onView}
-              className="rise-in"
-              style={{ animationDelay: `${i * 60}ms` }}
-            />
-          ))}
-        </div>
+        <>
+          <div data-testid={`shelf-books-${shelfKey}`} className={GRID_CLASSES}>
+            {visibleBooks.map((book, i) => (
+              <BookCard
+                key={book.id}
+                book={book}
+                onView={onView}
+                className="rise-in"
+                style={{ animationDelay: `${i * 60}ms` }}
+              />
+            ))}
+          </div>
+
+          {isTruncated && (
+            <button
+              type="button"
+              data-testid={`shelf-show-more-${shelfKey}`}
+              onClick={() => setShowAll(true)}
+              className="mt-4 text-sm font-semibold text-[var(--text-muted)] transition hover:text-[var(--text)]"
+            >
+              Show {books.length - maxVisible} more →
+            </button>
+          )}
+        </>
       ) : (
         <button
           type="button"

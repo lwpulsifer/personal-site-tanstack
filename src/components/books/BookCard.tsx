@@ -26,9 +26,10 @@ export function BookCard({
       className={`group flex flex-col text-left transition hover:-translate-y-1 ${className}`}
       style={style}
     >
-      <div className="aspect-[2/3] w-full overflow-hidden rounded-lg bg-[var(--chip-bg)] shadow-md transition group-hover:shadow-xl">
-        <CoverImage src={book.cover_url} isbn={book.isbn} />
-      </div>
+      <CoverImage
+        book={book}
+        className="aspect-[2/3] w-full rounded-lg bg-[var(--chip-bg)] shadow-md transition group-hover:shadow-xl"
+      />
 
       <h2
         data-testid={`book-title-${book.id}`}
