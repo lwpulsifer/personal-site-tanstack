@@ -15,7 +15,13 @@ const UpsertBookSchema = z.object({
   isbn: z.string().optional(),
   cover_url: z.string().optional(),
   status: z.enum(['WANT_TO_READ', 'READING', 'READ']),
-  rating: z.number().min(1).max(5).optional(),
+  // Half-star increments only, to match the `books_rating_check` DB constraint.
+  rating: z
+    .number()
+    .min(1)
+    .max(5)
+    .refine((n) => n * 2 === Math.round(n * 2), 'Rating must be in half-star increments')
+    .optional(),
   review: z.string().optional(),
   started_at: z.string().optional(),
   finished_at: z.string().optional(),
