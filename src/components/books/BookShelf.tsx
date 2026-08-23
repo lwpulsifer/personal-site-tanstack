@@ -18,16 +18,16 @@ function StackedCovers({ books }: { books: DbBook[] }) {
       {covers.map((book, i) => (
         <div
           key={book.id}
-          className="absolute inset-0 overflow-hidden rounded-md bg-[var(--chip-bg)] shadow-md ring-1 ring-black/10"
+          className="absolute inset-0"
           style={{
             transform: `rotate(${(i - (covers.length - 1) / 2) * FAN_ROTATE_STEP_DEG}deg) translateX(${i * 3}px)`,
             zIndex: i,
           }}
         >
           <CoverImage
-            src={book.cover_url}
-            isbn={book.isbn}
+            book={book}
             iconClassName="text-lg"
+            className="h-full w-full rounded-md bg-[var(--chip-bg)] shadow-md ring-1 ring-black/10"
           />
         </div>
       ))}

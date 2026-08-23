@@ -37,9 +37,10 @@ export function BookDetail({
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex gap-4">
-            <div className="h-36 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-[var(--chip-bg)]">
-              <CoverImage src={book.cover_url} isbn={book.isbn} />
-            </div>
+            <CoverImage
+              book={book}
+              className="h-36 w-24 flex-shrink-0 rounded-lg bg-[var(--chip-bg)]"
+            />
 
             <div className="min-w-0">
               <span

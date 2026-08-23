@@ -12,8 +12,10 @@ export function isLookupableIsbn(isbn: string) {
 
 // `default=false` makes Open Library 404 instead of returning its generic
 // "no cover" placeholder image, so callers can fall back on their own icon.
+// Expects an already-normalized isbn (see normalizeIsbn) — callers need it
+// normalized anyway to check isLookupableIsbn first, so this doesn't redo it.
 export function getOpenLibraryCoverUrl(isbn: string) {
-  return `https://covers.openlibrary.org/b/isbn/${encodeURIComponent(normalizeIsbn(isbn))}-L.jpg?default=false`
+  return `https://covers.openlibrary.org/b/isbn/${encodeURIComponent(isbn)}-L.jpg?default=false`
 }
 
 // For results (e.g. from the title search API) that carry a cover id but no

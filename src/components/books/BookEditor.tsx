@@ -269,13 +269,11 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
         </div>
 
         <div className="flex gap-4">
-          <div className="h-28 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-[var(--chip-bg)]">
-            <CoverImage
-              src={coverUrl || null}
-              isbn={isbn}
-              iconClassName="text-2xl"
-            />
-          </div>
+          <CoverImage
+            book={{ cover_url: coverUrl || null, isbn }}
+            iconClassName="text-2xl"
+            className="h-28 w-20 flex-shrink-0 rounded-lg bg-[var(--chip-bg)]"
+          />
 
           <div className="flex-1 space-y-2.5">
             <div className="relative">
@@ -419,6 +417,7 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
               value={coverUrl}
               onChange={(e) => setCoverUrl(e.target.value)}
               placeholder="https://…"
+              data-testid="book-cover-input"
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
             />
           </div>

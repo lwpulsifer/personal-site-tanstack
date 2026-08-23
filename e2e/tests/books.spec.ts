@@ -231,6 +231,62 @@ test.describe('admin: book management', () => {
     await authExpect(card).toHaveCount(0, { timeout: 20_000 })
   })
 
+  test('cover recovers after a broken cover URL is fixed via edit', async ({ page }) => {
+    const title = uniqueTitle('CoverRecovery')
+    const brokenUrl = 'https://example.com/e2e-broken-cover.jpg'
+    const fixedUrl = 'https://example.com/e2e-fixed-cover.jpg'
+    const onePixelPng = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      'base64',
+    )
+
+    await page.route(brokenUrl, (route) => route.fulfill({ status: 404 }))
+    await page.route(fixedUrl, (route) =>
+      route.fulfill({ status: 200, contentType: 'image/png', body: onePixelPng }),
+    )
+
+    await page.goto('/books')
+    await ensureHydrated(page)
+    const card = await addBook(page, title)
+    const detail = page.getByTestId('book-detail')
+    const editor = page.getByTestId('book-editor')
+
+    // Point the book at a cover URL that will fail to load.
+    await card.click()
+    await authExpect(detail).toBeVisible({ timeout: 20_000 })
+    await detail.getByTestId('book-edit').click()
+    await authExpect(editor).toBeVisible({ timeout: 20_000 })
+    await fillStable(editor.getByTestId('book-cover-input'), brokenUrl, 15_000)
+    await editor.getByTestId('book-save').click()
+    await authExpect(editor).toHaveCount(0, { timeout: 20_000 })
+
+    // Broken cover -> placeholder icon, no <img>.
+    await authExpect(card.getByTestId('cover-placeholder')).toBeVisible({ timeout: 20_000 })
+    await authExpect(card.getByTestId('cover-image')).toHaveCount(0)
+
+    // Fix the cover URL via a second edit — same book, same CoverImage
+    // instance (never remounts), so this exercises the exact case that
+    // used to get stuck showing the placeholder forever.
+    await card.click()
+    await authExpect(detail).toBeVisible({ timeout: 20_000 })
+    await detail.getByTestId('book-edit').click()
+    await authExpect(editor).toBeVisible({ timeout: 20_000 })
+    await fillStable(editor.getByTestId('book-cover-input'), fixedUrl, 15_000)
+    await editor.getByTestId('book-save').click()
+    await authExpect(editor).toHaveCount(0, { timeout: 20_000 })
+
+    await authExpect(card.getByTestId('cover-image')).toBeVisible({ timeout: 20_000 })
+    await authExpect(card.getByTestId('cover-image')).toHaveAttribute('src', fixedUrl)
+    await authExpect(card.getByTestId('cover-placeholder')).toHaveCount(0)
+
+    // Clean up
+    await card.click()
+    await authExpect(detail).toBeVisible({ timeout: 20_000 })
+    page.once('dialog', (dialog) => dialog.accept())
+    await detail.getByTestId('book-delete').click()
+    await authExpect(card).toHaveCount(0, { timeout: 20_000 })
+  })
+
   test('can delete a book from the detail view', async ({ page }) => {
     const title = uniqueTitle('Delete')
 
