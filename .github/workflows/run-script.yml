@@ -1,0 +1,65 @@
+name: Run Script Against Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch whose scripts/ to run from'
+        required: true
+        default: 'main'
+      script:
+        description: 'Script path, e.g. scripts/import-goodreads.ts'
+        required: true
+      args:
+        description: 'Arguments passed to the script (space-separated), e.g. scripts/data/goodreads_library_export.csv --dry-run'
+        required: false
+        default: ''
+      confirm:
+        description: 'Type "run" to confirm you want to run this script against production'
+        required: true
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+
+    steps:
+      - name: Check confirmation input
+        if: github.event.inputs.confirm != 'run'
+        run: |
+          echo "Confirmation input did not match 'run' — aborting."
+          exit 1
+
+      - name: Validate script path
+        run: |
+          case "${{ github.event.inputs.script }}" in
+            scripts/*.ts)
+              ;;
+            *)
+              echo "script must be a .ts file under scripts/ (got: '${{ github.event.inputs.script }}')"
+              exit 1
+              ;;
+          esac
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Confirm script exists
+        run: test -f "${{ github.event.inputs.script }}" || (echo "No such script: ${{ github.event.inputs.script }}" && exit 1)
+
+      - name: Run script
+        run: npx tsx "$SCRIPT" $ARGS
+        env:
+          SCRIPT: ${{ github.event.inputs.script }}
+          ARGS: ${{ github.event.inputs.args }}
+          SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.PROD_SUPABASE_KEY }}
