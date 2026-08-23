@@ -35,7 +35,7 @@ function groupBooks(books: DbBook[]) {
     .sort((a, b) => byDateDesc(a.started_at, b.started_at))
   const read = books
     .filter((b) => b.status === 'READ')
-    .sort((a, b) => byDateDesc(a.finished_at, b.finished_at))
+    .sort((a, b) => byDateDesc(a.started_at, b.started_at))
   const wantToRead = books
     .filter((b) => b.status === 'WANT_TO_READ')
     .sort((a, b) => byDateDesc(a.created_at, b.created_at))

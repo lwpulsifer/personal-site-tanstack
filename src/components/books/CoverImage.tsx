@@ -39,6 +39,8 @@ export function CoverImage({
     <img
       src={resolvedSrc}
       alt=""
+      loading="lazy"
+      decoding="async"
       className="h-full w-full object-cover"
       onError={() => setFailed(true)}
     />
