@@ -359,4 +359,68 @@ test.describe('admin: people graph', () => {
       await authExpect(personItem).toHaveCount(0, { timeout: 20_000 })
     }
   })
+
+  test('search panel finds cousins via the Cousins preset', async ({ page }) => {
+    const nameMe = uniqueName('SearchMe')
+    const nameParent = uniqueName('SearchParent')
+    const nameAunt = uniqueName('SearchAunt')
+    const nameCousin = uniqueName('SearchCousin')
+
+    await page.goto('/people')
+    await ensureHydrated(page)
+
+    for (const name of [nameMe, nameParent, nameAunt, nameCousin]) {
+      await fillStable(page.getByTestId('person-name-input'), name, 15_000)
+      await page.getByTestId('add-person-btn').click()
+      await authExpect(page.getByTestId('person-list')).toContainText(name, { timeout: 20_000 })
+    }
+
+    async function connect(a: string, b: string, kind: string) {
+      await page.getByTestId('connection-person-a-select').selectOption({ label: a })
+      await page.getByTestId('connection-person-b-select').selectOption({ label: b })
+      await page.getByTestId('connection-kind-select').selectOption(kind)
+      await page.getByTestId('add-connection-btn').click()
+      const item = page.getByTestId('connection-list-item').filter({ hasText: a })
+      await authExpect(item.filter({ hasText: b })).toBeVisible({ timeout: 20_000 })
+    }
+
+    // Parent is my parent, Aunt is Parent's sibling, Cousin is Aunt's child.
+    await connect(nameParent, nameMe, 'parent_child')
+    await connect(nameParent, nameAunt, 'sibling')
+    await connect(nameAunt, nameCousin, 'parent_child')
+
+    await page.getByTestId('search-start-select').selectOption({ label: nameMe })
+    await page.getByTestId('search-preset-btn').filter({ hasText: 'Cousins' }).click()
+
+    await authExpect(
+      page.getByTestId('search-result-item').filter({ hasText: nameCousin }),
+    ).toBeVisible({ timeout: 20_000 })
+    // Parent and Aunt themselves shouldn't show up as cousins.
+    await authExpect(
+      page.getByTestId('search-result-item').filter({ hasText: nameParent }),
+    ).toHaveCount(0)
+    await authExpect(
+      page.getByTestId('search-result-item').filter({ hasText: nameAunt }),
+    ).toHaveCount(0)
+
+    // Clean up
+    for (const [a, b] of [
+      [nameParent, nameMe],
+      [nameParent, nameAunt],
+      [nameAunt, nameCousin],
+    ]) {
+      const item = page
+        .getByTestId('connection-list-item')
+        .filter({ hasText: a })
+        .filter({ hasText: b })
+      await item.getByTestId('delete-connection-btn').click()
+      await authExpect(item).toHaveCount(0, { timeout: 20_000 })
+    }
+    for (const name of [nameMe, nameParent, nameAunt, nameCousin]) {
+      const personItem = page.getByTestId('person-list-item').filter({ hasText: name })
+      page.once('dialog', (dialog) => dialog.accept())
+      await personItem.getByTestId('delete-person-btn').click()
+      await authExpect(personItem).toHaveCount(0, { timeout: 20_000 })
+    }
+  })
 })

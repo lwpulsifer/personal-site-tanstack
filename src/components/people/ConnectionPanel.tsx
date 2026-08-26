@@ -186,13 +186,15 @@ export function ConnectionPanel({
         className="mb-3 flex flex-wrap items-center gap-2"
       >
         <select
-          aria-label="Person A"
+          aria-label={kind === 'parent_child' ? 'Parent' : 'Person A'}
           value={personAId}
           onChange={(e) => setPersonAId(e.target.value)}
           data-testid="connection-person-a-select"
           className={selectClassName}
         >
-          <option value="">Person A</option>
+          <option value="">
+            {kind === 'parent_child' ? 'Parent' : 'Person A'}
+          </option>
           {people.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
@@ -215,13 +217,15 @@ export function ConnectionPanel({
         </select>
 
         <select
-          aria-label="Person B"
+          aria-label={kind === 'parent_child' ? 'Child' : 'Person B'}
           value={personBId}
           onChange={(e) => setPersonBId(e.target.value)}
           data-testid="connection-person-b-select"
           className={selectClassName}
         >
-          <option value="">Person B</option>
+          <option value="">
+            {kind === 'parent_child' ? 'Child' : 'Person B'}
+          </option>
           {people.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
@@ -292,7 +296,11 @@ export function ConnectionPanel({
                     className="flex flex-wrap items-center gap-2 rounded-lg px-2 py-1.5"
                   >
                     <select
-                      aria-label="Edit person A"
+                      aria-label={
+                        editKind === 'parent_child'
+                          ? 'Edit parent'
+                          : 'Edit person A'
+                      }
                       value={editPersonAId}
                       onChange={(e) => setEditPersonAId(e.target.value)}
                       data-testid="connection-edit-person-a-select"
@@ -322,7 +330,11 @@ export function ConnectionPanel({
                     </select>
 
                     <select
-                      aria-label="Edit person B"
+                      aria-label={
+                        editKind === 'parent_child'
+                          ? 'Edit child'
+                          : 'Edit person B'
+                      }
                       value={editPersonBId}
                       onChange={(e) => setEditPersonBId(e.target.value)}
                       data-testid="connection-edit-person-b-select"
