@@ -220,6 +220,9 @@ export function GroupPanel({
         {mode === 'clique'
           ? 'Pick a set of people and a relationship type to connect every one of them to every other one — e.g. a friend group or a household.'
           : "Pick one anchor person and a set of others to connect the anchor to each of them, without connecting the others to each other — e.g. one person's several coworkers."}
+        {mode === 'star' && kind === 'parent_child' && (
+          <> With Parent-Child, the anchor is the parent of everyone else.</>
+        )}
       </p>
 
       <form

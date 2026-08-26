@@ -1,5 +1,11 @@
 import type { ConnectionKind } from '#/server/people'
 
+// people_connections has no direction column — connections are stored as an
+// unordered (person_a_id, person_b_id) pair for every kind except
+// 'parent_child', where person_a_id is the parent and person_b_id is the
+// child by convention (enforced by the UI, not the database). Relation
+// queries (see SearchPanel.tsx) rely on this to walk the family tree.
+
 export const CONNECTION_KIND_OPTIONS: {
   value: ConnectionKind
   label: string
