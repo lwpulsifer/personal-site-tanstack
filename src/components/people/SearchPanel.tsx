@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { CONNECTION_KIND_LABELS } from '#/lib/connectionKind'
 import type { ConnectionKind, DbConnection, DbPerson } from '#/server/people'
 
@@ -80,7 +80,7 @@ function applyStep(
   return result
 }
 
-export function SearchPanel({
+export const SearchPanel = memo(function SearchPanel({
   people,
   connections,
 }: {
@@ -305,4 +305,4 @@ export function SearchPanel({
       )}
     </div>
   )
-}
+})

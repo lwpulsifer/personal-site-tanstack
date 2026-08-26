@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 import { CONNECTION_KIND_OPTIONS } from '#/lib/connectionKind'
 import {
   type ConnectionKind,
@@ -138,7 +138,7 @@ const modeToggleClassName = (active: boolean) =>
       : 'border border-[var(--border)] text-[var(--text)] hover:bg-[var(--hover-bg)]'
   }`
 
-export function GroupPanel({
+export const GroupPanel = memo(function GroupPanel({
   people,
   onChanged,
 }: {
@@ -342,4 +342,4 @@ export function GroupPanel({
       )}
     </div>
   )
-}
+})

@@ -1,5 +1,5 @@
 import { createClientOnlyFn } from '@tanstack/react-start'
-import { lazy, Suspense } from 'react'
+import { lazy, memo, Suspense } from 'react'
 import { useHydrated } from '#/lib/hooks/useHydrated'
 import type { DbConnection, DbPerson } from '#/server/people'
 import type { GraphFocusRequest } from './graphFocus'
@@ -13,7 +13,7 @@ const PeopleGraphClient = lazy(async () => {
   return { default: m.PeopleGraph }
 })
 
-export function PeopleGraph({
+export const PeopleGraph = memo(function PeopleGraph({
   people,
   connections,
   onSelectPerson,
@@ -40,4 +40,4 @@ export function PeopleGraph({
       />
     </Suspense>
   )
-}
+})
