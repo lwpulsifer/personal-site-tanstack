@@ -21,17 +21,28 @@ function pairKey(a: string, b: string) {
   return [a, b].sort((x, y) => x.localeCompare(y)).join(':')
 }
 
-// Walks parent_child connections (person_a_id = parent, person_b_id = child
-// — see connectionKind.ts) to find people who share a parent but have no
-// sibling connection between them yet.
+// Walks parent_child connections to find people who share a parent but have
+// no sibling connection between them yet. Deliberately one-directional:
+// person_a_id is the parent and person_b_id is the child (see
+// connectionKind.ts) — only person_a_id is ever used as the grouping key
+// below, so this only pairs up people who are both *children* of the same
+// parent. It never symmetrizes the edge or groups by person_b_id, which
+// would incorrectly treat "shares a child" (i.e. co-parents / partners) as
+// "shares a parent".
 function findSiblingSuggestions(connections: DbConnection[]): Suggestion[] {
-  const childrenByParent = new Map<string, string[]>()
+  const childrenByParent = new Map<string, Set<string>>()
   for (const c of connections) {
     if (c.kind !== 'parent_child') continue
+    // The no_self_loop DB constraint already rules this out, but there's no
+    // uniqueness constraint on (person_a_id, person_b_id, kind) — the same
+    // parent/child pair could be entered twice. A Set here (rather than an
+    // array) absorbs that duplication, since two identical entries would
+    // otherwise pair a child against themselves as their own "sibling".
+    if (c.person_a_id === c.person_b_id) continue
     if (!childrenByParent.has(c.person_a_id)) {
-      childrenByParent.set(c.person_a_id, [])
+      childrenByParent.set(c.person_a_id, new Set())
     }
-    childrenByParent.get(c.person_a_id)?.push(c.person_b_id)
+    childrenByParent.get(c.person_a_id)?.add(c.person_b_id)
   }
 
   const existingSiblingPairs = new Set<string>()
@@ -42,7 +53,8 @@ function findSiblingSuggestions(connections: DbConnection[]): Suggestion[] {
   }
 
   const byPair = new Map<string, Suggestion>()
-  for (const [parentId, children] of childrenByParent) {
+  for (const [parentId, childrenSet] of childrenByParent) {
+    const children = [...childrenSet]
     for (let i = 0; i < children.length; i++) {
       for (let j = i + 1; j < children.length; j++) {
         const key = pairKey(children[i], children[j])
