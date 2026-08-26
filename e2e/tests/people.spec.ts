@@ -215,4 +215,148 @@ test.describe('admin: people graph', () => {
       await authExpect(item).toHaveCount(0, { timeout: 20_000 })
     }
   })
+
+  test('creates a group that connects every member to every other member', async ({ page }) => {
+    const nameA = uniqueName('GroupA')
+    const nameB = uniqueName('GroupB')
+    const nameC = uniqueName('GroupC')
+
+    await page.goto('/people')
+    await ensureHydrated(page)
+
+    for (const name of [nameA, nameB, nameC]) {
+      await fillStable(page.getByTestId('person-name-input'), name, 15_000)
+      await page.getByTestId('add-person-btn').click()
+      await authExpect(page.getByTestId('person-list')).toContainText(name, { timeout: 20_000 })
+    }
+
+    const groupInput = page.getByTestId('group-people-input')
+    for (const name of [nameA, nameB, nameC]) {
+      await fillStable(groupInput, name, 15_000)
+      const suggestion = page.getByTestId('group-people-suggestions').getByText(name, { exact: true })
+      await authExpect(suggestion).toBeVisible({ timeout: 20_000 })
+      await suggestion.click()
+      await authExpect(
+        page.getByTestId('group-person-chip').filter({ hasText: name }),
+      ).toBeVisible()
+    }
+
+    await page.getByTestId('group-kind-select').selectOption('friend')
+    await page.getByTestId('create-group-btn').click()
+    await authExpect(page.getByText('Created 3 connections.')).toBeVisible({ timeout: 20_000 })
+
+    for (const [a, b] of [
+      [nameA, nameB],
+      [nameA, nameC],
+      [nameB, nameC],
+    ]) {
+      const item = page
+        .getByTestId('connection-list-item')
+        .filter({ hasText: a })
+        .filter({ hasText: b })
+      await authExpect(item).toContainText('friend', { timeout: 20_000 })
+    }
+
+    // Clean up
+    for (const [a, b] of [
+      [nameA, nameB],
+      [nameA, nameC],
+      [nameB, nameC],
+    ]) {
+      const item = page
+        .getByTestId('connection-list-item')
+        .filter({ hasText: a })
+        .filter({ hasText: b })
+      await item.getByTestId('delete-connection-btn').click()
+      await authExpect(item).toHaveCount(0, { timeout: 20_000 })
+    }
+    for (const name of [nameA, nameB, nameC]) {
+      const personItem = page.getByTestId('person-list-item').filter({ hasText: name })
+      page.once('dialog', (dialog) => dialog.accept())
+      await personItem.getByTestId('delete-person-btn').click()
+      await authExpect(personItem).toHaveCount(0, { timeout: 20_000 })
+    }
+  })
+
+  test('star mode connects one anchor to several others, keeps the selection after submit, and clears on demand', async ({
+    page,
+  }) => {
+    const nameAnchor = uniqueName('StarAnchor')
+    const nameB = uniqueName('StarB')
+    const nameC = uniqueName('StarC')
+
+    await page.goto('/people')
+    await ensureHydrated(page)
+
+    for (const name of [nameAnchor, nameB, nameC]) {
+      await fillStable(page.getByTestId('person-name-input'), name, 15_000)
+      await page.getByTestId('add-person-btn').click()
+      await authExpect(page.getByTestId('person-list')).toContainText(name, { timeout: 20_000 })
+    }
+
+    await page.getByTestId('group-mode-star-btn').click()
+
+    // Anchor is picked from a standalone select, independent of the members picker.
+    await page.getByTestId('group-anchor-select').selectOption({ label: nameAnchor })
+
+    const groupInput = page.getByTestId('group-people-input')
+    for (const name of [nameB, nameC]) {
+      await fillStable(groupInput, name, 15_000)
+      const suggestion = page.getByTestId('group-people-suggestions').getByText(name, { exact: true })
+      await authExpect(suggestion).toBeVisible({ timeout: 20_000 })
+      await suggestion.click()
+    }
+
+    // The anchor is never offered as a member to pick.
+    await fillStable(groupInput, nameAnchor, 15_000)
+    await authExpect(page.getByTestId('group-people-suggestions')).toHaveCount(0)
+    await groupInput.fill('')
+
+    await page.getByTestId('group-kind-select').selectOption('coworker')
+    await page.getByTestId('create-group-btn').click()
+    await authExpect(page.getByText('Created 2 connections.')).toBeVisible({ timeout: 20_000 })
+
+    for (const other of [nameB, nameC]) {
+      const item = page
+        .getByTestId('connection-list-item')
+        .filter({ hasText: nameAnchor })
+        .filter({ hasText: other })
+      await authExpect(item).toContainText('coworker', { timeout: 20_000 })
+    }
+
+    // B and C should NOT be connected to each other.
+    const bcItem = page
+      .getByTestId('connection-list-item')
+      .filter({ hasText: nameB })
+      .filter({ hasText: nameC })
+    await authExpect(bcItem).toHaveCount(0)
+
+    // Anchor and members are preserved after submission, not reset.
+    await authExpect(
+      page.getByTestId('group-anchor-select').locator('option:checked'),
+    ).toHaveText(nameAnchor)
+    await authExpect(page.getByTestId('group-person-chip').filter({ hasText: nameB })).toBeVisible()
+    await authExpect(page.getByTestId('group-person-chip').filter({ hasText: nameC })).toBeVisible()
+
+    // Clear resets anchor, members, and comment.
+    await page.getByTestId('group-clear-btn').click()
+    await authExpect(page.getByTestId('group-anchor-select')).toHaveValue('')
+    await authExpect(page.getByTestId('group-person-chip')).toHaveCount(0)
+
+    // Clean up
+    for (const other of [nameB, nameC]) {
+      const item = page
+        .getByTestId('connection-list-item')
+        .filter({ hasText: nameAnchor })
+        .filter({ hasText: other })
+      await item.getByTestId('delete-connection-btn').click()
+      await authExpect(item).toHaveCount(0, { timeout: 20_000 })
+    }
+    for (const name of [nameAnchor, nameB, nameC]) {
+      const personItem = page.getByTestId('person-list-item').filter({ hasText: name })
+      page.once('dialog', (dialog) => dialog.accept())
+      await personItem.getByTestId('delete-person-btn').click()
+      await authExpect(personItem).toHaveCount(0, { timeout: 20_000 })
+    }
+  })
 })

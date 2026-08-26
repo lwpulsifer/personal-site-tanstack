@@ -1,7 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { useState } from 'react'
+import { ErrorBoundary } from '#/components/ErrorBoundary'
 import { ConnectionPanel } from '#/components/people/ConnectionPanel'
+import { GroupPanel } from '#/components/people/GroupPanel'
 import type { GraphFocusRequest } from '#/components/people/graphFocus'
 import { PeopleGraph } from '#/components/people/PeopleGraph'
 import { PersonPanel } from '#/components/people/PersonPanel'
@@ -90,12 +92,14 @@ function PeopleIndex() {
       </section>
 
       <div className="mb-6 h-[420px]">
-        <PeopleGraph
-          people={data.people}
-          connections={data.connections}
-          onSelectPerson={setSelectedPerson}
-          focusRequest={focusRequest}
-        />
+        <ErrorBoundary>
+          <PeopleGraph
+            people={data.people}
+            connections={data.connections}
+            onSelectPerson={setSelectedPerson}
+            focusRequest={focusRequest}
+          />
+        </ErrorBoundary>
       </div>
 
       {selectedPerson && (
@@ -116,6 +120,10 @@ function PeopleIndex() {
           isStale={isFetching}
           onChanged={handleConnectionChanged}
         />
+      </div>
+
+      <div className="mt-4">
+        <GroupPanel people={data.people} onChanged={invalidate} />
       </div>
     </main>
   )

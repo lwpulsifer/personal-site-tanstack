@@ -172,6 +172,89 @@ export const deleteConnection = createServerFn({ method: 'POST' })
     return { ok: true }
   })
 
+const InsertConnectionGroupSchema = z
+  .object({
+    personIds: z.array(z.string()).min(2),
+    kind: ConnectionKindSchema,
+    // 'clique' connects every person to every other person (a friend group,
+    // a household). 'star' connects only anchorId to everyone else in the
+    // list, without connecting the others to each other (e.g. one person's
+    // several coworkers, who aren't necessarily connected to one another).
+    mode: z.enum(['clique', 'star']).default('clique'),
+    anchorId: z.string().optional(),
+    // Ancillary free-text comment applied to every connection in the group.
+    label: z.string().optional(),
+  })
+  .refine((data) => new Set(data.personIds).size === data.personIds.length, {
+    message: 'A group cannot include the same person twice',
+  })
+  .refine(
+    (data) =>
+      data.mode !== 'star' || data.personIds.includes(data.anchorId ?? ''),
+    { message: 'The anchor person must be one of the selected people' },
+  )
+
+// Connects people in bulk with the same relationship kind, skipping any pair
+// that's already connected with that kind (so re-submitting with one new
+// member only creates the connections involving the new person).
+export const insertConnectionGroup = createServerFn({ method: 'POST' })
+  .inputValidator(InsertConnectionGroupSchema)
+  .handler(async ({ data }) => {
+    await requireAuth()
+    const supabase = getSupabaseServiceClient()
+    const ids = data.personIds
+
+    const pairsToConsider: [string, string][] =
+      data.mode === 'star'
+        ? ids
+            .filter((id) => id !== data.anchorId)
+            .map((id) => [data.anchorId as string, id])
+        : ids.flatMap((a, i) =>
+            ids.slice(i + 1).map((b) => [a, b] as [string, string]),
+          )
+
+    const { data: existing, error: existingError } = await supabase
+      .from('people_connections')
+      .select('person_a_id, person_b_id')
+      .eq('kind', data.kind)
+      .or(`person_a_id.in.(${ids.join(',')}),person_b_id.in.(${ids.join(',')})`)
+    if (existingError) throw new Error(existingError.message)
+
+    const pairKey = (a: string, b: string) =>
+      [a, b].sort((x, y) => x.localeCompare(y)).join(':')
+    const existingPairs = new Set(
+      (existing ?? []).map((c) => pairKey(c.person_a_id, c.person_b_id)),
+    )
+
+    const rows: {
+      person_a_id: string
+      person_b_id: string
+      kind: ConnectionKind
+      label: string | null
+    }[] = []
+    for (const [a, b] of pairsToConsider) {
+      if (existingPairs.has(pairKey(a, b))) continue
+      rows.push({
+        person_a_id: a,
+        person_b_id: b,
+        kind: data.kind,
+        label: data.label?.trim() || null,
+      })
+    }
+
+    const skipped = pairsToConsider.length - rows.length
+    if (rows.length === 0) {
+      return { connections: [] as DbConnection[], skipped }
+    }
+
+    const { data: connections, error } = await supabase
+      .from('people_connections')
+      .insert(rows)
+      .select()
+    if (error) throw new Error(error.message)
+    return { connections: (connections ?? []) as DbConnection[], skipped }
+  })
+
 export const searchPeople = createServerFn({ method: 'GET' })
   .inputValidator(
     z.object({
