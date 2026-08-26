@@ -16,6 +16,7 @@ import type { GraphFocusRequest } from './graphFocus'
 
 type GraphNode = NodeObject<{ id: string; name: string }>
 type GraphLink = {
+  id: string
   source: string
   target: string
   displayText: string
@@ -397,6 +398,7 @@ export function PeopleGraph({
         const nameA = peopleById.get(c.person_a_id)?.name ?? 'Unknown'
         const nameB = peopleById.get(c.person_b_id)?.name ?? 'Unknown'
         return {
+          id: c.id,
           source: c.person_a_id,
           target: c.person_b_id,
           displayText,
@@ -515,6 +517,7 @@ export function PeopleGraph({
   ])
 
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const [hoveredLinkId, setHoveredLinkId] = useState<string | null>(null)
 
   const { mode } = useThemeMode()
   // biome-ignore lint/correctness/useExhaustiveDependencies: `mode` change is the signal to re-resolve the CSS color
@@ -573,10 +576,12 @@ export function PeopleGraph({
     [highlightedId, textColor],
   )
 
+  // Relationship text is only drawn for the hovered link — with hundreds of
+  // connections, labeling every link at once was more clutter than signal.
   const linkCanvasObject = useCallback(
     (link: object, ctx: CanvasRenderingContext2D, globalScale: number) => {
-      if (globalScale < LABEL_ZOOM_THRESHOLD) return
       const l = link as GraphLink
+      if (l.id !== hoveredLinkId) return
       const source = l.source as unknown as GraphNode
       const target = l.target as unknown as GraphNode
       if (typeof source !== 'object' || typeof target !== 'object') return
@@ -589,8 +594,12 @@ export function PeopleGraph({
       ctx.fillStyle = 'rgba(100,116,139,0.9)'
       ctx.fillText(l.displayText, midX, midY)
     },
-    [],
+    [hoveredLinkId],
   )
+
+  const onLinkHover = useCallback((link: object | null) => {
+    setHoveredLinkId(link ? (link as GraphLink).id : null)
+  }, [])
 
   const onNodeClick = useCallback(
     (node: object) => {
@@ -661,6 +670,7 @@ export function PeopleGraph({
           linkWidth={linkWidth}
           linkDirectionalParticles={0}
           onNodeClick={onNodeClick}
+          onLinkHover={onLinkHover}
           onEngineStop={onEngineStop}
           nodeCanvasObject={nodeCanvasObject}
           linkCanvasObjectMode={() => 'after'}
