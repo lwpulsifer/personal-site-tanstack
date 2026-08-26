@@ -278,7 +278,7 @@ test.describe('admin: people graph', () => {
     }
   })
 
-  test('star mode connects one anchor to several others without connecting them to each other', async ({
+  test('star mode connects one anchor to several others, keeps the selection after submit, and clears on demand', async ({
     page,
   }) => {
     const nameAnchor = uniqueName('StarAnchor')
@@ -296,15 +296,22 @@ test.describe('admin: people graph', () => {
 
     await page.getByTestId('group-mode-star-btn').click()
 
+    // Anchor is picked from a standalone select, independent of the members picker.
+    await page.getByTestId('group-anchor-select').selectOption({ label: nameAnchor })
+
     const groupInput = page.getByTestId('group-people-input')
-    for (const name of [nameAnchor, nameB, nameC]) {
+    for (const name of [nameB, nameC]) {
       await fillStable(groupInput, name, 15_000)
       const suggestion = page.getByTestId('group-people-suggestions').getByText(name, { exact: true })
       await authExpect(suggestion).toBeVisible({ timeout: 20_000 })
       await suggestion.click()
     }
 
-    await page.getByTestId('group-anchor-select').selectOption({ label: nameAnchor })
+    // The anchor is never offered as a member to pick.
+    await fillStable(groupInput, nameAnchor, 15_000)
+    await authExpect(page.getByTestId('group-people-suggestions')).toHaveCount(0)
+    await groupInput.fill('')
+
     await page.getByTestId('group-kind-select').selectOption('coworker')
     await page.getByTestId('create-group-btn').click()
     await authExpect(page.getByText('Created 2 connections.')).toBeVisible({ timeout: 20_000 })
@@ -323,6 +330,18 @@ test.describe('admin: people graph', () => {
       .filter({ hasText: nameB })
       .filter({ hasText: nameC })
     await authExpect(bcItem).toHaveCount(0)
+
+    // Anchor and members are preserved after submission, not reset.
+    await authExpect(
+      page.getByTestId('group-anchor-select').locator('option:checked'),
+    ).toHaveText(nameAnchor)
+    await authExpect(page.getByTestId('group-person-chip').filter({ hasText: nameB })).toBeVisible()
+    await authExpect(page.getByTestId('group-person-chip').filter({ hasText: nameC })).toBeVisible()
+
+    // Clear resets anchor, members, and comment.
+    await page.getByTestId('group-clear-btn').click()
+    await authExpect(page.getByTestId('group-anchor-select')).toHaveValue('')
+    await authExpect(page.getByTestId('group-person-chip')).toHaveCount(0)
 
     // Clean up
     for (const other of [nameB, nameC]) {

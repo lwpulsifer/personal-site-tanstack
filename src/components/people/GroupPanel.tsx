@@ -17,10 +17,14 @@ function PeoplePicker({
   people,
   selectedIds,
   onChange,
+  excludeId,
 }: {
   people: DbPerson[]
   selectedIds: string[]
   onChange: (ids: string[]) => void
+  // A person picked elsewhere (e.g. the star-mode anchor) who shouldn't be
+  // offered here too.
+  excludeId?: string
 }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -35,7 +39,9 @@ function PeoplePicker({
     ? people
         .filter(
           (p) =>
-            p.name.toLowerCase().includes(q) && !selectedIds.includes(p.id),
+            p.name.toLowerCase().includes(q) &&
+            !selectedIds.includes(p.id) &&
+            p.id !== excludeId,
         )
         .slice(0, 8)
     : []
@@ -149,30 +155,40 @@ export function GroupPanel({
     mutationFn: () =>
       insertConnectionGroup({
         data: {
-          personIds: selectedIds,
+          personIds:
+            mode === 'star'
+              ? Array.from(new Set([anchorId, ...selectedIds]))
+              : selectedIds,
           kind,
           label,
           mode,
           anchorId: mode === 'star' ? anchorId : undefined,
         },
       }),
+    // Anchor/members are left as-is so the same set can be reused for
+    // another relationship kind without re-picking everyone; only the
+    // one-off comment is cleared. The Clear button resets everything.
     onSuccess: () => {
-      setSelectedIds([])
-      setAnchorId('')
       setLabel('')
       onChanged()
     },
   })
 
   const canCreate =
-    selectedIds.length >= 2 &&
-    (mode === 'clique' ||
-      (anchorId !== '' && selectedIds.includes(anchorId))) &&
-    !groupMutation.isPending
+    (mode === 'clique'
+      ? selectedIds.length >= 2
+      : anchorId !== '' && selectedIds.length >= 1) && !groupMutation.isPending
 
   function switchMode(nextMode: GroupMode) {
     setMode(nextMode)
     setAnchorId('')
+  }
+
+  function handleClear() {
+    setSelectedIds([])
+    setAnchorId('')
+    setLabel('')
+    groupMutation.reset()
   }
 
   return (
@@ -217,14 +233,17 @@ export function GroupPanel({
           <select
             aria-label="Anchor person"
             value={anchorId}
-            onChange={(e) => setAnchorId(e.target.value)}
+            onChange={(e) => {
+              const id = e.target.value
+              setAnchorId(id)
+              setSelectedIds((ids) => ids.filter((existing) => existing !== id))
+            }}
             data-testid="group-anchor-select"
             className={selectClassName}
           >
             <option value="">Anchor person…</option>
-            {selectedIds
-              .map((id) => people.find((p) => p.id === id))
-              .filter((p): p is DbPerson => p != null)
+            {people
+              .filter((p) => !selectedIds.includes(p.id))
               .map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -236,10 +255,8 @@ export function GroupPanel({
         <PeoplePicker
           people={people}
           selectedIds={selectedIds}
-          onChange={(ids) => {
-            setSelectedIds(ids)
-            if (anchorId && !ids.includes(anchorId)) setAnchorId('')
-          }}
+          onChange={setSelectedIds}
+          excludeId={mode === 'star' ? anchorId || undefined : undefined}
         />
 
         <select
@@ -274,17 +291,33 @@ export function GroupPanel({
         >
           {mode === 'clique' ? 'Create group' : 'Connect'}
         </button>
+
+        <button
+          type="button"
+          onClick={handleClear}
+          disabled={selectedIds.length === 0 && anchorId === '' && label === ''}
+          data-testid="group-clear-btn"
+          className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--hover-bg)] disabled:opacity-50"
+        >
+          Clear
+        </button>
       </form>
 
-      {selectedIds.length === 1 && (
+      {mode === 'clique' && selectedIds.length === 1 && (
         <p className="mt-2 text-xs text-[var(--text-muted)]">
           Add at least one more person.
         </p>
       )}
 
-      {mode === 'star' && selectedIds.length >= 2 && !anchorId && (
+      {mode === 'star' && anchorId === '' && (
         <p className="mt-2 text-xs text-[var(--text-muted)]">
-          Pick which one of them is the anchor.
+          Pick an anchor person.
+        </p>
+      )}
+
+      {mode === 'star' && anchorId !== '' && selectedIds.length === 0 && (
+        <p className="mt-2 text-xs text-[var(--text-muted)]">
+          Add at least one other person to connect the anchor to.
         </p>
       )}
 
