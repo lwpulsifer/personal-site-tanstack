@@ -277,4 +277,67 @@ test.describe('admin: people graph', () => {
       await authExpect(personItem).toHaveCount(0, { timeout: 20_000 })
     }
   })
+
+  test('star mode connects one anchor to several others without connecting them to each other', async ({
+    page,
+  }) => {
+    const nameAnchor = uniqueName('StarAnchor')
+    const nameB = uniqueName('StarB')
+    const nameC = uniqueName('StarC')
+
+    await page.goto('/people')
+    await ensureHydrated(page)
+
+    for (const name of [nameAnchor, nameB, nameC]) {
+      await fillStable(page.getByTestId('person-name-input'), name, 15_000)
+      await page.getByTestId('add-person-btn').click()
+      await authExpect(page.getByTestId('person-list')).toContainText(name, { timeout: 20_000 })
+    }
+
+    await page.getByTestId('group-mode-star-btn').click()
+
+    const groupInput = page.getByTestId('group-people-input')
+    for (const name of [nameAnchor, nameB, nameC]) {
+      await fillStable(groupInput, name, 15_000)
+      const suggestion = page.getByTestId('group-people-suggestions').getByText(name, { exact: true })
+      await authExpect(suggestion).toBeVisible({ timeout: 20_000 })
+      await suggestion.click()
+    }
+
+    await page.getByTestId('group-anchor-select').selectOption({ label: nameAnchor })
+    await page.getByTestId('group-kind-select').selectOption('coworker')
+    await page.getByTestId('create-group-btn').click()
+    await authExpect(page.getByText('Created 2 connections.')).toBeVisible({ timeout: 20_000 })
+
+    for (const other of [nameB, nameC]) {
+      const item = page
+        .getByTestId('connection-list-item')
+        .filter({ hasText: nameAnchor })
+        .filter({ hasText: other })
+      await authExpect(item).toContainText('coworker', { timeout: 20_000 })
+    }
+
+    // B and C should NOT be connected to each other.
+    const bcItem = page
+      .getByTestId('connection-list-item')
+      .filter({ hasText: nameB })
+      .filter({ hasText: nameC })
+    await authExpect(bcItem).toHaveCount(0)
+
+    // Clean up
+    for (const other of [nameB, nameC]) {
+      const item = page
+        .getByTestId('connection-list-item')
+        .filter({ hasText: nameAnchor })
+        .filter({ hasText: other })
+      await item.getByTestId('delete-connection-btn').click()
+      await authExpect(item).toHaveCount(0, { timeout: 20_000 })
+    }
+    for (const name of [nameAnchor, nameB, nameC]) {
+      const personItem = page.getByTestId('person-list-item').filter({ hasText: name })
+      page.once('dialog', (dialog) => dialog.accept())
+      await personItem.getByTestId('delete-person-btn').click()
+      await authExpect(personItem).toHaveCount(0, { timeout: 20_000 })
+    }
+  })
 })

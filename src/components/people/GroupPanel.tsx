@@ -123,6 +123,15 @@ function PeoplePicker({
   )
 }
 
+type GroupMode = 'clique' | 'star'
+
+const modeToggleClassName = (active: boolean) =>
+  `rounded-full px-3 py-1 text-xs font-semibold transition ${
+    active
+      ? 'bg-[var(--blue-deep)] text-white'
+      : 'border border-[var(--border)] text-[var(--text)] hover:bg-[var(--hover-bg)]'
+  }`
+
 export function GroupPanel({
   people,
   onChanged,
@@ -130,30 +139,71 @@ export function GroupPanel({
   people: DbPerson[]
   onChanged: () => void
 }) {
+  const [mode, setMode] = useState<GroupMode>('clique')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [anchorId, setAnchorId] = useState('')
   const [kind, setKind] = useState<ConnectionKind>('other')
   const [label, setLabel] = useState('')
 
   const groupMutation = useMutation({
     mutationFn: () =>
-      insertConnectionGroup({ data: { personIds: selectedIds, kind, label } }),
+      insertConnectionGroup({
+        data: {
+          personIds: selectedIds,
+          kind,
+          label,
+          mode,
+          anchorId: mode === 'star' ? anchorId : undefined,
+        },
+      }),
     onSuccess: () => {
       setSelectedIds([])
+      setAnchorId('')
       setLabel('')
       onChanged()
     },
   })
 
-  const canCreate = selectedIds.length >= 2 && !groupMutation.isPending
+  const canCreate =
+    selectedIds.length >= 2 &&
+    (mode === 'clique' ||
+      (anchorId !== '' && selectedIds.includes(anchorId))) &&
+    !groupMutation.isPending
+
+  function switchMode(nextMode: GroupMode) {
+    setMode(nextMode)
+    setAnchorId('')
+  }
 
   return (
     <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
       <h2 className="m-0 mb-3 text-sm font-semibold text-[var(--text)]">
         Groups
       </h2>
+
+      <div className="mb-3 flex gap-1.5">
+        <button
+          type="button"
+          onClick={() => switchMode('clique')}
+          data-testid="group-mode-clique-btn"
+          className={modeToggleClassName(mode === 'clique')}
+        >
+          Everyone ↔ everyone
+        </button>
+        <button
+          type="button"
+          onClick={() => switchMode('star')}
+          data-testid="group-mode-star-btn"
+          className={modeToggleClassName(mode === 'star')}
+        >
+          One person → everyone else
+        </button>
+      </div>
+
       <p className="mb-3 text-xs text-[var(--text-muted)]">
-        Pick a set of people and a relationship type to connect every one of
-        them to every other one — e.g. a friend group or a household.
+        {mode === 'clique'
+          ? 'Pick a set of people and a relationship type to connect every one of them to every other one — e.g. a friend group or a household.'
+          : "Pick one anchor person and a set of others to connect the anchor to each of them, without connecting the others to each other — e.g. one person's several coworkers."}
       </p>
 
       <form
@@ -163,10 +213,33 @@ export function GroupPanel({
         }}
         className="flex flex-wrap items-center gap-2"
       >
+        {mode === 'star' && (
+          <select
+            aria-label="Anchor person"
+            value={anchorId}
+            onChange={(e) => setAnchorId(e.target.value)}
+            data-testid="group-anchor-select"
+            className={selectClassName}
+          >
+            <option value="">Anchor person…</option>
+            {selectedIds
+              .map((id) => people.find((p) => p.id === id))
+              .filter((p): p is DbPerson => p != null)
+              .map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+          </select>
+        )}
+
         <PeoplePicker
           people={people}
           selectedIds={selectedIds}
-          onChange={setSelectedIds}
+          onChange={(ids) => {
+            setSelectedIds(ids)
+            if (anchorId && !ids.includes(anchorId)) setAnchorId('')
+          }}
         />
 
         <select
@@ -199,13 +272,19 @@ export function GroupPanel({
           disabled={!canCreate}
           className="rounded-full bg-[var(--blue-deep)] px-3 py-1.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
         >
-          Create group
+          {mode === 'clique' ? 'Create group' : 'Connect'}
         </button>
       </form>
 
       {selectedIds.length === 1 && (
         <p className="mt-2 text-xs text-[var(--text-muted)]">
-          Add at least one more person to form a group.
+          Add at least one more person.
+        </p>
+      )}
+
+      {mode === 'star' && selectedIds.length >= 2 && !anchorId && (
+        <p className="mt-2 text-xs text-[var(--text-muted)]">
+          Pick which one of them is the anchor.
         </p>
       )}
 
@@ -213,7 +292,7 @@ export function GroupPanel({
         <p className="mt-2 text-xs text-red-600 dark:text-red-400">
           {groupMutation.error instanceof Error
             ? groupMutation.error.message
-            : 'Could not create group'}
+            : 'Could not create connections'}
         </p>
       )}
 
