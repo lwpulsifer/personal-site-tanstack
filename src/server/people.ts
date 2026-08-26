@@ -255,6 +255,76 @@ export const insertConnectionGroup = createServerFn({ method: 'POST' })
     return { connections: (connections ?? []) as DbConnection[], skipped }
   })
 
+const InsertConnectionBatchSchema = z.object({
+  connections: z
+    .array(
+      z
+        .object({
+          personAId: z.string(),
+          personBId: z.string(),
+          kind: ConnectionKindSchema,
+        })
+        .refine((c) => c.personAId !== c.personBId, {
+          message: 'A person cannot be connected to themselves',
+        }),
+    )
+    .min(1),
+})
+
+// Inserts a specific, arbitrary list of (person, person, kind) triples — as
+// opposed to insertConnectionGroup, which generates all the pairs itself from
+// a single kind and a set of people. Used to accept a batch of suggested
+// connections (see the people-graph suggestions panel), where each pair
+// already has an independently-determined kind rather than sharing one.
+// Skips any pair that's already connected with that same kind.
+export const insertConnectionBatch = createServerFn({ method: 'POST' })
+  .inputValidator(InsertConnectionBatchSchema)
+  .handler(async ({ data }) => {
+    await requireAuth()
+    const supabase = getSupabaseServiceClient()
+
+    const ids = Array.from(
+      new Set(data.connections.flatMap((c) => [c.personAId, c.personBId])),
+    )
+    const { data: existing, error: existingError } = await supabase
+      .from('people_connections')
+      .select('person_a_id, person_b_id, kind')
+      .or(`person_a_id.in.(${ids.join(',')}),person_b_id.in.(${ids.join(',')})`)
+    if (existingError) throw new Error(existingError.message)
+
+    const tripleKey = (a: string, b: string, kind: ConnectionKind) =>
+      `${[a, b].sort((x, y) => x.localeCompare(y)).join(':')}:${kind}`
+    const existingTriples = new Set(
+      (existing ?? []).map((c) =>
+        tripleKey(c.person_a_id, c.person_b_id, c.kind),
+      ),
+    )
+
+    const rows = data.connections
+      .filter(
+        (c) =>
+          !existingTriples.has(tripleKey(c.personAId, c.personBId, c.kind)),
+      )
+      .map((c) => ({
+        person_a_id: c.personAId,
+        person_b_id: c.personBId,
+        kind: c.kind,
+        label: null,
+      }))
+
+    const skipped = data.connections.length - rows.length
+    if (rows.length === 0) {
+      return { connections: [] as DbConnection[], skipped }
+    }
+
+    const { data: connections, error } = await supabase
+      .from('people_connections')
+      .insert(rows)
+      .select()
+    if (error) throw new Error(error.message)
+    return { connections: (connections ?? []) as DbConnection[], skipped }
+  })
+
 export const searchPeople = createServerFn({ method: 'GET' })
   .inputValidator(
     z.object({

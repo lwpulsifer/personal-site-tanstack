@@ -423,4 +423,77 @@ test.describe('admin: people graph', () => {
       await authExpect(personItem).toHaveCount(0, { timeout: 20_000 })
     }
   })
+
+  test('suggests a sibling connection for two children of the same parent', async ({
+    page,
+  }) => {
+    const nameParent = uniqueName('SuggestParent')
+    const nameChildA = uniqueName('SuggestChildA')
+    const nameChildB = uniqueName('SuggestChildB')
+
+    await page.goto('/people')
+    await ensureHydrated(page)
+
+    for (const name of [nameParent, nameChildA, nameChildB]) {
+      await fillStable(page.getByTestId('person-name-input'), name, 15_000)
+      await page.getByTestId('add-person-btn').click()
+      await authExpect(page.getByTestId('person-list')).toContainText(name, { timeout: 20_000 })
+    }
+
+    async function connect(a: string, b: string, kind: string) {
+      await page.getByTestId('connection-person-a-select').selectOption({ label: a })
+      await page.getByTestId('connection-person-b-select').selectOption({ label: b })
+      await page.getByTestId('connection-kind-select').selectOption(kind)
+      await page.getByTestId('add-connection-btn').click()
+      const item = page.getByTestId('connection-list-item').filter({ hasText: a })
+      await authExpect(item.filter({ hasText: b })).toBeVisible({ timeout: 20_000 })
+    }
+
+    await connect(nameParent, nameChildA, 'parent_child')
+    await connect(nameParent, nameChildB, 'parent_child')
+
+    const suggestionItem = page
+      .getByTestId('suggestion-item')
+      .filter({ hasText: nameChildA })
+      .filter({ hasText: nameChildB })
+    await authExpect(suggestionItem).toBeVisible({ timeout: 20_000 })
+    await authExpect(suggestionItem).toContainText('sibling')
+    await authExpect(suggestionItem).toContainText(nameParent)
+
+    await page.getByTestId('suggestion-add-selected-btn').click()
+
+    const siblingConnection = page
+      .getByTestId('connection-list-item')
+      .filter({ hasText: nameChildA })
+      .filter({ hasText: nameChildB })
+    await authExpect(siblingConnection).toContainText('sibling', { timeout: 20_000 })
+
+    // Now that the sibling connection exists, the suggestion should be gone.
+    await authExpect(
+      page
+        .getByTestId('suggestion-item')
+        .filter({ hasText: nameChildA })
+        .filter({ hasText: nameChildB }),
+    ).toHaveCount(0)
+
+    // Clean up
+    for (const [a, b] of [
+      [nameParent, nameChildA],
+      [nameParent, nameChildB],
+      [nameChildA, nameChildB],
+    ]) {
+      const item = page
+        .getByTestId('connection-list-item')
+        .filter({ hasText: a })
+        .filter({ hasText: b })
+      await item.getByTestId('delete-connection-btn').click()
+      await authExpect(item).toHaveCount(0, { timeout: 20_000 })
+    }
+    for (const name of [nameParent, nameChildA, nameChildB]) {
+      const personItem = page.getByTestId('person-list-item').filter({ hasText: name })
+      page.once('dialog', (dialog) => dialog.accept())
+      await personItem.getByTestId('delete-person-btn').click()
+      await authExpect(personItem).toHaveCount(0, { timeout: 20_000 })
+    }
+  })
 })
