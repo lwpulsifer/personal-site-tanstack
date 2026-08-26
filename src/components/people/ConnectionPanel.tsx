@@ -167,6 +167,11 @@ export function ConnectionPanel({
     setEditLabel(connection.label ?? '')
   }, [])
 
+  const swapEditDirection = useCallback(() => {
+    setEditPersonAId(editPersonBId)
+    setEditPersonBId(editPersonAId)
+  }, [editPersonAId, editPersonBId])
+
   const handleDelete = useCallback(
     (connectionId: string) => deleteConnectionMutate(connectionId),
     [deleteConnectionMutate],
@@ -346,6 +351,22 @@ export function ConnectionPanel({
                         </option>
                       ))}
                     </select>
+
+                    <button
+                      type="button"
+                      onClick={swapEditDirection}
+                      disabled={!editPersonAId && !editPersonBId}
+                      aria-label="Swap direction"
+                      title={
+                        editKind === 'parent_child'
+                          ? 'Swap parent and child'
+                          : 'Swap person A and person B'
+                      }
+                      data-testid="connection-edit-swap-btn"
+                      className="rounded-full border border-[var(--border)] px-2 py-1 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--hover-bg)] disabled:opacity-50"
+                    >
+                      ⇄
+                    </button>
 
                     <input
                       type="text"

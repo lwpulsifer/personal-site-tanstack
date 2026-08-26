@@ -423,4 +423,60 @@ test.describe('admin: people graph', () => {
       await authExpect(personItem).toHaveCount(0, { timeout: 20_000 })
     }
   })
+
+  test('swap button flips connection direction while editing', async ({ page }) => {
+    const nameA = uniqueName('SwapA')
+    const nameB = uniqueName('SwapB')
+
+    await page.goto('/people')
+    await ensureHydrated(page)
+
+    for (const name of [nameA, nameB]) {
+      await fillStable(page.getByTestId('person-name-input'), name, 15_000)
+      await page.getByTestId('add-person-btn').click()
+      await authExpect(page.getByTestId('person-list')).toContainText(name, { timeout: 20_000 })
+    }
+
+    await page.getByTestId('connection-person-a-select').selectOption({ label: nameA })
+    await page.getByTestId('connection-person-b-select').selectOption({ label: nameB })
+    await page.getByTestId('connection-kind-select').selectOption('parent_child')
+    await page.getByTestId('add-connection-btn').click()
+
+    const connectionItem = page
+      .getByTestId('connection-list-item')
+      .filter({ hasText: nameA })
+      .filter({ hasText: nameB })
+    await authExpect(connectionItem).toBeVisible({ timeout: 20_000 })
+    await authExpect
+      .poll(async () => {
+        const text = (await connectionItem.textContent()) ?? ''
+        return text.indexOf(nameA) < text.indexOf(nameB)
+      })
+      .toBe(true)
+
+    await connectionItem.getByTestId('edit-connection-btn').click()
+    await page.getByTestId('connection-edit-swap-btn').click()
+    await page.getByTestId('save-connection-btn').click()
+
+    const swappedItem = page
+      .getByTestId('connection-list-item')
+      .filter({ hasText: nameA })
+      .filter({ hasText: nameB })
+    await authExpect
+      .poll(async () => {
+        const text = (await swappedItem.textContent()) ?? ''
+        return text.indexOf(nameB) < text.indexOf(nameA)
+      })
+      .toBe(true)
+
+    // Clean up
+    await swappedItem.getByTestId('delete-connection-btn').click()
+    await authExpect(swappedItem).toHaveCount(0, { timeout: 20_000 })
+    for (const name of [nameA, nameB]) {
+      const personItem = page.getByTestId('person-list-item').filter({ hasText: name })
+      page.once('dialog', (dialog) => dialog.accept())
+      await personItem.getByTestId('delete-person-btn').click()
+      await authExpect(personItem).toHaveCount(0, { timeout: 20_000 })
+    }
+  })
 })
