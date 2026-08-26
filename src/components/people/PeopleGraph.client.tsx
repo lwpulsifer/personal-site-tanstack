@@ -360,10 +360,20 @@ export function PeopleGraph({
   // component; people who are still connected to each other without going
   // through me are, in practice, a real group (a nuclear family, a friend
   // circle, coworkers at the same job).
+  //
+  // 'partner' edges are also excluded here, even though they're not "my"
+  // edges: two blood families are otherwise-independent components that
+  // happen to be bridged by a single marriage/partnership. Leaving that edge
+  // in would merge both families into one component. The couple still sits
+  // visually close via the separate short partner link force below — each
+  // partner is just pulled toward their own side's cluster centroid instead
+  // of one shared one, so the couple becomes the seam between two distinct
+  // family clusters rather than the two families blurring into one.
   const clusterIdByPersonId = useMemo(() => {
     const adjacency = new Map<string, Set<string>>()
     for (const c of visibleConnections) {
       if (c.person_a_id === selfId || c.person_b_id === selfId) continue
+      if (c.kind === 'partner') continue
       if (!adjacency.has(c.person_a_id)) adjacency.set(c.person_a_id, new Set())
       if (!adjacency.has(c.person_b_id)) adjacency.set(c.person_b_id, new Set())
       adjacency.get(c.person_a_id)?.add(c.person_b_id)
