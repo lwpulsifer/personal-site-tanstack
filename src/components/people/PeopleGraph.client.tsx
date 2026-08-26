@@ -73,6 +73,30 @@ const LINK_STRENGTH: Record<ConnectionKind, number> = {
   other: 0.15,
 }
 
+// ── Layout modes ──────────────────────────────────────────────────────────────
+// 'groups' is the hard-partition approach: connected components (see
+// clusterIdByPersonId below) get pulled to a shared centroid by a cluster
+// force, with strong charge to read as gaps between groups. 'density'
+// replaces that with a continuous alternative: no cluster force at all —
+// instead every link's distance/strength is scaled by how many neighbors its
+// two endpoints share (Jaccard similarity, excluding "me"), so densely
+// interconnected neighborhoods pull tight on their own merit rather than via
+// an assigned cluster id. A single bridging edge (like a marriage between two
+// otherwise-unconnected families) then naturally stays weak instead of
+// needing to be manually excluded from cluster computation.
+type LayoutMode = 'groups' | 'density'
+
+const GROUPS_CHARGE_STRENGTH = -1200
+const GROUPS_CHARGE_DISTANCE_MAX = 2200
+const DENSITY_CHARGE_STRENGTH = -500
+const DENSITY_CHARGE_DISTANCE_MAX = 1400
+
+// At jaccard=1 (endpoints share every other connection), distance shrinks to
+// this fraction of its base and strength gets boosted by this much (capped
+// at 1). At jaccard=0, both are unchanged from the per-kind base.
+const DENSITY_DISTANCE_MIN_FACTOR = 0.4
+const DENSITY_STRENGTH_BOOST = 0.5
+
 // ── GraphSearchOverlay ────────────────────────────────────────────────────────
 // Owns the search-input state so that typing never causes the parent (and
 // therefore ForceGraph2D) to re-render.
@@ -247,6 +271,8 @@ export function PeopleGraph({
     personId: string
     kind: ConnectionKind
   } | null>(null)
+
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>('groups')
 
   const handleApplyFilter = useCallback(
     (filter: { personId: string; kind: ConnectionKind }) =>
@@ -437,6 +463,42 @@ export function PeopleGraph({
     return meta
   }, [clusterIdByPersonId, visibleConnections])
 
+  // For 'density' layout mode: each person's neighbor set (excluding "me",
+  // same reasoning as clusterIdByPersonId above — otherwise nearly everyone
+  // shares "me" as a neighbor, which would swamp the similarity signal).
+  const neighborsExcludingSelf = useMemo(() => {
+    const map = new Map<string, Set<string>>()
+    for (const c of visibleConnections) {
+      if (c.person_a_id === selfId || c.person_b_id === selfId) continue
+      if (!map.has(c.person_a_id)) map.set(c.person_a_id, new Set())
+      if (!map.has(c.person_b_id)) map.set(c.person_b_id, new Set())
+      map.get(c.person_a_id)?.add(c.person_b_id)
+      map.get(c.person_b_id)?.add(c.person_a_id)
+    }
+    return map
+  }, [visibleConnections, selfId])
+
+  // Jaccard similarity of each link's two endpoints' neighbor sets — how
+  // many of the people they're each connected to are the same people. High
+  // overlap means "densely-connected local neighborhood", which is the
+  // continuous stand-in for cluster membership in density mode.
+  const jaccardByLinkId = useMemo(() => {
+    const scores = new Map<string, number>()
+    for (const c of visibleConnections) {
+      const a = neighborsExcludingSelf.get(c.person_a_id)
+      const b = neighborsExcludingSelf.get(c.person_b_id)
+      if (!a || !b) {
+        scores.set(c.id, 0)
+        continue
+      }
+      let intersectionSize = 0
+      for (const id of a) if (b.has(id)) intersectionSize++
+      const unionSize = new Set([...a, ...b]).size
+      scores.set(c.id, unionSize === 0 ? 0 : intersectionSize / unionSize)
+    }
+    return scores
+  }, [visibleConnections, neighborsExcludingSelf])
+
   const graphData = useMemo(
     () => ({
       nodes: visiblePeople.map((p) => ({
@@ -511,14 +573,42 @@ export function PeopleGraph({
   useEffect(() => {
     if (!isGraphMounted) return
     const linkForce = fgRef.current?.d3Force('link')
-    linkForce
-      ?.distance((link: GraphLink) => LINK_DISTANCE[link.kind])
-      .strength((link: GraphLink) => LINK_STRENGTH[link.kind])
-    // Charge is a uniform repulsion between every node pair. The cluster
-    // force above pulls each group's own members together against it, so a
-    // stronger charge mostly shows up as bigger gaps *between* clusters
-    // rather than looser packing within one.
-    fgRef.current?.d3Force('charge')?.strength(-1200).distanceMax(2200)
+    if (layoutMode === 'density') {
+      linkForce
+        ?.distance((link: GraphLink) => {
+          const base = LINK_DISTANCE[link.kind]
+          const jaccard = jaccardByLinkId.get(link.id) ?? 0
+          return base * (1 - (1 - DENSITY_DISTANCE_MIN_FACTOR) * jaccard)
+        })
+        .strength((link: GraphLink) => {
+          const base = LINK_STRENGTH[link.kind]
+          const jaccard = jaccardByLinkId.get(link.id) ?? 0
+          return Math.min(1, base + DENSITY_STRENGTH_BOOST * jaccard)
+        })
+    } else {
+      linkForce
+        ?.distance((link: GraphLink) => LINK_DISTANCE[link.kind])
+        .strength((link: GraphLink) => LINK_STRENGTH[link.kind])
+    }
+    // Charge is a uniform repulsion between every node pair. In 'groups'
+    // mode the cluster force pulls each group's own members together
+    // against it, so a strong charge mostly shows up as bigger gaps
+    // *between* clusters. In 'density' mode there's no cluster force, so a
+    // more moderate charge lets the density-weighted links do the work of
+    // pulling related neighborhoods together instead of fighting a strong
+    // uniform repulsion.
+    fgRef.current
+      ?.d3Force('charge')
+      ?.strength(
+        layoutMode === 'groups'
+          ? GROUPS_CHARGE_STRENGTH
+          : DENSITY_CHARGE_STRENGTH,
+      )
+      .distanceMax(
+        layoutMode === 'groups'
+          ? GROUPS_CHARGE_DISTANCE_MAX
+          : DENSITY_CHARGE_DISTANCE_MAX,
+      )
     fgRef.current?.d3Force(
       'collide',
       forceCollide((node: unknown) =>
@@ -529,13 +619,15 @@ export function PeopleGraph({
     )
     fgRef.current?.d3Force(
       'cluster',
-      forceClustering()
-        .clusterId(
-          (node: unknown) =>
-            clusterIdByPersonId.get((node as GraphNode).id) ??
-            (node as GraphNode).id,
-        )
-        .strength(CLUSTER_STRENGTH),
+      layoutMode === 'groups'
+        ? forceClustering()
+            .clusterId(
+              (node: unknown) =>
+                clusterIdByPersonId.get((node as GraphNode).id) ??
+                (node as GraphNode).id,
+            )
+            .strength(CLUSTER_STRENGTH)
+        : null,
     )
 
     // Orient the graph around "me": pin my node at the origin, and pull
@@ -579,6 +671,8 @@ export function PeopleGraph({
     distanceFromSelf,
     partnerNodeIds,
     clusterIdByPersonId,
+    layoutMode,
+    jaccardByLinkId,
   ])
 
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
@@ -643,9 +737,12 @@ export function PeopleGraph({
       // person, or every member of the currently hovered cluster — otherwise
       // a large graph is just names stacked on names. Ungrouped nodes (no
       // cluster, e.g. someone only connected to me) always show their name,
-      // since there's no cluster label standing in for them.
+      // since there's no cluster label standing in for them. There's no
+      // cluster concept at all in density mode, so names just follow the
+      // zoom threshold there, same as before clustering existed.
       const nodeClusterId = clusterIdByPersonId.get(n.id)
       const showLabel =
+        layoutMode === 'density' ||
         n.id === selfId ||
         n.id === highlightedId ||
         n.id === hoveredNodeId ||
@@ -667,6 +764,7 @@ export function PeopleGraph({
       hoveredNodeId,
       hoveredClusterId,
       clusterIdByPersonId,
+      layoutMode,
     ],
   )
 
@@ -707,6 +805,7 @@ export function PeopleGraph({
   // being attached to some container node in the simulation.
   const onRenderFramePost = useCallback(
     (ctx: CanvasRenderingContext2D, globalScale: number) => {
+      if (layoutMode !== 'groups') return
       for (const [clusterId, meta] of clusterMeta) {
         const nodes = nodesByClusterId.get(clusterId)
         if (!nodes) continue
@@ -729,7 +828,7 @@ export function PeopleGraph({
         ctx.fillText(meta.name, cx, minY - 12 / globalScale)
       }
     },
-    [clusterMeta, nodesByClusterId],
+    [clusterMeta, nodesByClusterId, layoutMode],
   )
 
   const onNodeClick = useCallback(
@@ -787,6 +886,35 @@ export function PeopleGraph({
         onApply={handleApplyFilter}
         onClear={handleClearFilter}
       />
+
+      <div className="absolute bottom-3 left-3 z-10 flex gap-1 rounded-full border border-[var(--border)] bg-[var(--surface)] p-1 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setLayoutMode('groups')}
+          data-testid="graph-layout-groups-btn"
+          title="Hard clusters: connected components pulled to a shared centroid"
+          className={`rounded-full px-2.5 py-1 text-xs font-semibold transition ${
+            layoutMode === 'groups'
+              ? 'bg-[var(--blue-deep)] text-white'
+              : 'text-[var(--text)] hover:bg-[var(--hover-bg)]'
+          }`}
+        >
+          Groups
+        </button>
+        <button
+          type="button"
+          onClick={() => setLayoutMode('density')}
+          data-testid="graph-layout-density-btn"
+          title="Continuous: link distance/strength scaled by shared-neighbor density"
+          className={`rounded-full px-2.5 py-1 text-xs font-semibold transition ${
+            layoutMode === 'density'
+              ? 'bg-[var(--blue-deep)] text-white'
+              : 'text-[var(--text)] hover:bg-[var(--hover-bg)]'
+          }`}
+        >
+          Density
+        </button>
+      </div>
 
       {width > 0 && height > 0 && (
         <ForceGraph2D
