@@ -13,6 +13,13 @@ anonTest.describe('people (anonymous)', () => {
     await ensureHydrated(page)
     await expect(page.getByTestId('people-heading')).toHaveCount(0)
   })
+
+  anonTest('visiting /people/quiz 404s instead of revealing the page', async ({ page }) => {
+    const response = await page.goto('/people/quiz')
+    expect(response?.status()).toBe(404)
+    await ensureHydrated(page)
+    await expect(page.getByTestId('people-quiz-heading')).toHaveCount(0)
+  })
 })
 
 test.describe('admin: people graph', () => {
@@ -417,6 +424,63 @@ test.describe('admin: people graph', () => {
       await authExpect(item).toHaveCount(0, { timeout: 20_000 })
     }
     for (const name of [nameMe, nameParent, nameAunt, nameCousin]) {
+      const personItem = page.getByTestId('person-list-item').filter({ hasText: name })
+      page.once('dialog', (dialog) => dialog.accept())
+      await personItem.getByTestId('delete-person-btn').click()
+      await authExpect(personItem).toHaveCount(0, { timeout: 20_000 })
+    }
+  })
+
+  test('quiz tab navigates from the graph and answers a question', async ({ page }) => {
+    // The quiz picks a random connection from the whole graph, so seed at
+    // least one — otherwise it shows the empty state instead of a question.
+    const nameA = uniqueName('QuizA')
+    const nameB = uniqueName('QuizB')
+
+    await page.goto('/people')
+    await ensureHydrated(page)
+
+    for (const name of [nameA, nameB]) {
+      await fillStable(page.getByTestId('person-name-input'), name, 15_000)
+      await page.getByTestId('add-person-btn').click()
+      await authExpect(page.getByTestId('person-list')).toContainText(name, { timeout: 20_000 })
+    }
+    await page.getByTestId('connection-person-a-select').selectOption({ label: nameA })
+    await page.getByTestId('connection-person-b-select').selectOption({ label: nameB })
+    await page.getByTestId('connection-kind-select').selectOption('friend')
+    await page.getByTestId('add-connection-btn').click()
+    const connectionItem = page
+      .getByTestId('connection-list-item')
+      .filter({ hasText: nameA })
+      .filter({ hasText: nameB })
+    await authExpect(connectionItem).toBeVisible({ timeout: 20_000 })
+
+    await page.getByTestId('people-tab-quiz').click()
+    await authExpect(page).toHaveURL(/\/people\/quiz$/)
+    await authExpect(page.getByTestId('people-quiz-heading')).toBeVisible({ timeout: 20_000 })
+    await authExpect(page.getByTestId('quiz-question')).toBeVisible({ timeout: 20_000 })
+
+    const answerButtons = page.getByTestId('quiz-answer-btn')
+    await authExpect(answerButtons).toHaveCount(7)
+    await answerButtons.first().click()
+
+    await authExpect(page.getByTestId('quiz-feedback')).toBeVisible({ timeout: 20_000 })
+    await authExpect(page.getByTestId('quiz-score')).toContainText('/ 1')
+    await authExpect(answerButtons.first()).toBeDisabled()
+
+    await page.getByTestId('quiz-next-btn').click()
+    await authExpect(page.getByTestId('quiz-feedback')).toHaveCount(0)
+    await authExpect(answerButtons.first()).toBeEnabled()
+
+    // Navigate back to the graph via the other tab.
+    await page.getByTestId('people-tab-graph').click()
+    await authExpect(page).toHaveURL(/\/people$/)
+    await authExpect(page.getByTestId('people-heading')).toBeVisible({ timeout: 20_000 })
+
+    // Clean up
+    await connectionItem.getByTestId('delete-connection-btn').click()
+    await authExpect(connectionItem).toHaveCount(0, { timeout: 20_000 })
+    for (const name of [nameA, nameB]) {
       const personItem = page.getByTestId('person-list-item').filter({ hasText: name })
       page.once('dialog', (dialog) => dialog.accept())
       await personItem.getByTestId('delete-person-btn').click()
