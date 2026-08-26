@@ -6,7 +6,6 @@ import ForceGraph2D, {
   type NodeObject,
 } from 'react-force-graph-2d'
 import {
-  CONNECTION_KIND_LABELS,
   CONNECTION_KIND_OPTIONS,
   connectionDisplayText,
 } from '#/lib/connectionKind'
@@ -31,7 +30,7 @@ type GraphLink = {
 // these can be much shorter — the cluster force does the "keep families and
 // friend groups apart from each other" job instead.
 const LINK_DISTANCE: Record<ConnectionKind, number> = {
-  partner: 28,
+  partner: 10,
   parent_child: 130,
   family: 90,
   sibling: 90,
@@ -51,7 +50,13 @@ const NODE_COLLISION_RADIUS = 45
 // Partners get a much smaller collision radius than everyone else, so the
 // short partner link distance above can actually pull couples in close
 // instead of being fought back apart by the general collision spacing.
-const PARTNER_COLLISION_RADIUS = 16
+//
+// A partner who has no other connections of their own (e.g. an in-law with
+// no other family entered) has nothing else pulling them toward either
+// side's cluster, so the partner link is the only thing keeping them close
+// against the strong global charge repulsion below — hence how short both
+// of these are.
+const PARTNER_COLLISION_RADIUS = 8
 
 // Ring spacing for the radial layout: each additional hop away from "me" in
 // the connection graph gets pushed out to a bigger radius, so relationships
@@ -72,6 +77,13 @@ const LINK_STRENGTH: Record<ConnectionKind, number> = {
   coworker: 0.15,
   other: 0.15,
 }
+
+// Uniform repulsion between every node pair. The cluster force below pulls
+// each group's own members together against it, so a strong charge mostly
+// shows up as bigger gaps *between* clusters rather than looser packing
+// within one.
+const CHARGE_STRENGTH = -1200
+const CHARGE_DISTANCE_MAX = 2200
 
 // ── GraphSearchOverlay ────────────────────────────────────────────────────────
 // Owns the search-input state so that typing never causes the parent (and
@@ -401,8 +413,9 @@ export function PeopleGraph({
   // A display name per cluster, so the graph can show one label for a whole
   // group instead of every member's name. Picks the most common free-text
   // comment among that cluster's internal connections (e.g. "college
-  // roommates"); if none of them have a comment, falls back to the most
-  // common relationship kind (e.g. "Friend").
+  // roommates"); if none of them have a comment, falls back to the name of
+  // whichever cluster member is directly connected to me — the actual person
+  // I know, rather than a generic relationship kind.
   const clusterMeta = useMemo(() => {
     const memberIdsByCluster = new Map<string, string[]>()
     for (const [personId, clusterId] of clusterIdByPersonId) {
@@ -411,31 +424,44 @@ export function PeopleGraph({
       memberIdsByCluster.get(clusterId)?.push(personId)
     }
 
+    // Who's directly connected to me — used as the naming fallback below:
+    // whichever cluster member I actually know personally is a much more
+    // meaningful "who is this" label than a generic relationship kind.
+    const directlyConnectedToSelf = new Set<string>()
+    if (selfId) {
+      for (const c of visibleConnections) {
+        if (c.person_a_id === selfId) directlyConnectedToSelf.add(c.person_b_id)
+        else if (c.person_b_id === selfId)
+          directlyConnectedToSelf.add(c.person_a_id)
+      }
+    }
+
     const meta = new Map<string, { memberIds: string[]; name: string }>()
     for (const [clusterId, memberIds] of memberIdsByCluster) {
       if (memberIds.length < 2) continue
       const memberSet = new Set(memberIds)
       const labelCounts = new Map<string, number>()
-      const kindCounts = new Map<ConnectionKind, number>()
       for (const c of visibleConnections) {
         if (!memberSet.has(c.person_a_id) || !memberSet.has(c.person_b_id))
           continue
-        kindCounts.set(c.kind, (kindCounts.get(c.kind) ?? 0) + 1)
         const tag = c.label?.trim()
         if (tag) labelCounts.set(tag, (labelCounts.get(tag) ?? 0) + 1)
       }
       const topLabel = [...labelCounts.entries()].sort(
         (a, b) => b[1] - a[1],
       )[0]?.[0]
-      const topKind = [...kindCounts.entries()].sort(
-        (a, b) => b[1] - a[1],
-      )[0]?.[0]
-      const name =
-        topLabel ?? (topKind ? CONNECTION_KIND_LABELS[topKind] : null)
+      // "First" here just means memberIds' own order (BFS assignment order),
+      // not anything the user picks — it's a stable, deterministic tiebreak
+      // when more than one member happens to connect directly to me.
+      const firstConnectedName = memberIds
+        .filter((id) => directlyConnectedToSelf.has(id))
+        .map((id) => peopleById.get(id)?.name)
+        .find((name): name is string => !!name)
+      const name = topLabel ?? firstConnectedName ?? null
       if (name) meta.set(clusterId, { memberIds, name })
     }
     return meta
-  }, [clusterIdByPersonId, visibleConnections])
+  }, [clusterIdByPersonId, visibleConnections, selfId, peopleById])
 
   const graphData = useMemo(
     () => ({
@@ -514,11 +540,10 @@ export function PeopleGraph({
     linkForce
       ?.distance((link: GraphLink) => LINK_DISTANCE[link.kind])
       .strength((link: GraphLink) => LINK_STRENGTH[link.kind])
-    // Charge is a uniform repulsion between every node pair. The cluster
-    // force above pulls each group's own members together against it, so a
-    // stronger charge mostly shows up as bigger gaps *between* clusters
-    // rather than looser packing within one.
-    fgRef.current?.d3Force('charge')?.strength(-1200).distanceMax(2200)
+    fgRef.current
+      ?.d3Force('charge')
+      ?.strength(CHARGE_STRENGTH)
+      .distanceMax(CHARGE_DISTANCE_MAX)
     fgRef.current?.d3Force(
       'collide',
       forceCollide((node: unknown) =>
