@@ -6,6 +6,7 @@ import ForceGraph2D, {
   type NodeObject,
 } from 'react-force-graph-2d'
 import {
+  CONNECTION_KIND_LABELS,
   CONNECTION_KIND_OPTIONS,
   connectionDisplayText,
 } from '#/lib/connectionKind'
@@ -387,6 +388,45 @@ export function PeopleGraph({
     return clusterIds
   }, [visiblePeople, visibleConnections, selfId])
 
+  // A display name per cluster, so the graph can show one label for a whole
+  // group instead of every member's name. Picks the most common free-text
+  // comment among that cluster's internal connections (e.g. "college
+  // roommates"); if none of them have a comment, falls back to the most
+  // common relationship kind (e.g. "Friend").
+  const clusterMeta = useMemo(() => {
+    const memberIdsByCluster = new Map<string, string[]>()
+    for (const [personId, clusterId] of clusterIdByPersonId) {
+      if (!memberIdsByCluster.has(clusterId))
+        memberIdsByCluster.set(clusterId, [])
+      memberIdsByCluster.get(clusterId)?.push(personId)
+    }
+
+    const meta = new Map<string, { memberIds: string[]; name: string }>()
+    for (const [clusterId, memberIds] of memberIdsByCluster) {
+      if (memberIds.length < 2) continue
+      const memberSet = new Set(memberIds)
+      const labelCounts = new Map<string, number>()
+      const kindCounts = new Map<ConnectionKind, number>()
+      for (const c of visibleConnections) {
+        if (!memberSet.has(c.person_a_id) || !memberSet.has(c.person_b_id))
+          continue
+        kindCounts.set(c.kind, (kindCounts.get(c.kind) ?? 0) + 1)
+        const tag = c.label?.trim()
+        if (tag) labelCounts.set(tag, (labelCounts.get(tag) ?? 0) + 1)
+      }
+      const topLabel = [...labelCounts.entries()].sort(
+        (a, b) => b[1] - a[1],
+      )[0]?.[0]
+      const topKind = [...kindCounts.entries()].sort(
+        (a, b) => b[1] - a[1],
+      )[0]?.[0]
+      const name =
+        topLabel ?? (topKind ? CONNECTION_KIND_LABELS[topKind] : null)
+      if (name) meta.set(clusterId, { memberIds, name })
+    }
+    return meta
+  }, [clusterIdByPersonId, visibleConnections])
+
   const graphData = useMemo(
     () => ({
       nodes: visiblePeople.map((p) => ({
@@ -409,6 +449,21 @@ export function PeopleGraph({
     }),
     [visiblePeople, visibleConnections, peopleById],
   )
+
+  // Keeps references to each cluster's live node objects (react-force-graph
+  // mutates these in place with x/y every simulation tick), so the cluster
+  // label can be drawn at the current centroid each frame without
+  // recomputing cluster membership on every render.
+  const nodesByClusterId = useMemo(() => {
+    const map = new Map<string, GraphNode[]>()
+    for (const node of graphData.nodes) {
+      const clusterId = clusterIdByPersonId.get(node.id)
+      if (!clusterId) continue
+      if (!map.has(clusterId)) map.set(clusterId, [])
+      map.get(clusterId)?.push(node)
+    }
+    return map
+  }, [graphData.nodes, clusterIdByPersonId])
 
   // Apply focus requests immediately when target nodes are already placed,
   // otherwise queue for onEngineStop (new nodes have no position yet).
@@ -518,6 +573,15 @@ export function PeopleGraph({
 
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const [hoveredLinkId, setHoveredLinkId] = useState<string | null>(null)
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null)
+
+  // Hovering any node in a cluster reveals every member's name in that
+  // cluster — otherwise only the cluster's own label (drawn in
+  // onRenderFramePost below) identifies the group, keeping a busy graph
+  // readable at a glance.
+  const hoveredClusterId = hoveredNodeId
+    ? (clusterIdByPersonId.get(hoveredNodeId) ?? null)
+    : null
 
   const { mode } = useThemeMode()
   // biome-ignore lint/correctness/useExhaustiveDependencies: `mode` change is the signal to re-resolve the CSS color
@@ -565,7 +629,20 @@ export function PeopleGraph({
         ctx.stroke()
       }
 
-      if (globalScale >= LABEL_ZOOM_THRESHOLD) {
+      // Individual names are only drawn for "me", the highlighted/searched
+      // person, or every member of the currently hovered cluster — otherwise
+      // a large graph is just names stacked on names. Ungrouped nodes (no
+      // cluster, e.g. someone only connected to me) always show their name,
+      // since there's no cluster label standing in for them.
+      const nodeClusterId = clusterIdByPersonId.get(n.id)
+      const showLabel =
+        n.id === selfId ||
+        n.id === highlightedId ||
+        n.id === hoveredNodeId ||
+        !nodeClusterId ||
+        (hoveredClusterId != null && nodeClusterId === hoveredClusterId)
+
+      if (globalScale >= LABEL_ZOOM_THRESHOLD && showLabel) {
         ctx.font = `${fontSize}px sans-serif`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
@@ -573,7 +650,14 @@ export function PeopleGraph({
         ctx.fillText(label, n.x ?? 0, (n.y ?? 0) + 6)
       }
     },
-    [highlightedId, textColor],
+    [
+      highlightedId,
+      textColor,
+      selfId,
+      hoveredNodeId,
+      hoveredClusterId,
+      clusterIdByPersonId,
+    ],
   )
 
   // Relationship text is only drawn for the hovered link — with hundreds of
@@ -600,6 +684,43 @@ export function PeopleGraph({
   const onLinkHover = useCallback((link: object | null) => {
     setHoveredLinkId(link ? (link as GraphLink).id : null)
   }, [])
+
+  const onNodeHover = useCallback((node: object | null) => {
+    setHoveredNodeId(node ? (node as GraphNode).id : null)
+  }, [])
+
+  // Draws each cluster's derived name above its current bounding box. There's
+  // no "meta node"/compound-node concept in d3-force or react-force-graph —
+  // clusters are just a shared clusterId pulling ordinary nodes toward a
+  // shared centroid (see the cluster force above) — so the label position is
+  // recomputed from the live node positions every frame here instead of
+  // being attached to some container node in the simulation.
+  const onRenderFramePost = useCallback(
+    (ctx: CanvasRenderingContext2D, globalScale: number) => {
+      for (const [clusterId, meta] of clusterMeta) {
+        const nodes = nodesByClusterId.get(clusterId)
+        if (!nodes) continue
+        let sumX = 0
+        let minY = Number.POSITIVE_INFINITY
+        let count = 0
+        for (const node of nodes) {
+          if (node.x == null || node.y == null) continue
+          sumX += node.x
+          minY = Math.min(minY, node.y)
+          count++
+        }
+        if (count === 0) continue
+        const cx = sumX / count
+        const fontSize = Math.max(11 / globalScale, 6)
+        ctx.font = `600 ${fontSize}px sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'bottom'
+        ctx.fillStyle = 'rgba(100,116,139,0.75)'
+        ctx.fillText(meta.name, cx, minY - 12 / globalScale)
+      }
+    },
+    [clusterMeta, nodesByClusterId],
+  )
 
   const onNodeClick = useCallback(
     (node: object) => {
@@ -670,11 +791,13 @@ export function PeopleGraph({
           linkWidth={linkWidth}
           linkDirectionalParticles={0}
           onNodeClick={onNodeClick}
+          onNodeHover={onNodeHover}
           onLinkHover={onLinkHover}
           onEngineStop={onEngineStop}
           nodeCanvasObject={nodeCanvasObject}
           linkCanvasObjectMode={() => 'after'}
           linkCanvasObject={linkCanvasObject}
+          onRenderFramePost={onRenderFramePost}
         />
       )}
     </div>
