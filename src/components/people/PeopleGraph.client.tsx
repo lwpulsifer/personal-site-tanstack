@@ -39,9 +39,10 @@ const LINK_DISTANCE: Record<ConnectionKind, number> = {
 }
 
 // Strength of the pull of each node toward its cluster's centroid (see
-// CLUSTER_ID below). Kept moderate so it groups sub-families/friend circles
-// together without fighting the radial "orient around me" layout.
-const CLUSTER_STRENGTH = 0.4
+// CLUSTER_ID below). Fairly strong: the tighter each cluster packs
+// internally, the more the shared charge/collision repulsion below reads as
+// whitespace *between* clusters rather than just general spread.
+const CLUSTER_STRENGTH = 0.6
 
 const NODE_COLLISION_RADIUS = 45
 
@@ -446,7 +447,11 @@ export function PeopleGraph({
     linkForce
       ?.distance((link: GraphLink) => LINK_DISTANCE[link.kind])
       .strength((link: GraphLink) => LINK_STRENGTH[link.kind])
-    fgRef.current?.d3Force('charge')?.strength(-450).distanceMax(900)
+    // Charge is a uniform repulsion between every node pair. The cluster
+    // force above pulls each group's own members together against it, so a
+    // stronger charge mostly shows up as bigger gaps *between* clusters
+    // rather than looser packing within one.
+    fgRef.current?.d3Force('charge')?.strength(-700).distanceMax(1400)
     fgRef.current?.d3Force(
       'collide',
       forceCollide((node: unknown) =>

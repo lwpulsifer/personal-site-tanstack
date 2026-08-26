@@ -215,4 +215,66 @@ test.describe('admin: people graph', () => {
       await authExpect(item).toHaveCount(0, { timeout: 20_000 })
     }
   })
+
+  test('creates a group that connects every member to every other member', async ({ page }) => {
+    const nameA = uniqueName('GroupA')
+    const nameB = uniqueName('GroupB')
+    const nameC = uniqueName('GroupC')
+
+    await page.goto('/people')
+    await ensureHydrated(page)
+
+    for (const name of [nameA, nameB, nameC]) {
+      await fillStable(page.getByTestId('person-name-input'), name, 15_000)
+      await page.getByTestId('add-person-btn').click()
+      await authExpect(page.getByTestId('person-list')).toContainText(name, { timeout: 20_000 })
+    }
+
+    const groupInput = page.getByTestId('group-people-input')
+    for (const name of [nameA, nameB, nameC]) {
+      await fillStable(groupInput, name, 15_000)
+      const suggestion = page.getByTestId('group-people-suggestions').getByText(name, { exact: true })
+      await authExpect(suggestion).toBeVisible({ timeout: 20_000 })
+      await suggestion.click()
+      await authExpect(
+        page.getByTestId('group-person-chip').filter({ hasText: name }),
+      ).toBeVisible()
+    }
+
+    await page.getByTestId('group-kind-select').selectOption('friend')
+    await page.getByTestId('create-group-btn').click()
+    await authExpect(page.getByText('Created 3 connections.')).toBeVisible({ timeout: 20_000 })
+
+    for (const [a, b] of [
+      [nameA, nameB],
+      [nameA, nameC],
+      [nameB, nameC],
+    ]) {
+      const item = page
+        .getByTestId('connection-list-item')
+        .filter({ hasText: a })
+        .filter({ hasText: b })
+      await authExpect(item).toContainText('friend', { timeout: 20_000 })
+    }
+
+    // Clean up
+    for (const [a, b] of [
+      [nameA, nameB],
+      [nameA, nameC],
+      [nameB, nameC],
+    ]) {
+      const item = page
+        .getByTestId('connection-list-item')
+        .filter({ hasText: a })
+        .filter({ hasText: b })
+      await item.getByTestId('delete-connection-btn').click()
+      await authExpect(item).toHaveCount(0, { timeout: 20_000 })
+    }
+    for (const name of [nameA, nameB, nameC]) {
+      const personItem = page.getByTestId('person-list-item').filter({ hasText: name })
+      page.once('dialog', (dialog) => dialog.accept())
+      await personItem.getByTestId('delete-person-btn').click()
+      await authExpect(personItem).toHaveCount(0, { timeout: 20_000 })
+    }
+  })
 })
