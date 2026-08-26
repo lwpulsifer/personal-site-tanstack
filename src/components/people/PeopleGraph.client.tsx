@@ -1,4 +1,5 @@
 import { forceCollide, forceRadial } from 'd3-force-3d'
+import forceClustering from 'd3-force-clustering'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ForceGraph2D, {
   type ForceGraphMethods,
@@ -22,15 +23,25 @@ type GraphLink = {
   kind: ConnectionKind
 }
 
+// The looser relationship kinds used to sit at a flat 480px, which spread
+// everyone out equally regardless of which sub-group they belonged to. Now
+// that the cluster force (below) pulls each connected sub-group together,
+// these can be much shorter — the cluster force does the "keep families and
+// friend groups apart from each other" job instead.
 const LINK_DISTANCE: Record<ConnectionKind, number> = {
   partner: 28,
-  parent_child: 260,
-  family: 480,
-  sibling: 480,
-  friend: 480,
-  coworker: 480,
-  other: 480,
+  parent_child: 180,
+  family: 150,
+  sibling: 150,
+  friend: 160,
+  coworker: 160,
+  other: 160,
 }
+
+// Strength of the pull of each node toward its cluster's centroid (see
+// CLUSTER_ID below). Kept moderate so it groups sub-families/friend circles
+// together without fighting the radial "orient around me" layout.
+const CLUSTER_STRENGTH = 0.4
 
 const NODE_COLLISION_RADIUS = 45
 
@@ -337,6 +348,43 @@ export function PeopleGraph({
     return distances
   }, [selfId, visibleConnections])
 
+  // Cluster id per person, used to pull family units / friend circles / coworker
+  // groups together (see the cluster force below). There's no explicit
+  // "family"/"group" field in the data model, so this is derived from graph
+  // structure: connected components of the relationship graph with "me"
+  // removed. Everyone connects back to me directly or transitively, so "me"
+  // is the hub that would otherwise merge every sub-group into one giant
+  // component; people who are still connected to each other without going
+  // through me are, in practice, a real group (a nuclear family, a friend
+  // circle, coworkers at the same job).
+  const clusterIdByPersonId = useMemo(() => {
+    const adjacency = new Map<string, Set<string>>()
+    for (const c of visibleConnections) {
+      if (c.person_a_id === selfId || c.person_b_id === selfId) continue
+      if (!adjacency.has(c.person_a_id)) adjacency.set(c.person_a_id, new Set())
+      if (!adjacency.has(c.person_b_id)) adjacency.set(c.person_b_id, new Set())
+      adjacency.get(c.person_a_id)?.add(c.person_b_id)
+      adjacency.get(c.person_b_id)?.add(c.person_a_id)
+    }
+    const clusterIds = new Map<string, string>()
+    for (const person of visiblePeople) {
+      if (person.id === selfId || clusterIds.has(person.id)) continue
+      const queue = [person.id]
+      clusterIds.set(person.id, person.id)
+      while (queue.length > 0) {
+        const current = queue.shift()
+        if (!current) break
+        for (const neighbor of adjacency.get(current) ?? []) {
+          if (!clusterIds.has(neighbor)) {
+            clusterIds.set(neighbor, person.id)
+            queue.push(neighbor)
+          }
+        }
+      }
+    }
+    return clusterIds
+  }, [visiblePeople, visibleConnections, selfId])
+
   const graphData = useMemo(
     () => ({
       nodes: visiblePeople.map((p) => ({
@@ -407,6 +455,16 @@ export function PeopleGraph({
           : NODE_COLLISION_RADIUS,
       ),
     )
+    fgRef.current?.d3Force(
+      'cluster',
+      forceClustering()
+        .clusterId(
+          (node: unknown) =>
+            clusterIdByPersonId.get((node as GraphNode).id) ??
+            (node as GraphNode).id,
+        )
+        .strength(CLUSTER_STRENGTH),
+    )
 
     // Orient the graph around "me": pin my node at the origin, and pull
     // every other node toward a ring whose radius grows with hop-distance
@@ -448,6 +506,7 @@ export function PeopleGraph({
     selfId,
     distanceFromSelf,
     partnerNodeIds,
+    clusterIdByPersonId,
   ])
 
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
