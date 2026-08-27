@@ -1,4 +1,3 @@
-import { TanStackDevtools } from '@tanstack/react-devtools'
 import { QueryClientProvider } from '@tanstack/react-query'
 import {
   createRootRoute,
@@ -6,8 +5,7 @@ import {
   Link,
   Scripts,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
 import { AuthProvider } from '../lib/auth'
@@ -18,6 +16,26 @@ import { getServerUser } from '../server/auth'
 import appCss from '../styles.css?url'
 
 const THEME_INIT_SCRIPT = `(function(){try{var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.style.colorScheme=prefersDark?'dark':'light';}catch(e){}})();`
+
+// Dev-only tooling, loaded lazily so the `import()` never enters the
+// production bundle at all — every visitor was previously shipping the
+// devtools panel on every page load. import.meta.env.DEV is a build-time
+// constant, so Vite dead-code-eliminates this whole branch in production.
+const TanStackDevtools = import.meta.env.DEV
+  ? lazy(() =>
+      import('@tanstack/react-devtools').then((m) => ({
+        default: m.TanStackDevtools,
+      })),
+    )
+  : null
+
+const TanStackRouterDevtoolsPanel = import.meta.env.DEV
+  ? lazy(() =>
+      import('@tanstack/react-router-devtools').then((m) => ({
+        default: m.TanStackRouterDevtoolsPanel,
+      })),
+    )
+  : null
 
 export const Route = createRootRoute({
   loader: async () => {
@@ -107,17 +125,21 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             <Footer />
           </AuthProvider>
         </QueryClientProvider>
-        <TanStackDevtools
-          config={{
-            position: 'bottom-right',
-          }}
-          plugins={[
-            {
-              name: 'Tanstack Router',
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />
+        {TanStackDevtools && TanStackRouterDevtoolsPanel && (
+          <Suspense fallback={null}>
+            <TanStackDevtools
+              config={{
+                position: 'bottom-right',
+              }}
+              plugins={[
+                {
+                  name: 'Tanstack Router',
+                  render: <TanStackRouterDevtoolsPanel />,
+                },
+              ]}
+            />
+          </Suspense>
+        )}
         <Scripts />
       </body>
     </html>

@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import {
   type ConnectionKind,
   type DbConnection,
@@ -76,7 +76,7 @@ function findSiblingSuggestions(connections: DbConnection[]): Suggestion[] {
   return [...byPair.values()]
 }
 
-export function SuggestionsPanel({
+export const SuggestionsPanel = memo(function SuggestionsPanel({
   people,
   connections,
   onChanged,
@@ -232,4 +232,4 @@ export function SuggestionsPanel({
       )}
     </div>
   )
-}
+})

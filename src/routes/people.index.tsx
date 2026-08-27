@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, notFound } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { ErrorBoundary } from '#/components/ErrorBoundary'
 import { ConnectionPanel } from '#/components/people/ConnectionPanel'
 import { GroupPanel } from '#/components/people/GroupPanel'
@@ -43,43 +43,54 @@ function PeopleIndex() {
     null,
   )
 
-  function invalidate() {
+  // Stabilized with useCallback so passing these down doesn't defeat the
+  // React.memo on the panel components below — without this, e.g. clicking a
+  // node in the graph (which only needs to update selectedPerson/focusRequest)
+  // would re-render every other panel on the page with a "new" onChanged
+  // function even though nothing they care about actually changed.
+  const invalidate = useCallback(() => {
     queryClient.invalidateQueries({
       queryKey: peopleGraphQueryOptions.queryKey,
     })
-  }
+  }, [queryClient])
 
-  function handlePersonChanged(createdPerson?: DbPerson) {
-    invalidate()
-    if (createdPerson) {
-      setFocusRequest({
-        kind: 'person',
-        personId: createdPerson.id,
-        requestId: Date.now(),
-      })
-    }
-  }
+  const handlePersonChanged = useCallback(
+    (createdPerson?: DbPerson) => {
+      invalidate()
+      if (createdPerson) {
+        setFocusRequest({
+          kind: 'person',
+          personId: createdPerson.id,
+          requestId: Date.now(),
+        })
+      }
+    },
+    [invalidate],
+  )
 
-  function handlePersonSelected(person: DbPerson) {
+  const handlePersonSelected = useCallback((person: DbPerson) => {
     setSelectedPerson(person)
     setFocusRequest({
       kind: 'person',
       personId: person.id,
       requestId: Date.now(),
     })
-  }
+  }, [])
 
-  function handleConnectionChanged(createdConnection?: DbConnection) {
-    invalidate()
-    if (createdConnection) {
-      setFocusRequest({
-        kind: 'connection',
-        personAId: createdConnection.person_a_id,
-        personBId: createdConnection.person_b_id,
-        requestId: Date.now(),
-      })
-    }
-  }
+  const handleConnectionChanged = useCallback(
+    (createdConnection?: DbConnection) => {
+      invalidate()
+      if (createdConnection) {
+        setFocusRequest({
+          kind: 'connection',
+          personAId: createdConnection.person_a_id,
+          personBId: createdConnection.person_b_id,
+          requestId: Date.now(),
+        })
+      }
+    },
+    [invalidate],
+  )
 
   return (
     <main className="page-wrap px-4 pb-8 pt-14">

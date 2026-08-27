@@ -61,7 +61,7 @@ const PersonListItem = memo(function PersonListItem({
   )
 })
 
-export function PersonPanel({
+export const PersonPanel = memo(function PersonPanel({
   onChanged,
   onSelect,
 }: {
@@ -249,4 +249,4 @@ export function PersonPanel({
       )}
     </div>
   )
-}
+})

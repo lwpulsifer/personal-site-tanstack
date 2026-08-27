@@ -82,7 +82,7 @@ const ConnectionListItem = memo(function ConnectionListItem({
   )
 })
 
-export function ConnectionPanel({
+export const ConnectionPanel = memo(function ConnectionPanel({
   people,
   connections,
   isStale = false,
@@ -426,4 +426,4 @@ export function ConnectionPanel({
       )}
     </div>
   )
-}
+})
