@@ -8,6 +8,7 @@ import type { GraphFocusRequest } from '#/components/people/graphFocus'
 import { PeopleGraph } from '#/components/people/PeopleGraph'
 import { PersonPanel } from '#/components/people/PersonPanel'
 import { SearchPanel } from '#/components/people/SearchPanel'
+import { SuggestionsPanel } from '#/components/people/SuggestionsPanel'
 import { peopleGraphQueryOptions } from '#/lib/queries'
 import { SITE_TITLE } from '#/lib/site'
 import { getServerUser } from '#/server/auth'
@@ -129,6 +130,14 @@ function PeopleIndex() {
 
       <div className="mt-4">
         <SearchPanel people={data.people} connections={data.connections} />
+      </div>
+
+      <div className="mt-4">
+        <SuggestionsPanel
+          people={data.people}
+          connections={data.connections}
+          onChanged={invalidate}
+        />
       </div>
     </main>
   )
