@@ -463,12 +463,36 @@ export function PeopleGraph({
     return meta
   }, [clusterIdByPersonId, visibleConnections, selfId, peopleById])
 
-  const graphData = useMemo(
-    () => ({
-      nodes: visiblePeople.map((p) => ({
-        id: p.id,
-        name: p.name,
-      })) as GraphNode[],
+  // react-force-graph mutates node objects in place with their simulated
+  // x/y/vx/vy every tick. If we handed it a brand-new node literal per
+  // person on every data refresh (e.g. a background refetch on tab focus
+  // that returns unchanged content), it would lose all those positions and
+  // pay for a full from-scratch re-simulation each time — the graph "bogs
+  // down" more, and more often, the longer the tab stays open. Keeping one
+  // cached object per person id and reusing/mutating it instead lets the
+  // simulation pick up near where it left off. Entries for people no longer
+  // present are pruned so this cache doesn't grow without bound.
+  const nodeCacheRef = useRef<Map<string, GraphNode>>(new Map())
+
+  const graphData = useMemo(() => {
+    const cache = nodeCacheRef.current
+    const seenIds = new Set<string>()
+    const nodes = visiblePeople.map((p) => {
+      seenIds.add(p.id)
+      const existing = cache.get(p.id)
+      if (existing) {
+        existing.name = p.name
+        return existing
+      }
+      const node = { id: p.id, name: p.name } as GraphNode
+      cache.set(p.id, node)
+      return node
+    })
+    for (const id of cache.keys()) {
+      if (!seenIds.has(id)) cache.delete(id)
+    }
+    return {
+      nodes,
       links: visibleConnections.map((c) => {
         const displayText = connectionDisplayText(c.kind, c.label)
         const nameA = peopleById.get(c.person_a_id)?.name ?? 'Unknown'
@@ -482,9 +506,8 @@ export function PeopleGraph({
           kind: c.kind,
         }
       }) as GraphLink[],
-    }),
-    [visiblePeople, visibleConnections, peopleById],
-  )
+    }
+  }, [visiblePeople, visibleConnections, peopleById])
 
   // Keeps references to each cluster's live node objects (react-force-graph
   // mutates these in place with x/y every simulation tick), so the cluster
