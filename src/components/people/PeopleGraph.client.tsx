@@ -474,7 +474,32 @@ export function PeopleGraph({
   // present are pruned so this cache doesn't grow without bound.
   const nodeCacheRef = useRef<Map<string, GraphNode>>(new Map())
 
+  // react-force-graph reheats the ENTIRE simulation from alpha 1 whenever it
+  // sees a new `graphData` object reference, no matter what's inside it —
+  // so a `useMemo` keyed on `[visiblePeople, visibleConnections, ...]` alone
+  // still rebuilds (and reheats) on every refetch that returns
+  // content-identical data (e.g. React Query's default refetch-on-focus).
+  // Guarding with a content signature and returning the previous result
+  // object when nothing actually changed means idle tab-switches cause zero
+  // reheats — only edits that actually change a name/connection do.
+  const graphDataCacheRef = useRef<{
+    signature: string
+    result: { nodes: GraphNode[]; links: GraphLink[] }
+  } | null>(null)
+
   const graphData = useMemo(() => {
+    const signature = `${visiblePeople
+      .map((p) => `${p.id}:${p.name}`)
+      .join('|')}::${visibleConnections
+      .map(
+        (c) =>
+          `${c.id}:${c.kind}:${c.label ?? ''}:${c.person_a_id}:${c.person_b_id}`,
+      )
+      .join('|')}`
+
+    const cached = graphDataCacheRef.current
+    if (cached && cached.signature === signature) return cached.result
+
     const cache = nodeCacheRef.current
     const seenIds = new Set<string>()
     const nodes = visiblePeople.map((p) => {
@@ -491,7 +516,7 @@ export function PeopleGraph({
     for (const id of cache.keys()) {
       if (!seenIds.has(id)) cache.delete(id)
     }
-    return {
+    const result = {
       nodes,
       links: visibleConnections.map((c) => {
         const displayText = connectionDisplayText(c.kind, c.label)
@@ -507,6 +532,8 @@ export function PeopleGraph({
         }
       }) as GraphLink[],
     }
+    graphDataCacheRef.current = { signature, result }
+    return result
   }, [visiblePeople, visibleConnections, peopleById])
 
   // Keeps references to each cluster's live node objects (react-force-graph
@@ -845,6 +872,13 @@ export function PeopleGraph({
           nodeLabel="name"
           linkLabel="tooltipText"
           nodeRelSize={5}
+          // Default is 15s. With node positions preserved across refreshes
+          // (see the node cache above), a reheat from an actual edit only
+          // has to settle a small local perturbation, not lay the whole
+          // graph out again — a few seconds is plenty, and cutting the
+          // cooldown short means the animation loop (and its per-frame
+          // canvas redraw cost) stops running much sooner after each edit.
+          cooldownTime={3000}
           linkColor={linkColor}
           linkWidth={linkWidth}
           linkDirectionalParticles={0}
