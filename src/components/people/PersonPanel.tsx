@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { memo, useCallback, useId, useState } from 'react'
 import { useDebouncedValue } from '#/lib/hooks/useDebouncedValue'
-import { searchPeopleQueryOptions } from '#/lib/queries'
+import {
+  type PeopleGraphData,
+  peopleGraphQueryOptions,
+  searchPeopleQueryOptions,
+} from '#/lib/queries'
 import {
   type DbPerson,
   deletePerson,
@@ -85,11 +89,28 @@ export const PersonPanel = memo(function PersonPanel({
     queryClient.invalidateQueries({ queryKey: ['searchPeople'] })
   }
 
+  // The mutation already hands back the affected row(s), so patch the
+  // people-graph query cache with them directly instead of relying solely
+  // on invalidate()'s round-trip refetch — that refetch still runs (via
+  // onChanged below) for eventual consistency, but the graph/panels update
+  // immediately rather than waiting on it, which is what made every edit
+  // feel slow to land.
+  const patchPeopleGraph = useCallback(
+    (updater: (old: PeopleGraphData) => PeopleGraphData) => {
+      queryClient.setQueryData<PeopleGraphData>(
+        peopleGraphQueryOptions.queryKey,
+        (old) => (old ? updater(old) : old),
+      )
+    },
+    [queryClient],
+  )
+
   const addMutation = useMutation({
     mutationFn: () => insertPerson({ data: { name } }),
     onSuccess: (person) => {
       setName('')
       invalidateSearch()
+      patchPeopleGraph((old) => ({ ...old, people: [person, ...old.people] }))
       onChanged(person)
     },
   })
@@ -97,17 +118,27 @@ export const PersonPanel = memo(function PersonPanel({
   const updateMutation = useMutation({
     mutationFn: (vars: { personId: string; name: string }) =>
       updatePerson({ data: vars }),
-    onSuccess: () => {
+    onSuccess: (person) => {
       setEditingId(null)
       invalidateSearch()
+      patchPeopleGraph((old) => ({
+        ...old,
+        people: old.people.map((p) => (p.id === person.id ? person : p)),
+      }))
       onChanged()
     },
   })
 
   const deleteMutation = useMutation({
     mutationFn: (personId: string) => deletePerson({ data: { personId } }),
-    onSuccess: () => {
+    onSuccess: (_result, personId) => {
       invalidateSearch()
+      patchPeopleGraph((old) => ({
+        people: old.people.filter((p) => p.id !== personId),
+        connections: old.connections.filter(
+          (c) => c.person_a_id !== personId && c.person_b_id !== personId,
+        ),
+      }))
       onChanged()
     },
   })
