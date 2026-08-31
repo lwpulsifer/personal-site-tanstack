@@ -6,9 +6,15 @@ import {
   getPendingSubmissions,
 } from '#/server/maps'
 import { getPageViews } from '#/server/pageViews'
+import type { DbConnection, DbPerson } from '#/server/people'
 import { getPeopleGraph, searchPeople } from '#/server/people'
 import { getAdminPosts, getAllTags } from '#/server/posts'
 import { getNowPlaying } from '#/server/spotify'
+
+export type PeopleGraphData = {
+  people: DbPerson[]
+  connections: DbConnection[]
+}
 
 export const adminPostsQueryOptions = queryOptions({
   queryKey: ['adminPosts'],

@@ -1,5 +1,6 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { memo, useMemo, useState } from 'react'
+import { type PeopleGraphData, peopleGraphQueryOptions } from '#/lib/queries'
 import {
   type ConnectionKind,
   type DbConnection,
@@ -112,6 +113,8 @@ export const SuggestionsPanel = memo(function SuggestionsPanel({
     (s) => !uncheckedKeys.has(suggestionKey(s)),
   )
 
+  const queryClient = useQueryClient()
+
   const addMutation = useMutation({
     mutationFn: () =>
       insertConnectionBatch({
@@ -123,8 +126,22 @@ export const SuggestionsPanel = memo(function SuggestionsPanel({
           })),
         },
       }),
-    onSuccess: () => {
+    onSuccess: (result) => {
       setUncheckedKeys(new Set())
+      // Patch the created connections straight into the cache so the graph
+      // updates immediately instead of waiting on onChanged()'s refetch.
+      if (result.connections.length > 0) {
+        queryClient.setQueryData<PeopleGraphData>(
+          peopleGraphQueryOptions.queryKey,
+          (old) =>
+            old
+              ? {
+                  ...old,
+                  connections: [...result.connections, ...old.connections],
+                }
+              : old,
+        )
+      }
       onChanged()
     },
   })

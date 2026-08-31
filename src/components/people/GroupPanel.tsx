@@ -1,6 +1,7 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { memo, useRef, useState } from 'react'
 import { CONNECTION_KIND_OPTIONS } from '#/lib/connectionKind'
+import { type PeopleGraphData, peopleGraphQueryOptions } from '#/lib/queries'
 import {
   type ConnectionKind,
   type DbPerson,
@@ -151,6 +152,8 @@ export const GroupPanel = memo(function GroupPanel({
   const [kind, setKind] = useState<ConnectionKind>('other')
   const [label, setLabel] = useState('')
 
+  const queryClient = useQueryClient()
+
   const groupMutation = useMutation({
     mutationFn: () =>
       insertConnectionGroup({
@@ -168,8 +171,22 @@ export const GroupPanel = memo(function GroupPanel({
     // Anchor/members are left as-is so the same set can be reused for
     // another relationship kind without re-picking everyone; only the
     // one-off comment is cleared. The Clear button resets everything.
-    onSuccess: () => {
+    onSuccess: (result) => {
       setLabel('')
+      // Patch the created connections straight into the cache so the graph
+      // updates immediately instead of waiting on onChanged()'s refetch.
+      if (result.connections.length > 0) {
+        queryClient.setQueryData<PeopleGraphData>(
+          peopleGraphQueryOptions.queryKey,
+          (old) =>
+            old
+              ? {
+                  ...old,
+                  connections: [...result.connections, ...old.connections],
+                }
+              : old,
+        )
+      }
       onChanged()
     },
   })

@@ -463,12 +463,61 @@ export function PeopleGraph({
     return meta
   }, [clusterIdByPersonId, visibleConnections, selfId, peopleById])
 
-  const graphData = useMemo(
-    () => ({
-      nodes: visiblePeople.map((p) => ({
-        id: p.id,
-        name: p.name,
-      })) as GraphNode[],
+  // react-force-graph mutates node objects in place with their simulated
+  // x/y/vx/vy every tick. If we handed it a brand-new node literal per
+  // person on every data refresh (e.g. a background refetch on tab focus
+  // that returns unchanged content), it would lose all those positions and
+  // pay for a full from-scratch re-simulation each time — the graph "bogs
+  // down" more, and more often, the longer the tab stays open. Keeping one
+  // cached object per person id and reusing/mutating it instead lets the
+  // simulation pick up near where it left off. Entries for people no longer
+  // present are pruned so this cache doesn't grow without bound.
+  const nodeCacheRef = useRef<Map<string, GraphNode>>(new Map())
+
+  // react-force-graph reheats the ENTIRE simulation from alpha 1 whenever it
+  // sees a new `graphData` object reference, no matter what's inside it —
+  // so a `useMemo` keyed on `[visiblePeople, visibleConnections, ...]` alone
+  // still rebuilds (and reheats) on every refetch that returns
+  // content-identical data (e.g. React Query's default refetch-on-focus).
+  // Guarding with a content signature and returning the previous result
+  // object when nothing actually changed means idle tab-switches cause zero
+  // reheats — only edits that actually change a name/connection do.
+  const graphDataCacheRef = useRef<{
+    signature: string
+    result: { nodes: GraphNode[]; links: GraphLink[] }
+  } | null>(null)
+
+  const graphData = useMemo(() => {
+    const signature = `${visiblePeople
+      .map((p) => `${p.id}:${p.name}`)
+      .join('|')}::${visibleConnections
+      .map(
+        (c) =>
+          `${c.id}:${c.kind}:${c.label ?? ''}:${c.person_a_id}:${c.person_b_id}`,
+      )
+      .join('|')}`
+
+    const cached = graphDataCacheRef.current
+    if (cached && cached.signature === signature) return cached.result
+
+    const cache = nodeCacheRef.current
+    const seenIds = new Set<string>()
+    const nodes = visiblePeople.map((p) => {
+      seenIds.add(p.id)
+      const existing = cache.get(p.id)
+      if (existing) {
+        existing.name = p.name
+        return existing
+      }
+      const node = { id: p.id, name: p.name } as GraphNode
+      cache.set(p.id, node)
+      return node
+    })
+    for (const id of cache.keys()) {
+      if (!seenIds.has(id)) cache.delete(id)
+    }
+    const result = {
+      nodes,
       links: visibleConnections.map((c) => {
         const displayText = connectionDisplayText(c.kind, c.label)
         const nameA = peopleById.get(c.person_a_id)?.name ?? 'Unknown'
@@ -482,9 +531,10 @@ export function PeopleGraph({
           kind: c.kind,
         }
       }) as GraphLink[],
-    }),
-    [visiblePeople, visibleConnections, peopleById],
-  )
+    }
+    graphDataCacheRef.current = { signature, result }
+    return result
+  }, [visiblePeople, visibleConnections, peopleById])
 
   // Keeps references to each cluster's live node objects (react-force-graph
   // mutates these in place with x/y every simulation tick), so the cluster
@@ -822,6 +872,13 @@ export function PeopleGraph({
           nodeLabel="name"
           linkLabel="tooltipText"
           nodeRelSize={5}
+          // Default is 15s. With node positions preserved across refreshes
+          // (see the node cache above), a reheat from an actual edit only
+          // has to settle a small local perturbation, not lay the whole
+          // graph out again — a few seconds is plenty, and cutting the
+          // cooldown short means the animation loop (and its per-frame
+          // canvas redraw cost) stops running much sooner after each edit.
+          cooldownTime={3000}
           linkColor={linkColor}
           linkWidth={linkWidth}
           linkDirectionalParticles={0}

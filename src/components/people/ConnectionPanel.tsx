@@ -1,6 +1,7 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { CONNECTION_KIND_OPTIONS } from '#/lib/connectionKind'
+import { type PeopleGraphData, peopleGraphQueryOptions } from '#/lib/queries'
 import {
   type ConnectionKind,
   type DbConnection,
@@ -120,11 +121,31 @@ export const ConnectionPanel = memo(function ConnectionPanel({
   const [editKind, setEditKind] = useState<ConnectionKind>('other')
   const [editLabel, setEditLabel] = useState('')
 
+  const queryClient = useQueryClient()
+  // The mutation already hands back the affected row, so patch the
+  // people-graph query cache with it directly instead of relying solely on
+  // invalidate()'s round-trip refetch (still triggered via onChanged below,
+  // for eventual consistency) — this is what lets the graph/panels update
+  // immediately instead of every edit waiting on a full network refetch.
+  const patchPeopleGraph = useCallback(
+    (updater: (old: PeopleGraphData) => PeopleGraphData) => {
+      queryClient.setQueryData<PeopleGraphData>(
+        peopleGraphQueryOptions.queryKey,
+        (old) => (old ? updater(old) : old),
+      )
+    },
+    [queryClient],
+  )
+
   const addMutation = useMutation({
     mutationFn: () =>
       insertConnection({ data: { personAId, personBId, kind, label } }),
     onSuccess: (connection) => {
       setLabel('')
+      patchPeopleGraph((old) => ({
+        ...old,
+        connections: [connection, ...old.connections],
+      }))
       onChanged(connection)
     },
   })
@@ -139,6 +160,12 @@ export const ConnectionPanel = memo(function ConnectionPanel({
     }) => updateConnection({ data: vars }),
     onSuccess: (connection) => {
       setEditingId(null)
+      patchPeopleGraph((old) => ({
+        ...old,
+        connections: old.connections.map((c) =>
+          c.id === connection.id ? connection : c,
+        ),
+      }))
       onChanged(connection)
     },
   })
@@ -146,7 +173,13 @@ export const ConnectionPanel = memo(function ConnectionPanel({
   const deleteMutation = useMutation({
     mutationFn: (connectionId: string) =>
       deleteConnection({ data: { connectionId } }),
-    onSuccess: () => onChanged(),
+    onSuccess: (_result, connectionId) => {
+      patchPeopleGraph((old) => ({
+        ...old,
+        connections: old.connections.filter((c) => c.id !== connectionId),
+      }))
+      onChanged()
+    },
   })
   const { mutate: deleteConnectionMutate } = deleteMutation
 
