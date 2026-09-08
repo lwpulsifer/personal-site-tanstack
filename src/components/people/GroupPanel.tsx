@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { memo, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { PersonCombobox } from '#/components/people/PersonCombobox'
 import { CONNECTION_KIND_OPTIONS } from '#/lib/connectionKind'
+import { useComboboxNav } from '#/lib/hooks/useComboboxNav'
 import { type PeopleGraphData, peopleGraphQueryOptions } from '#/lib/queries'
 import {
   type ConnectionKind,
@@ -29,7 +30,6 @@ function PeoplePicker({
   excludeId?: string
 }) {
   const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const selected = selectedIds
@@ -51,7 +51,7 @@ function PeoplePicker({
   function addPerson(person: DbPerson) {
     onChange([...selectedIds, person.id])
     setQuery('')
-    setOpen(false)
+    nav.setIsOpen(false)
     inputRef.current?.focus()
   }
 
@@ -59,8 +59,19 @@ function PeoplePicker({
     onChange(selectedIds.filter((existingId) => existingId !== id))
   }
 
+  const nav = useComboboxNav({
+    resultCount: suggestions.length,
+    onCommit: (index) => addPerson(suggestions[index]),
+  })
+
+  // Auto-highlight the top match once the user has typed something, so
+  // Enter commits it directly — matching PersonCombobox's behavior.
+  useEffect(() => {
+    nav.setActiveIndex(query.trim() && suggestions.length > 0 ? 0 : -1)
+  }, [query, suggestions.length, nav.setActiveIndex])
+
   return (
-    <div className="relative min-w-0 flex-1">
+    <div ref={nav.containerRef} className="relative min-w-0 flex-1">
       <div className="flex min-h-[2.25rem] flex-wrap items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 transition focus-within:border-[var(--blue)] focus-within:ring-2 focus-within:ring-[rgba(59,130,246,0.2)]">
         {selected.map((person) => (
           <span
@@ -85,47 +96,56 @@ function PeoplePicker({
           value={query}
           onChange={(e) => {
             setQuery(e.target.value)
-            setOpen(true)
+            nav.setIsOpen(true)
           }}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onFocus={() => nav.setIsOpen(true)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && suggestions[0]) {
-              e.preventDefault()
-              addPerson(suggestions[0])
-            } else if (e.key === 'Backspace' && !query && selected.length > 0) {
+            if (e.key === 'Backspace' && !query && selected.length > 0) {
               removePerson(selected[selected.length - 1].id)
-            } else if (e.key === 'Escape') {
-              setOpen(false)
+              return
             }
+            nav.handleKeyDown(e)
           }}
           placeholder={selected.length === 0 ? 'Add people…' : ''}
           aria-label="Group members"
+          role="combobox"
+          aria-expanded={nav.isOpen}
+          aria-controls={nav.listboxId}
+          aria-autocomplete="list"
+          autoComplete="off"
           data-testid="group-people-input"
           className="min-w-20 flex-1 bg-transparent text-sm text-[var(--text)] outline-none placeholder-[var(--text-muted)]"
         />
       </div>
 
-      {open && suggestions.length > 0 && (
-        <ul
+      {nav.isOpen && suggestions.length > 0 && (
+        <div
+          id={nav.listboxId}
+          role="listbox"
+          aria-label="Suggested people"
           data-testid="group-people-suggestions"
           className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg)] shadow-lg"
         >
-          {suggestions.map((person) => (
-            <li key={person.id}>
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  addPerson(person)
-                }}
-                className="w-full px-3 py-2 text-left text-sm text-[var(--text)] hover:bg-[var(--hover-bg)]"
-              >
-                {person.name}
-              </button>
-            </li>
+          {suggestions.map((person, i) => (
+            <div
+              key={person.id}
+              role="option"
+              tabIndex={-1}
+              aria-selected={i === nav.activeIndex}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                addPerson(person)
+              }}
+              className={`cursor-pointer px-3 py-2 text-sm text-[var(--text)] ${
+                i === nav.activeIndex
+                  ? 'bg-[var(--hover-bg)]'
+                  : 'hover:bg-[var(--hover-bg)]'
+              }`}
+            >
+              {person.name}
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   )
