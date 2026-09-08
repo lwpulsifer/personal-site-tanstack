@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
+import { PersonCombobox } from '#/components/people/PersonCombobox'
 import { CONNECTION_KIND_OPTIONS } from '#/lib/connectionKind'
 import {
   type ConnectionKind,
@@ -190,22 +191,14 @@ export const ConnectionPanel = memo(function ConnectionPanel({
         }}
         className="mb-3 flex flex-wrap items-center gap-2"
       >
-        <select
-          aria-label={kind === 'parent_child' ? 'Parent' : 'Person A'}
+        <PersonCombobox
+          people={people}
           value={personAId}
-          onChange={(e) => setPersonAId(e.target.value)}
-          data-testid="connection-person-a-select"
-          className={selectClassName}
-        >
-          <option value="">
-            {kind === 'parent_child' ? 'Parent' : 'Person A'}
-          </option>
-          {people.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+          onChange={setPersonAId}
+          placeholder={kind === 'parent_child' ? 'Parent' : 'Person A'}
+          ariaLabel={kind === 'parent_child' ? 'Parent' : 'Person A'}
+          testId="connection-person-a-select"
+        />
 
         <select
           aria-label="Relationship type"
@@ -221,22 +214,14 @@ export const ConnectionPanel = memo(function ConnectionPanel({
           ))}
         </select>
 
-        <select
-          aria-label={kind === 'parent_child' ? 'Child' : 'Person B'}
+        <PersonCombobox
+          people={people}
           value={personBId}
-          onChange={(e) => setPersonBId(e.target.value)}
-          data-testid="connection-person-b-select"
-          className={selectClassName}
-        >
-          <option value="">
-            {kind === 'parent_child' ? 'Child' : 'Person B'}
-          </option>
-          {people.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+          onChange={setPersonBId}
+          placeholder={kind === 'parent_child' ? 'Child' : 'Person B'}
+          ariaLabel={kind === 'parent_child' ? 'Child' : 'Person B'}
+          testId="connection-person-b-select"
+        />
 
         <input
           type="text"
@@ -300,23 +285,20 @@ export const ConnectionPanel = memo(function ConnectionPanel({
                     data-testid="connection-list-item-editing"
                     className="flex flex-wrap items-center gap-2 rounded-lg px-2 py-1.5"
                   >
-                    <select
-                      aria-label={
+                    <PersonCombobox
+                      people={people}
+                      value={editPersonAId}
+                      onChange={setEditPersonAId}
+                      placeholder={
+                        editKind === 'parent_child' ? 'Parent' : 'Person A'
+                      }
+                      ariaLabel={
                         editKind === 'parent_child'
                           ? 'Edit parent'
                           : 'Edit person A'
                       }
-                      value={editPersonAId}
-                      onChange={(e) => setEditPersonAId(e.target.value)}
-                      data-testid="connection-edit-person-a-select"
-                      className={selectClassName}
-                    >
-                      {people.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
+                      testId="connection-edit-person-a-select"
+                    />
 
                     <select
                       aria-label="Edit relationship type"
@@ -334,23 +316,20 @@ export const ConnectionPanel = memo(function ConnectionPanel({
                       ))}
                     </select>
 
-                    <select
-                      aria-label={
+                    <PersonCombobox
+                      people={people}
+                      value={editPersonBId}
+                      onChange={setEditPersonBId}
+                      placeholder={
+                        editKind === 'parent_child' ? 'Child' : 'Person B'
+                      }
+                      ariaLabel={
                         editKind === 'parent_child'
                           ? 'Edit child'
                           : 'Edit person B'
                       }
-                      value={editPersonBId}
-                      onChange={(e) => setEditPersonBId(e.target.value)}
-                      data-testid="connection-edit-person-b-select"
-                      className={selectClassName}
-                    >
-                      {people.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
+                      testId="connection-edit-person-b-select"
+                    />
 
                     <button
                       type="button"

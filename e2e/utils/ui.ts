@@ -16,6 +16,15 @@ export async function fillStable(locator: Locator, value: string, timeoutMs = 10
   throw new Error('Timed out waiting for input value to stick (hydration?)')
 }
 
+// Picks a person from one of the PersonCombobox pickers in the connections
+// pane: types the name into the combobox input and clicks the matching
+// suggestion, rather than using selectOption() as for a native <select>.
+export async function pickPerson(page: Page, testId: string, name: string) {
+  await fillStable(page.getByTestId(testId), name, 15_000)
+  const option = page.getByTestId(`${testId}-listbox`).getByText(name, { exact: true })
+  await option.click()
+}
+
 export async function clickUntilVisible(
   clickTarget: Locator,
   expectedVisible: Locator,
