@@ -1,6 +1,6 @@
 import { test as anonTest, expect } from '@playwright/test'
 import { test, expect as authExpect } from '../fixtures/auth'
-import { ensureHydrated, fillStable } from '../utils/ui'
+import { ensureHydrated, fillStable, pickPerson } from '../utils/ui'
 
 function uniqueName(label: string) {
   return `E2E ${label} ${Date.now()}`
@@ -40,8 +40,8 @@ test.describe('admin: people graph', () => {
     await page.getByTestId('add-person-btn').click()
     await authExpect(page.getByTestId('person-list')).toContainText(nameB, { timeout: 20_000 })
 
-    await page.getByTestId('connection-person-a-select').selectOption({ label: nameA })
-    await page.getByTestId('connection-person-b-select').selectOption({ label: nameB })
+    await pickPerson(page, 'connection-person-a-select', nameA)
+    await pickPerson(page, 'connection-person-b-select', nameB)
     await fillStable(page.getByTestId('connection-label-input'), 'spouse', 15_000)
     await page.getByTestId('connection-kind-select').selectOption('partner')
     await page.getByTestId('add-connection-btn').click()
@@ -111,8 +111,8 @@ test.describe('admin: people graph', () => {
     // A -friend- B -friend- C (transitively reachable from A), and A -coworker- D
     // (different kind, should be excluded from the "friend" filter).
     async function connect(a: string, b: string, kind: string) {
-      await page.getByTestId('connection-person-a-select').selectOption({ label: a })
-      await page.getByTestId('connection-person-b-select').selectOption({ label: b })
+      await pickPerson(page, 'connection-person-a-select', a)
+      await pickPerson(page, 'connection-person-b-select', b)
       await page.getByTestId('connection-kind-select').selectOption(kind)
       await page.getByTestId('add-connection-btn').click()
       const item = page.getByTestId('connection-list-item').filter({ hasText: a })
@@ -182,8 +182,8 @@ test.describe('admin: people graph', () => {
     await authExpect(page.getByTestId('person-list')).not.toContainText(nameA)
 
     // Add a connection, then edit its kind, comment, and other person.
-    await page.getByTestId('connection-person-a-select').selectOption({ label: renamedA })
-    await page.getByTestId('connection-person-b-select').selectOption({ label: nameB })
+    await pickPerson(page, 'connection-person-a-select', renamedA)
+    await pickPerson(page, 'connection-person-b-select', nameB)
     await page.getByTestId('connection-kind-select').selectOption('friend')
     await page.getByTestId('add-connection-btn').click()
 
@@ -193,7 +193,7 @@ test.describe('admin: people graph', () => {
     await authExpect(connectionItem).toContainText('friend', { timeout: 20_000 })
 
     await connectionItem.getByTestId('edit-connection-btn').click()
-    await page.getByTestId('connection-edit-person-b-select').selectOption({ label: nameC })
+    await pickPerson(page, 'connection-edit-person-b-select', nameC)
     await page.getByTestId('connection-edit-kind-select').selectOption('coworker')
     await fillStable(page.getByTestId('connection-edit-label-input'), 'promoted together', 15_000)
     await page.getByTestId('save-connection-btn').click()
@@ -376,8 +376,8 @@ test.describe('admin: people graph', () => {
     }
 
     async function connect(a: string, b: string, kind: string) {
-      await page.getByTestId('connection-person-a-select').selectOption({ label: a })
-      await page.getByTestId('connection-person-b-select').selectOption({ label: b })
+      await pickPerson(page, 'connection-person-a-select', a)
+      await pickPerson(page, 'connection-person-b-select', b)
       await page.getByTestId('connection-kind-select').selectOption(kind)
       await page.getByTestId('add-connection-btn').click()
       const item = page.getByTestId('connection-list-item').filter({ hasText: a })
@@ -441,8 +441,8 @@ test.describe('admin: people graph', () => {
     }
 
     async function connect(a: string, b: string, kind: string) {
-      await page.getByTestId('connection-person-a-select').selectOption({ label: a })
-      await page.getByTestId('connection-person-b-select').selectOption({ label: b })
+      await pickPerson(page, 'connection-person-a-select', a)
+      await pickPerson(page, 'connection-person-b-select', b)
       await page.getByTestId('connection-kind-select').selectOption(kind)
       await page.getByTestId('add-connection-btn').click()
       const item = page.getByTestId('connection-list-item').filter({ hasText: a })
@@ -510,8 +510,8 @@ test.describe('admin: people graph', () => {
       await authExpect(page.getByTestId('person-list')).toContainText(name, { timeout: 20_000 })
     }
 
-    await page.getByTestId('connection-person-a-select').selectOption({ label: nameA })
-    await page.getByTestId('connection-person-b-select').selectOption({ label: nameB })
+    await pickPerson(page, 'connection-person-a-select', nameA)
+    await pickPerson(page, 'connection-person-b-select', nameB)
     await page.getByTestId('connection-kind-select').selectOption('parent_child')
     await page.getByTestId('add-connection-btn').click()
 

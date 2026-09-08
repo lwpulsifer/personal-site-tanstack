@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
+import { PersonCombobox } from '#/components/people/PersonCombobox'
 import { CONNECTION_KIND_OPTIONS } from '#/lib/connectionKind'
 import { type PeopleGraphData, peopleGraphQueryOptions } from '#/lib/queries'
 import {
@@ -23,6 +24,35 @@ const KIND_BADGE_STYLES: Record<ConnectionKind, string> = {
 
 const selectClassName =
   'rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]'
+
+// Both add and edit rows label their two person pickers "Parent"/"Child" for
+// parent_child connections and "Person A"/"Person B" otherwise; edit rows
+// additionally prefix the aria-label with "Edit ".
+function personFieldLabel(
+  kind: ConnectionKind,
+  role: 'a' | 'b',
+  mode: 'add' | 'edit',
+): { placeholder: string; ariaLabel: string } {
+  const isParentChild = kind === 'parent_child'
+  const placeholder =
+    role === 'a'
+      ? isParentChild
+        ? 'Parent'
+        : 'Person A'
+      : isParentChild
+        ? 'Child'
+        : 'Person B'
+  if (mode === 'add') return { placeholder, ariaLabel: placeholder }
+  const ariaLabel =
+    role === 'a'
+      ? isParentChild
+        ? 'Edit parent'
+        : 'Edit person A'
+      : isParentChild
+        ? 'Edit child'
+        : 'Edit person B'
+  return { placeholder, ariaLabel }
+}
 
 // ── ConnectionListItem ────────────────────────────────────────────────────────
 const ConnectionListItem = memo(function ConnectionListItem({
@@ -223,22 +253,15 @@ export const ConnectionPanel = memo(function ConnectionPanel({
         }}
         className="mb-3 flex flex-wrap items-center gap-2"
       >
-        <select
-          aria-label={kind === 'parent_child' ? 'Parent' : 'Person A'}
+        <PersonCombobox
+          people={people}
+          peopleById={peopleById}
           value={personAId}
-          onChange={(e) => setPersonAId(e.target.value)}
-          data-testid="connection-person-a-select"
+          onChange={setPersonAId}
+          {...personFieldLabel(kind, 'a', 'add')}
+          testId="connection-person-a-select"
           className={selectClassName}
-        >
-          <option value="">
-            {kind === 'parent_child' ? 'Parent' : 'Person A'}
-          </option>
-          {people.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        />
 
         <select
           aria-label="Relationship type"
@@ -254,22 +277,15 @@ export const ConnectionPanel = memo(function ConnectionPanel({
           ))}
         </select>
 
-        <select
-          aria-label={kind === 'parent_child' ? 'Child' : 'Person B'}
+        <PersonCombobox
+          people={people}
+          peopleById={peopleById}
           value={personBId}
-          onChange={(e) => setPersonBId(e.target.value)}
-          data-testid="connection-person-b-select"
+          onChange={setPersonBId}
+          {...personFieldLabel(kind, 'b', 'add')}
+          testId="connection-person-b-select"
           className={selectClassName}
-        >
-          <option value="">
-            {kind === 'parent_child' ? 'Child' : 'Person B'}
-          </option>
-          {people.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        />
 
         <input
           type="text"
@@ -333,23 +349,15 @@ export const ConnectionPanel = memo(function ConnectionPanel({
                     data-testid="connection-list-item-editing"
                     className="flex flex-wrap items-center gap-2 rounded-lg px-2 py-1.5"
                   >
-                    <select
-                      aria-label={
-                        editKind === 'parent_child'
-                          ? 'Edit parent'
-                          : 'Edit person A'
-                      }
+                    <PersonCombobox
+                      people={people}
+                      peopleById={peopleById}
                       value={editPersonAId}
-                      onChange={(e) => setEditPersonAId(e.target.value)}
-                      data-testid="connection-edit-person-a-select"
+                      onChange={setEditPersonAId}
+                      {...personFieldLabel(editKind, 'a', 'edit')}
+                      testId="connection-edit-person-a-select"
                       className={selectClassName}
-                    >
-                      {people.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
+                    />
 
                     <select
                       aria-label="Edit relationship type"
@@ -367,23 +375,15 @@ export const ConnectionPanel = memo(function ConnectionPanel({
                       ))}
                     </select>
 
-                    <select
-                      aria-label={
-                        editKind === 'parent_child'
-                          ? 'Edit child'
-                          : 'Edit person B'
-                      }
+                    <PersonCombobox
+                      people={people}
+                      peopleById={peopleById}
                       value={editPersonBId}
-                      onChange={(e) => setEditPersonBId(e.target.value)}
-                      data-testid="connection-edit-person-b-select"
+                      onChange={setEditPersonBId}
+                      {...personFieldLabel(editKind, 'b', 'edit')}
+                      testId="connection-edit-person-b-select"
                       className={selectClassName}
-                    >
-                      {people.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
+                    />
 
                     <button
                       type="button"
