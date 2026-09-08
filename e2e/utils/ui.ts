@@ -17,12 +17,13 @@ export async function fillStable(locator: Locator, value: string, timeoutMs = 10
 }
 
 // Picks a person from one of the PersonCombobox pickers in the connections
-// pane: types the name into the combobox input and clicks the matching
-// suggestion, rather than using selectOption() as for a native <select>.
+// pane: types the full name into the combobox input, which auto-highlights
+// the top match, then presses Enter to commit it — rather than using
+// selectOption() as for a native <select>.
 export async function pickPerson(page: Page, testId: string, name: string) {
-  await fillStable(page.getByTestId(testId), name, 15_000)
-  const option = page.getByTestId(`${testId}-listbox`).getByText(name, { exact: true })
-  await option.click()
+  const input = page.getByTestId(testId)
+  await fillStable(input, name, 15_000)
+  await input.press('Enter')
 }
 
 export async function clickUntilVisible(

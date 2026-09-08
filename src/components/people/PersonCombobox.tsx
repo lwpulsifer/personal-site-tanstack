@@ -93,6 +93,14 @@ export const PersonCombobox = memo(function PersonCombobox({
     [searchable, query],
   )
 
+  // Auto-highlight the top match once the user has typed something, so
+  // Enter commits it directly without requiring an arrow-key press first.
+  // Leave nothing highlighted while the query is empty (just browsing the
+  // full list) so a stray Enter can't commit an arbitrary person.
+  useEffect(() => {
+    setActiveIndex(query.trim() && results.length > 0 ? 0 : -1)
+  }, [query, results])
+
   function emit(id: string) {
     lastEmittedRef.current = id
     onChange(id)
@@ -102,13 +110,11 @@ export const PersonCombobox = memo(function PersonCombobox({
     emit(person.id)
     setQuery(person.name)
     setIsOpen(false)
-    setActiveIndex(-1)
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setQuery(e.target.value)
     setIsOpen(true)
-    setActiveIndex(-1)
     if (value) emit('')
   }
 
