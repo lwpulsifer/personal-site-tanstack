@@ -260,7 +260,7 @@ export const ConnectionPanel = memo(function ConnectionPanel({
           onChange={setPersonAId}
           {...personFieldLabel(kind, 'a', 'add')}
           testId="connection-person-a-select"
-          className={selectClassName}
+          className={`w-36 ${selectClassName}`}
         />
 
         <select
@@ -284,7 +284,7 @@ export const ConnectionPanel = memo(function ConnectionPanel({
           onChange={setPersonBId}
           {...personFieldLabel(kind, 'b', 'add')}
           testId="connection-person-b-select"
-          className={selectClassName}
+          className={`w-36 ${selectClassName}`}
         />
 
         <input
@@ -356,7 +356,7 @@ export const ConnectionPanel = memo(function ConnectionPanel({
                       onChange={setEditPersonAId}
                       {...personFieldLabel(editKind, 'a', 'edit')}
                       testId="connection-edit-person-a-select"
-                      className={selectClassName}
+                      className={`w-36 ${selectClassName}`}
                     />
 
                     <select
@@ -382,7 +382,7 @@ export const ConnectionPanel = memo(function ConnectionPanel({
                       onChange={setEditPersonBId}
                       {...personFieldLabel(editKind, 'b', 'edit')}
                       testId="connection-edit-person-b-select"
-                      className={selectClassName}
+                      className={`w-36 ${selectClassName}`}
                     />
 
                     <button

@@ -176,7 +176,7 @@ export const PersonCombobox = memo(function PersonCombobox({
         aria-autocomplete="list"
         autoComplete="off"
         data-testid={testId}
-        className={`w-36 ${className}`}
+        className={className}
       />
       {isOpen && results.length > 0 && (
         <div
