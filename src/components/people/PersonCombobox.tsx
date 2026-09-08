@@ -1,43 +1,60 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { DbPerson } from '#/server/people'
 
-// Fuzzy "contains" match, with names that start with the query ranked ahead
-// of names that merely contain it elsewhere; ties break alphabetically.
-function searchPeople(people: DbPerson[], query: string): DbPerson[] {
+// Delay so a mousedown on an option (which calls preventDefault) can commit
+// before we close the list or clear a non-matching query.
+const BLUR_CLOSE_DELAY_MS = 150
+
+interface SearchablePerson {
+  person: DbPerson
+  lowerName: string
+}
+
+// Contains-match on the name, with names that start with the query ranked
+// ahead of names that merely contain it elsewhere; ties break alphabetically.
+function searchPeople(
+  searchable: SearchablePerson[],
+  query: string,
+): DbPerson[] {
   const q = query.trim().toLowerCase()
-  if (!q) return people
-  return people
-    .filter((p) => p.name.toLowerCase().includes(q))
+  if (!q) return searchable.map((s) => s.person)
+  return searchable
+    .filter((s) => s.lowerName.includes(q))
     .sort((a, b) => {
-      const aPrefix = a.name.toLowerCase().startsWith(q)
-      const bPrefix = b.name.toLowerCase().startsWith(q)
+      const aPrefix = a.lowerName.startsWith(q)
+      const bPrefix = b.lowerName.startsWith(q)
       if (aPrefix !== bPrefix) return aPrefix ? -1 : 1
-      return a.name.localeCompare(b.name)
+      return a.person.name.localeCompare(b.person.name)
     })
+    .map((s) => s.person)
 }
 
 // A single-person picker styled and behaving like a search-as-you-type
-// combobox rather than a native <select>: it supports fuzzy "contains"
+// combobox rather than a native <select>: it supports contains-based
 // filtering (with prefix matches ranked first) instead of requiring an
 // exact-prefix jump-to-option like a real <select> does.
-export function PersonCombobox({
+export const PersonCombobox = memo(function PersonCombobox({
   people,
+  peopleById,
   value,
   onChange,
   placeholder,
   ariaLabel,
   testId,
+  className,
 }: {
   people: DbPerson[]
+  peopleById: Map<string, DbPerson>
   value: string
   onChange: (id: string) => void
   placeholder: string
   ariaLabel: string
   testId: string
+  className: string
 }) {
   const selectedPerson = useMemo(
-    () => people.find((p) => p.id === value) ?? null,
-    [people, value],
+    () => peopleById.get(value) ?? null,
+    [peopleById, value],
   )
   const [query, setQuery] = useState(selectedPerson?.name ?? '')
   const [isOpen, setIsOpen] = useState(false)
@@ -50,15 +67,31 @@ export function PersonCombobox({
   // (which must NOT stomp on text the user is actively typing).
   const lastEmittedRef = useRef(value)
 
+  // Read via a ref rather than a dependency so a data refetch (which gives
+  // `peopleById` a new reference without actually changing `value`) doesn't
+  // re-run this effect.
+  const peopleByIdRef = useRef(peopleById)
+  peopleByIdRef.current = peopleById
+
   useEffect(() => {
     if (value !== lastEmittedRef.current) {
       lastEmittedRef.current = value
-      const person = people.find((p) => p.id === value)
-      setQuery(person?.name ?? '')
+      setQuery(peopleByIdRef.current.get(value)?.name ?? '')
     }
-  }, [value, people])
+  }, [value])
 
-  const results = useMemo(() => searchPeople(people, query), [people, query])
+  const searchable = useMemo(
+    () =>
+      people.map((person) => ({
+        person,
+        lowerName: person.name.toLowerCase(),
+      })),
+    [people],
+  )
+  const results = useMemo(
+    () => searchPeople(searchable, query),
+    [searchable, query],
+  )
 
   function emit(id: string) {
     lastEmittedRef.current = id
@@ -80,29 +113,32 @@ export function PersonCombobox({
   }
 
   function handleBlur() {
-    // Delay so a mousedown on an option (which calls preventDefault) can
-    // commit before we close the list or clear a non-matching query.
     setTimeout(() => {
       setIsOpen(false)
       if (!value) setQuery('')
-    }, 150)
+    }, BLUR_CLOSE_DELAY_MS)
+  }
+
+  function moveActive(delta: 1 | -1) {
+    if (!isOpen) {
+      setIsOpen(true)
+      return
+    }
+    setActiveIndex((i) => {
+      const next = i + delta
+      if (next < 0) return results.length - 1
+      if (next >= results.length) return 0
+      return next
+    })
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      if (!isOpen) {
-        setIsOpen(true)
-        return
-      }
-      setActiveIndex((i) => (i < results.length - 1 ? i + 1 : 0))
+      moveActive(1)
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      if (!isOpen) {
-        setIsOpen(true)
-        return
-      }
-      setActiveIndex((i) => (i > 0 ? i - 1 : results.length - 1))
+      moveActive(-1)
     } else if (e.key === 'Enter') {
       if (isOpen && activeIndex >= 0 && results[activeIndex]) {
         e.preventDefault()
@@ -134,7 +170,7 @@ export function PersonCombobox({
         aria-autocomplete="list"
         autoComplete="off"
         data-testid={testId}
-        className="w-36 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
+        className={`w-36 ${className}`}
       />
       {isOpen && results.length > 0 && (
         <div
@@ -166,4 +202,4 @@ export function PersonCombobox({
       )}
     </div>
   )
-}
+})

@@ -24,6 +24,35 @@ const KIND_BADGE_STYLES: Record<ConnectionKind, string> = {
 const selectClassName =
   'rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]'
 
+// Both add and edit rows label their two person pickers "Parent"/"Child" for
+// parent_child connections and "Person A"/"Person B" otherwise; edit rows
+// additionally prefix the aria-label with "Edit ".
+function personFieldLabel(
+  kind: ConnectionKind,
+  role: 'a' | 'b',
+  mode: 'add' | 'edit',
+): { placeholder: string; ariaLabel: string } {
+  const isParentChild = kind === 'parent_child'
+  const placeholder =
+    role === 'a'
+      ? isParentChild
+        ? 'Parent'
+        : 'Person A'
+      : isParentChild
+        ? 'Child'
+        : 'Person B'
+  if (mode === 'add') return { placeholder, ariaLabel: placeholder }
+  const ariaLabel =
+    role === 'a'
+      ? isParentChild
+        ? 'Edit parent'
+        : 'Edit person A'
+      : isParentChild
+        ? 'Edit child'
+        : 'Edit person B'
+  return { placeholder, ariaLabel }
+}
+
 // ── ConnectionListItem ────────────────────────────────────────────────────────
 const ConnectionListItem = memo(function ConnectionListItem({
   connection,
@@ -193,11 +222,12 @@ export const ConnectionPanel = memo(function ConnectionPanel({
       >
         <PersonCombobox
           people={people}
+          peopleById={peopleById}
           value={personAId}
           onChange={setPersonAId}
-          placeholder={kind === 'parent_child' ? 'Parent' : 'Person A'}
-          ariaLabel={kind === 'parent_child' ? 'Parent' : 'Person A'}
+          {...personFieldLabel(kind, 'a', 'add')}
           testId="connection-person-a-select"
+          className={selectClassName}
         />
 
         <select
@@ -216,11 +246,12 @@ export const ConnectionPanel = memo(function ConnectionPanel({
 
         <PersonCombobox
           people={people}
+          peopleById={peopleById}
           value={personBId}
           onChange={setPersonBId}
-          placeholder={kind === 'parent_child' ? 'Child' : 'Person B'}
-          ariaLabel={kind === 'parent_child' ? 'Child' : 'Person B'}
+          {...personFieldLabel(kind, 'b', 'add')}
           testId="connection-person-b-select"
+          className={selectClassName}
         />
 
         <input
@@ -287,17 +318,12 @@ export const ConnectionPanel = memo(function ConnectionPanel({
                   >
                     <PersonCombobox
                       people={people}
+                      peopleById={peopleById}
                       value={editPersonAId}
                       onChange={setEditPersonAId}
-                      placeholder={
-                        editKind === 'parent_child' ? 'Parent' : 'Person A'
-                      }
-                      ariaLabel={
-                        editKind === 'parent_child'
-                          ? 'Edit parent'
-                          : 'Edit person A'
-                      }
+                      {...personFieldLabel(editKind, 'a', 'edit')}
                       testId="connection-edit-person-a-select"
+                      className={selectClassName}
                     />
 
                     <select
@@ -318,17 +344,12 @@ export const ConnectionPanel = memo(function ConnectionPanel({
 
                     <PersonCombobox
                       people={people}
+                      peopleById={peopleById}
                       value={editPersonBId}
                       onChange={setEditPersonBId}
-                      placeholder={
-                        editKind === 'parent_child' ? 'Child' : 'Person B'
-                      }
-                      ariaLabel={
-                        editKind === 'parent_child'
-                          ? 'Edit child'
-                          : 'Edit person B'
-                      }
+                      {...personFieldLabel(editKind, 'b', 'edit')}
                       testId="connection-edit-person-b-select"
+                      className={selectClassName}
                     />
 
                     <button
