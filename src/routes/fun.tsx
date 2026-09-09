@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { SITE_TITLE } from '#/lib/site'
 import type { TopTrack } from '#/lib/spotify'
 import { getTopTracks } from '#/server/spotify'
@@ -38,35 +38,6 @@ function Fun() {
         </h1>
 
         <div className="space-y-3">
-          <Link
-            to="/lions"
-            className="group block rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 no-underline transition hover:shadow-sm"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="m-0 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
-                  Map
-                </p>
-                <h2 className="mt-2 text-lg font-bold text-[var(--text)]">
-                  Lions of SF Map
-                </h2>
-                <p className="mt-2 text-sm text-[var(--text-muted)]">
-                  Explore lion statues across San Francisco and report
-                  sightings.
-                </p>
-                <p className="mt-4 text-sm font-semibold text-[var(--blue-deep)] group-hover:text-[var(--blue-darker)]">
-                  Open map -&gt;
-                </p>
-              </div>
-              <div
-                aria-hidden
-                className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--surface),var(--text)_2%)] text-2xl"
-              >
-                🦁
-              </div>
-            </div>
-          </Link>
-
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
             <p className="m-0 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
               Spotify

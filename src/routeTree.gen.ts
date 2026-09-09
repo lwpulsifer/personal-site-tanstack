@@ -20,7 +20,6 @@ import { Route as SpotifysyncRouteImport } from './routes/spotifysync'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as BooksIndexRouteImport } from './routes/books.index'
-import { Route as LionsIndexRouteImport } from './routes/lions.index'
 import { Route as PeopleIndexRouteImport } from './routes/people.index'
 
 const IndexRoute = IndexRouteImport.update({
@@ -78,11 +77,6 @@ const BooksIndexRoute = BooksIndexRouteImport.update({
   path: '/books/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LionsIndexRoute = LionsIndexRouteImport.update({
-  id: '/lions/',
-  path: '/lions/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PeopleIndexRoute = PeopleIndexRouteImport.update({
   id: '/people/',
   path: '/people/',
@@ -101,7 +95,6 @@ export interface FileRoutesByFullPath {
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/': typeof BlogIndexRoute
   '/books/': typeof BooksIndexRoute
-  '/lions/': typeof LionsIndexRoute
   '/people/': typeof PeopleIndexRoute
 }
 export interface FileRoutesByTo {
@@ -116,7 +109,6 @@ export interface FileRoutesByTo {
   '/blog/$slug': typeof BlogSlugRoute
   '/blog': typeof BlogIndexRoute
   '/books': typeof BooksIndexRoute
-  '/lions': typeof LionsIndexRoute
   '/people': typeof PeopleIndexRoute
 }
 export interface FileRoutesById {
@@ -132,7 +124,6 @@ export interface FileRoutesById {
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/': typeof BlogIndexRoute
   '/books/': typeof BooksIndexRoute
-  '/lions/': typeof LionsIndexRoute
   '/people/': typeof PeopleIndexRoute
 }
 export interface FileRouteTypes {
@@ -149,7 +140,6 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/blog/'
     | '/books/'
-    | '/lions/'
     | '/people/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -164,7 +154,6 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/blog'
     | '/books'
-    | '/lions'
     | '/people'
   id:
     | '__root__'
@@ -179,7 +168,6 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/blog/'
     | '/books/'
-    | '/lions/'
     | '/people/'
   fileRoutesById: FileRoutesById
 }
@@ -195,7 +183,6 @@ export interface RootRouteChildren {
   BlogSlugRoute: typeof BlogSlugRoute
   BlogIndexRoute: typeof BlogIndexRoute
   BooksIndexRoute: typeof BooksIndexRoute
-  LionsIndexRoute: typeof LionsIndexRoute
   PeopleIndexRoute: typeof PeopleIndexRoute
 }
 
@@ -278,13 +265,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BooksIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lions/': {
-      id: '/lions/'
-      path: '/lions'
-      fullPath: '/lions/'
-      preLoaderRoute: typeof LionsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/people/': {
       id: '/people/'
       path: '/people'
@@ -307,7 +287,6 @@ const rootRouteChildren: RootRouteChildren = {
   BlogSlugRoute: BlogSlugRoute,
   BlogIndexRoute: BlogIndexRoute,
   BooksIndexRoute: BooksIndexRoute,
-  LionsIndexRoute: LionsIndexRoute,
   PeopleIndexRoute: PeopleIndexRoute,
 }
 export const routeTree = rootRouteImport
