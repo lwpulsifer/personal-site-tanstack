@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { BAY_AREA_BOUNDS } from '#/lib/geo'
+import { useComboboxNav } from '#/lib/hooks/useComboboxNav'
 
 export interface AddressResult {
   displayName: string
@@ -21,63 +22,76 @@ export function AddressSearch({
   onSelect: (result: AddressResult) => void
 }) {
   const [results, setResults] = useState<AddressResult[]>([])
-  const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [activeIndex, setActiveIndex] = useState(-1)
   const timerRef = useRef<ReturnType<typeof setTimeout>>(null)
   const abortRef = useRef<AbortController>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
   const inputId = useId()
-  const resultsId = useId()
 
-  const search = useCallback(async (query: string) => {
-    abortRef.current?.abort()
-    if (query.length < MIN_QUERY_LENGTH) {
+  const nav = useComboboxNav({
+    resultCount: results.length,
+    onCommit: (index) => handleSelect(results[index]),
+  })
+
+  const handleSelect = useCallback(
+    (result: AddressResult) => {
+      onSelect(result)
+      nav.setIsOpen(false)
       setResults([])
-      setIsOpen(false)
-      return
-    }
+    },
+    [onSelect, nav.setIsOpen],
+  )
 
-    const controller = new AbortController()
-    abortRef.current = controller
-    setLoading(true)
+  const search = useCallback(
+    async (query: string) => {
+      abortRef.current?.abort()
+      if (query.length < MIN_QUERY_LENGTH) {
+        setResults([])
+        nav.setIsOpen(false)
+        return
+      }
 
-    try {
-      const params = new URLSearchParams({
-        q: query,
-        format: 'jsonv2',
-        limit: '5',
-        viewbox: `${BAY_AREA_BOUNDS.minLng},${BAY_AREA_BOUNDS.maxLat},${BAY_AREA_BOUNDS.maxLng},${BAY_AREA_BOUNDS.minLat}`,
-        bounded: '0',
-      })
+      const controller = new AbortController()
+      abortRef.current = controller
+      setLoading(true)
 
-      const res = await fetch(`${NOMINATIM_URL}?${params}`, {
-        signal: controller.signal,
-        headers: { 'User-Agent': 'LionsOfSF/1.0' },
-      })
+      try {
+        const params = new URLSearchParams({
+          q: query,
+          format: 'jsonv2',
+          limit: '5',
+          viewbox: `${BAY_AREA_BOUNDS.minLng},${BAY_AREA_BOUNDS.maxLat},${BAY_AREA_BOUNDS.maxLng},${BAY_AREA_BOUNDS.minLat}`,
+          bounded: '0',
+        })
 
-      if (!res.ok) return
+        const res = await fetch(`${NOMINATIM_URL}?${params}`, {
+          signal: controller.signal,
+          headers: { 'User-Agent': 'LionsOfSF/1.0' },
+        })
 
-      const data = (await res.json()) as {
-        display_name: string
-        lat: string
-        lon: string
-      }[]
-      const mapped = data.map((r) => ({
-        displayName: r.display_name,
-        lat: Number.parseFloat(r.lat),
-        lng: Number.parseFloat(r.lon),
-      }))
+        if (!res.ok) return
 
-      setResults(mapped)
-      setActiveIndex(-1)
-      setIsOpen(mapped.length > 0)
-    } catch {
-      // Aborted or network error — ignore
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+        const data = (await res.json()) as {
+          display_name: string
+          lat: string
+          lon: string
+        }[]
+        const mapped = data.map((r) => ({
+          displayName: r.display_name,
+          lat: Number.parseFloat(r.lat),
+          lng: Number.parseFloat(r.lon),
+        }))
+
+        setResults(mapped)
+        nav.setActiveIndex(-1)
+        nav.setIsOpen(mapped.length > 0)
+      } catch {
+        // Aborted or network error — ignore
+      } finally {
+        setLoading(false)
+      }
+    },
+    [nav.setActiveIndex, nav.setIsOpen],
+  )
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,48 +103,6 @@ export function AddressSearch({
     [onChange, search],
   )
 
-  const handleSelect = useCallback(
-    (result: AddressResult) => {
-      onSelect(result)
-      setIsOpen(false)
-      setResults([])
-    },
-    [onSelect],
-  )
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (!isOpen || results.length === 0) return
-      if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        setActiveIndex((i) => (i < results.length - 1 ? i + 1 : 0))
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setActiveIndex((i) => (i > 0 ? i - 1 : results.length - 1))
-      } else if (e.key === 'Enter' && activeIndex >= 0) {
-        e.preventDefault()
-        handleSelect(results[activeIndex])
-      } else if (e.key === 'Escape') {
-        setIsOpen(false)
-      }
-    },
-    [isOpen, results, activeIndex, handleSelect],
-  )
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
   // Clean up timer and abort controller on unmount
   useEffect(() => {
     return () => {
@@ -140,7 +112,7 @@ export function AddressSearch({
   }, [])
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={nav.containerRef} className="relative">
       <label
         htmlFor={inputId}
         className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
@@ -154,17 +126,19 @@ export function AddressSearch({
           type="text"
           value={value}
           onChange={handleChange}
-          onKeyDown={handleKeyDown}
+          onKeyDown={nav.handleKeyDown}
           onFocus={() => {
-            if (results.length > 0) setIsOpen(true)
+            if (results.length > 0) nav.setIsOpen(true)
           }}
           placeholder="Search for an address..."
           autoComplete="off"
           role="combobox"
-          aria-expanded={isOpen}
-          aria-controls={resultsId}
+          aria-expanded={nav.isOpen}
+          aria-controls={nav.listboxId}
           aria-activedescendant={
-            activeIndex >= 0 ? `address-result-${activeIndex}` : undefined
+            nav.activeIndex >= 0
+              ? `address-result-${nav.activeIndex}`
+              : undefined
           }
           className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
         />
@@ -175,9 +149,9 @@ export function AddressSearch({
         )}
       </div>
 
-      {isOpen && results.length > 0 && (
+      {nav.isOpen && results.length > 0 && (
         <div
-          id={resultsId}
+          id={nav.listboxId}
           data-testid="address-results"
           role="listbox"
           className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-lg"
@@ -188,10 +162,10 @@ export function AddressSearch({
               id={`address-result-${i}`}
               role="option"
               tabIndex={-1}
-              aria-selected={i === activeIndex}
+              aria-selected={i === nav.activeIndex}
               onMouseDown={() => handleSelect(r)}
               className={`cursor-pointer px-3 py-2 text-xs text-[var(--text)] ${
-                i === activeIndex
+                i === nav.activeIndex
                   ? 'bg-[var(--blue)]/10'
                   : 'hover:bg-[color-mix(in_oklab,var(--surface),var(--text)_6%)]'
               }`}

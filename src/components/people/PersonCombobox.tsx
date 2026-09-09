@@ -1,9 +1,6 @@
-import { memo, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { useComboboxNav } from '#/lib/hooks/useComboboxNav'
 import type { DbPerson } from '#/server/people'
-
-// Delay so a mousedown on an option (which calls preventDefault) can commit
-// before we close the list or clear a non-matching query.
-const BLUR_CLOSE_DELAY_MS = 150
 
 interface SearchablePerson {
   person: DbPerson
@@ -57,9 +54,6 @@ export const PersonCombobox = memo(function PersonCombobox({
     [peopleById, value],
   )
   const [query, setQuery] = useState(selectedPerson?.name ?? '')
-  const [isOpen, setIsOpen] = useState(false)
-  const [activeIndex, setActiveIndex] = useState(-1)
-  const listboxId = useId()
 
   // Tracks the id we last told the parent about, so the sync effect below
   // can tell "the parent changed `value` out from under us" (swap button,
@@ -93,14 +87,6 @@ export const PersonCombobox = memo(function PersonCombobox({
     [searchable, query],
   )
 
-  // Auto-highlight the top match once the user has typed something, so
-  // Enter commits it directly without requiring an arrow-key press first.
-  // Leave nothing highlighted while the query is empty (just browsing the
-  // full list) so a stray Enter can't commit an arbitrary person.
-  useEffect(() => {
-    setActiveIndex(query.trim() && results.length > 0 ? 0 : -1)
-  }, [query, results])
-
   function emit(id: string) {
     lastEmittedRef.current = id
     onChange(id)
@@ -109,78 +95,57 @@ export const PersonCombobox = memo(function PersonCombobox({
   function commit(person: DbPerson) {
     emit(person.id)
     setQuery(person.name)
-    setIsOpen(false)
+    nav.setIsOpen(false)
   }
+
+  const nav = useComboboxNav({
+    resultCount: results.length,
+    onCommit: (index) => commit(results[index]),
+    onEscape: () => setQuery(selectedPerson?.name ?? ''),
+    // Clicking away without picking anything abandons unsaved typing.
+    onOutsideClose: () => {
+      if (!value) setQuery('')
+    },
+  })
+
+  // Auto-highlight the top match once the user has typed something, so
+  // Enter commits it directly without requiring an arrow-key press first.
+  // Leave nothing highlighted while the query is empty (just browsing the
+  // full list) so a stray Enter can't commit an arbitrary person.
+  useEffect(() => {
+    nav.setActiveIndex(query.trim() && results.length > 0 ? 0 : -1)
+  }, [query, results, nav.setActiveIndex])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setQuery(e.target.value)
-    setIsOpen(true)
+    nav.setIsOpen(true)
     if (value) emit('')
   }
 
-  function handleBlur() {
-    setTimeout(() => {
-      setIsOpen(false)
-      if (!value) setQuery('')
-    }, BLUR_CLOSE_DELAY_MS)
-  }
-
-  function moveActive(delta: 1 | -1) {
-    if (!isOpen) {
-      setIsOpen(true)
-      return
-    }
-    setActiveIndex((i) => {
-      const next = i + delta
-      if (next < 0) return results.length - 1
-      if (next >= results.length) return 0
-      return next
-    })
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      moveActive(1)
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      moveActive(-1)
-    } else if (e.key === 'Enter') {
-      if (isOpen && activeIndex >= 0 && results[activeIndex]) {
-        e.preventDefault()
-        commit(results[activeIndex])
-      }
-    } else if (e.key === 'Escape') {
-      setIsOpen(false)
-      setQuery(selectedPerson?.name ?? '')
-    }
-  }
-
   return (
-    <div className="relative min-w-0">
+    <div ref={nav.containerRef} className="relative min-w-0">
       <input
         type="text"
         value={query}
         onChange={handleChange}
         onFocus={(e) => {
-          setIsOpen(true)
+          nav.setIsOpen(true)
           e.target.select()
         }}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
+        onKeyDown={nav.handleKeyDown}
         placeholder={placeholder}
         aria-label={ariaLabel}
         role="combobox"
-        aria-expanded={isOpen}
-        aria-controls={listboxId}
+        aria-expanded={nav.isOpen}
+        aria-controls={nav.listboxId}
         aria-autocomplete="list"
         autoComplete="off"
         data-testid={testId}
         className={`w-36 ${className}`}
       />
-      {isOpen && results.length > 0 && (
+      {nav.isOpen && results.length > 0 && (
         <div
-          id={listboxId}
+          id={nav.listboxId}
           role="listbox"
           data-testid={`${testId}-listbox`}
           className="absolute left-0 top-full z-10 mt-1 max-h-56 w-max min-w-full overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--bg)] shadow-lg"
@@ -190,13 +155,13 @@ export const PersonCombobox = memo(function PersonCombobox({
               key={person.id}
               role="option"
               tabIndex={-1}
-              aria-selected={i === activeIndex}
+              aria-selected={i === nav.activeIndex}
               onMouseDown={(e) => {
                 e.preventDefault()
                 commit(person)
               }}
               className={`cursor-pointer whitespace-nowrap px-3 py-1.5 text-sm text-[var(--text)] ${
-                i === activeIndex
+                i === nav.activeIndex
                   ? 'bg-[var(--hover-bg)]'
                   : 'hover:bg-[var(--hover-bg)]'
               }`}
