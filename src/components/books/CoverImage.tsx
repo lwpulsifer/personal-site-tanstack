@@ -11,9 +11,10 @@ type CoverBook = {
 }
 
 // Renders a book cover (or a placeholder icon) inside its own sized/rounded
-// frame. Used by BookCard, BookDetail, BookEditor's preview, and BookShelf's
-// stack. `className` sizes and shapes the frame (e.g. `aspect-[2/3] w-full
-// rounded-lg`) — overflow-hidden is baked in so covers never poke out.
+// frame. Used by BookCard, the book page, BookEditor's preview, and
+// BookShelf's stack. `className` sizes and shapes the frame (e.g.
+// `aspect-[2/3] w-full rounded-lg`) — overflow-hidden is baked in so covers
+// never poke out.
 //
 // When there's no explicit cover image, falls back to the Open Library cover
 // derived from the book's ISBN, and drops to the placeholder icon if that
@@ -22,10 +23,12 @@ export function CoverImage({
   book,
   className = '',
   iconClassName = 'text-3xl',
+  style,
 }: {
   book: CoverBook
   className?: string
   iconClassName?: string
+  style?: React.CSSProperties
 }) {
   const cleanIsbn = book.isbn ? normalizeIsbn(book.isbn) : ''
   const resolvedSrc =
@@ -39,7 +42,7 @@ export function CoverImage({
   const failed = failedSrc !== null && failedSrc === resolvedSrc
 
   return (
-    <div className={`overflow-hidden ${className}`}>
+    <div className={`overflow-hidden ${className}`} style={style}>
       {!resolvedSrc || failed ? (
         <div
           data-testid="cover-placeholder"

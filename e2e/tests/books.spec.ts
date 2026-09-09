@@ -1,4 +1,4 @@
-import { test as anonTest, expect, type Page } from '@playwright/test'
+import { test as anonTest, expect, type Locator, type Page } from '@playwright/test'
 import { test, expect as authExpect } from '../fixtures/auth'
 import { clickUntilVisible, ensureHydrated, fillStable } from '../utils/ui'
 
@@ -35,14 +35,26 @@ async function addBook(page: Page, title: string) {
   return card
 }
 
+// Clicks a shelf card and waits for its own page to load, returning that
+// page's container locator (scoped so admin-action lookups don't ambiguously
+// match anything else on the page).
+async function openBookPage(page: Page, card: Locator) {
+  await card.click()
+  const bookPage = page.getByTestId('book-page')
+  await authExpect(bookPage).toBeVisible({ timeout: 20_000 })
+  return bookPage
+}
+
 async function deleteBookFromShelf(page: Page, shelfKey: string, title: string) {
   await page
     .getByTestId(`shelf-books-${shelfKey}`)
     .locator('[data-testid^="book-card-"]', { hasText: title })
     .click()
+  const bookPage = page.getByTestId('book-page')
+  await authExpect(bookPage).toBeVisible({ timeout: 20_000 })
   page.once('dialog', (dialog) => dialog.accept())
-  await page.getByTestId('book-detail').getByTestId('book-delete').click()
-  await authExpect(page.getByTestId('book-detail')).toHaveCount(0, { timeout: 20_000 })
+  await bookPage.getByTestId('book-delete').click()
+  await authExpect(page.getByTestId('books-heading')).toBeVisible({ timeout: 20_000 })
 }
 
 anonTest.describe('books listing (anonymous)', () => {
@@ -77,12 +89,13 @@ test.describe('admin: book management', () => {
     const card = page.locator('[data-testid^="book-card-"]', { hasText: title })
     await authExpect(card).toBeVisible()
 
-    // Move it to Reading — that shelf's grid should already be visible,
-    // no click needed to expand it.
-    await card.click()
-    await authExpect(page.getByTestId('book-detail')).toBeVisible({ timeout: 20_000 })
-    await page.getByTestId('book-detail').getByTestId('book-next-status').click()
-    await page.getByTestId('close-book-detail').click()
+    // Move it to Reading, then head back to the shelf — that shelf's grid
+    // should already be visible, no click needed to expand it.
+    const bookPage = await openBookPage(page, card)
+    await bookPage.getByTestId('book-next-status').click()
+    await authExpect(bookPage).toContainText('Reading', { timeout: 20_000 })
+    await page.getByTestId('book-back-link').click()
+    await authExpect(page.getByTestId('books-heading')).toBeVisible({ timeout: 20_000 })
 
     await authExpect(page.getByTestId('shelf-books-reading')).toBeVisible()
     await authExpect(
@@ -92,16 +105,15 @@ test.describe('admin: book management', () => {
     await deleteBookFromShelf(page, 'reading', title)
   })
 
-  test('can add a book and it appears in the feed', async ({ page }) => {
+  test('can add a book and it appears on its own page', async ({ page }) => {
     const title = uniqueTitle('Add')
 
     await page.goto('/books')
     await ensureHydrated(page)
     const card = await addBook(page, title)
 
-    await card.click()
-    await authExpect(page.getByTestId('book-detail')).toBeVisible({ timeout: 20_000 })
-    await authExpect(page.getByTestId('book-detail')).toContainText('Want to Read')
+    const bookPage = await openBookPage(page, card)
+    await authExpect(bookPage).toContainText('Want to Read')
   })
 
   test('cover tile shows only image, title, author, and rating', async ({ page }) => {
@@ -117,54 +129,66 @@ test.describe('admin: book management', () => {
     await authExpect(card).not.toContainText('Want to Read')
   })
 
-  test('clicking a card opens the detail view with the full review', async ({ page }) => {
+  test('a book\'s own page is directly shareable via its URL', async ({ page }) => {
+    const title = uniqueTitle('Shareable')
+
+    await page.goto('/books')
+    await ensureHydrated(page)
+    const card = await addBook(page, title)
+    const bookPage = await openBookPage(page, card)
+    await authExpect(bookPage.getByTestId('book-copy-link-btn')).toBeVisible()
+    const url = page.url()
+
+    // Simulate someone opening the shared link fresh — a full navigation
+    // with no prior in-app state, not a client-side route change.
+    await page.goto(url)
+    await ensureHydrated(page)
+    await authExpect(page.getByTestId('book-page-title')).toHaveText(title)
+
+    // Clean up
+    page.once('dialog', (dialog) => dialog.accept())
+    await page.getByTestId('book-delete').click()
+    await authExpect(page.getByTestId('books-heading')).toBeVisible({ timeout: 20_000 })
+  })
+
+  test('viewing a book\'s page shows the full review', async ({ page }) => {
     const title = uniqueTitle('Detail')
     const longReview = 'This is a long review. '.repeat(10).trim()
 
     await page.goto('/books')
     await ensureHydrated(page)
     const card = await addBook(page, title)
+    const bookPage = await openBookPage(page, card)
 
-    await card.click()
-    const detail = page.getByTestId('book-detail')
-    await authExpect(detail).toBeVisible({ timeout: 20_000 })
-
-    await detail.getByTestId('book-edit').click()
+    await bookPage.getByTestId('book-edit').click()
     await authExpect(page.getByTestId('book-editor')).toBeVisible({ timeout: 20_000 })
     await fillStable(page.getByTestId('book-review-input'), longReview, 15_000)
     await page.getByTestId('book-save').click()
 
-    await authExpect(card).toBeVisible({ timeout: 20_000 })
-    await card.click()
-    await authExpect(page.getByTestId('book-detail-review')).toHaveText(longReview, { timeout: 20_000 })
+    await authExpect(page.getByTestId('book-page-review')).toHaveText(longReview, { timeout: 20_000 })
 
     // Clean up
     page.once('dialog', (dialog) => dialog.accept())
-    await page.getByTestId('book-detail').getByTestId('book-delete').click()
-    await authExpect(card).toHaveCount(0, { timeout: 20_000 })
+    await bookPage.getByTestId('book-delete').click()
+    await authExpect(page.getByTestId('books-heading')).toBeVisible({ timeout: 20_000 })
   })
 
-  test('can move a book through Reading to Read via quick status action in the detail view', async ({
-    page,
-  }) => {
+  test('can move a book through Reading to Read via quick status action on its page', async ({ page }) => {
     const title = uniqueTitle('Status')
 
     await page.goto('/books')
     await ensureHydrated(page)
     const card = await addBook(page, title)
+    const bookPage = await openBookPage(page, card)
 
-    await card.click()
-    const detail = page.getByTestId('book-detail')
-    await authExpect(detail).toBeVisible({ timeout: 20_000 })
+    await bookPage.getByTestId('book-next-status').click()
+    await authExpect(bookPage).toContainText('Reading', { timeout: 20_000 })
 
-    await detail.getByTestId('book-next-status').click()
-    await authExpect(detail).toContainText('Reading', { timeout: 20_000 })
-
-    await detail.getByTestId('book-next-status').click()
-    await authExpect(detail).toContainText('Read', { timeout: 20_000 })
+    await bookPage.getByTestId('book-next-status').click()
+    await authExpect(bookPage).toContainText('Read', { timeout: 20_000 })
 
     // Read is an end state — no more one-click quick action, only Edit/Delete.
-    await authExpect(detail.getByTestId('book-next-status')).toHaveCount(0)
+    await authExpect(bookPage.getByTestId('book-next-status')).toHaveCount(0)
   })
 
   test('reading shelf appears above the read shelf, above want to read', async ({ page }) => {
@@ -176,22 +200,20 @@ test.describe('admin: book management', () => {
     await ensureHydrated(page)
 
     const readCard = await addBook(page, readTitle)
-    await readCard.click()
-    let detail = page.getByTestId('book-detail')
-    await authExpect(detail).toBeVisible({ timeout: 20_000 })
-    await detail.getByTestId('book-next-status').click()
-    await authExpect(detail).toContainText('Reading', { timeout: 20_000 })
-    await detail.getByTestId('book-next-status').click()
-    await authExpect(detail).toContainText('Read', { timeout: 20_000 })
-    await detail.getByTestId('close-book-detail').click()
+    let bookPage = await openBookPage(page, readCard)
+    await bookPage.getByTestId('book-next-status').click()
+    await authExpect(bookPage).toContainText('Reading', { timeout: 20_000 })
+    await bookPage.getByTestId('book-next-status').click()
+    await authExpect(bookPage).toContainText('Read', { timeout: 20_000 })
+    await page.getByTestId('book-back-link').click()
+    await authExpect(page.getByTestId('books-heading')).toBeVisible({ timeout: 20_000 })
 
     const readingCard = await addBook(page, readingTitle)
-    await readingCard.click()
-    detail = page.getByTestId('book-detail')
-    await authExpect(detail).toBeVisible({ timeout: 20_000 })
-    await detail.getByTestId('book-next-status').click()
-    await authExpect(detail).toContainText('Reading', { timeout: 20_000 })
-    await detail.getByTestId('close-book-detail').click()
+    bookPage = await openBookPage(page, readingCard)
+    await bookPage.getByTestId('book-next-status').click()
+    await authExpect(bookPage).toContainText('Reading', { timeout: 20_000 })
+    await page.getByTestId('book-back-link').click()
+    await authExpect(page.getByTestId('books-heading')).toBeVisible({ timeout: 20_000 })
 
     await addBook(page, wantTitle)
 
@@ -215,12 +237,9 @@ test.describe('admin: book management', () => {
     await page.goto('/books')
     await ensureHydrated(page)
     const card = await addBook(page, title)
+    const bookPage = await openBookPage(page, card)
 
-    await card.click()
-    const detail = page.getByTestId('book-detail')
-    await authExpect(detail).toBeVisible({ timeout: 20_000 })
-
-    await detail.getByTestId('book-edit').click()
+    await bookPage.getByTestId('book-edit').click()
     await authExpect(page.getByTestId('book-editor')).toBeVisible({ timeout: 20_000 })
     await authExpect(page.getByTestId('book-title-input')).toHaveValue(title)
     await authExpect(page.getByTestId('book-author-input')).toHaveValue('E2E Author')
@@ -228,7 +247,7 @@ test.describe('admin: book management', () => {
     // Clean up via delete so it doesn't leak into other tests
     page.once('dialog', (dialog) => dialog.accept())
     await page.getByTestId('book-editor').getByRole('button', { name: 'Delete' }).click()
-    await authExpect(card).toHaveCount(0, { timeout: 20_000 })
+    await authExpect(page.getByTestId('books-heading')).toBeVisible({ timeout: 20_000 })
   })
 
   test('cover recovers after a broken cover URL is fixed via edit', async ({ page }) => {
@@ -248,58 +267,52 @@ test.describe('admin: book management', () => {
     await page.goto('/books')
     await ensureHydrated(page)
     const card = await addBook(page, title)
-    const detail = page.getByTestId('book-detail')
+    const bookPage = await openBookPage(page, card)
     const editor = page.getByTestId('book-editor')
 
     // Point the book at a cover URL that will fail to load.
-    await card.click()
-    await authExpect(detail).toBeVisible({ timeout: 20_000 })
-    await detail.getByTestId('book-edit').click()
+    await bookPage.getByTestId('book-edit').click()
     await authExpect(editor).toBeVisible({ timeout: 20_000 })
     await fillStable(editor.getByTestId('book-cover-input'), brokenUrl, 15_000)
     await editor.getByTestId('book-save').click()
     await authExpect(editor).toHaveCount(0, { timeout: 20_000 })
 
-    // Broken cover -> placeholder icon, no <img>.
-    await authExpect(card.getByTestId('cover-placeholder')).toBeVisible({ timeout: 20_000 })
-    await authExpect(card.getByTestId('cover-image')).toHaveCount(0)
+    // Broken cover -> placeholder icon, no <img>. Checked against the book
+    // page's own cover, which stays mounted across this edit (unlike the
+    // shelf card, which unmounts when navigating away).
+    await authExpect(bookPage.getByTestId('cover-placeholder')).toBeVisible({ timeout: 20_000 })
+    await authExpect(bookPage.getByTestId('cover-image')).toHaveCount(0)
 
     // Fix the cover URL via a second edit — same book, same CoverImage
     // instance (never remounts), so this exercises the exact case that
     // used to get stuck showing the placeholder forever.
-    await card.click()
-    await authExpect(detail).toBeVisible({ timeout: 20_000 })
-    await detail.getByTestId('book-edit').click()
+    await bookPage.getByTestId('book-edit').click()
     await authExpect(editor).toBeVisible({ timeout: 20_000 })
     await fillStable(editor.getByTestId('book-cover-input'), fixedUrl, 15_000)
     await editor.getByTestId('book-save').click()
     await authExpect(editor).toHaveCount(0, { timeout: 20_000 })
 
-    await authExpect(card.getByTestId('cover-image')).toBeVisible({ timeout: 20_000 })
-    await authExpect(card.getByTestId('cover-image')).toHaveAttribute('src', fixedUrl)
-    await authExpect(card.getByTestId('cover-placeholder')).toHaveCount(0)
+    await authExpect(bookPage.getByTestId('cover-image')).toBeVisible({ timeout: 20_000 })
+    await authExpect(bookPage.getByTestId('cover-image')).toHaveAttribute('src', fixedUrl)
+    await authExpect(bookPage.getByTestId('cover-placeholder')).toHaveCount(0)
 
     // Clean up
-    await card.click()
-    await authExpect(detail).toBeVisible({ timeout: 20_000 })
     page.once('dialog', (dialog) => dialog.accept())
-    await detail.getByTestId('book-delete').click()
-    await authExpect(card).toHaveCount(0, { timeout: 20_000 })
+    await bookPage.getByTestId('book-delete').click()
+    await authExpect(page.getByTestId('books-heading')).toBeVisible({ timeout: 20_000 })
   })
 
-  test('can delete a book from the detail view', async ({ page }) => {
+  test('can delete a book from its own page', async ({ page }) => {
     const title = uniqueTitle('Delete')
 
     await page.goto('/books')
     await ensureHydrated(page)
     const card = await addBook(page, title)
-
-    await card.click()
-    const detail = page.getByTestId('book-detail')
-    await authExpect(detail).toBeVisible({ timeout: 20_000 })
+    const bookPage = await openBookPage(page, card)
 
     page.once('dialog', (dialog) => dialog.accept())
-    await detail.getByTestId('book-delete').click()
+    await bookPage.getByTestId('book-delete').click()
+    await authExpect(page.getByTestId('books-heading')).toBeVisible({ timeout: 20_000 })
     await authExpect(card).toHaveCount(0, { timeout: 20_000 })
   })
 })

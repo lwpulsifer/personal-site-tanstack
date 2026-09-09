@@ -1,5 +1,5 @@
 import { queryOptions } from '@tanstack/react-query'
-import { getBooks } from '#/server/books'
+import { getBook, getBooks } from '#/server/books'
 import {
   getApprovedLocations,
   getLocationPhotos,
@@ -30,6 +30,12 @@ export const booksQueryOptions = queryOptions({
   queryKey: ['books'],
   queryFn: () => getBooks(),
 })
+
+export const bookQueryOptions = (bookId: string) =>
+  queryOptions({
+    queryKey: ['book', bookId],
+    queryFn: () => getBook({ data: { bookId } }),
+  })
 
 export const peopleGraphQueryOptions = queryOptions({
   queryKey: ['peopleGraph'],

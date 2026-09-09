@@ -1,14 +1,13 @@
-import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
+import { useMemo, useState } from 'react'
+import { BookEditor } from '#/components/books/BookEditor'
+import { BookShelf } from '#/components/books/BookShelf'
+import { ErrorBoundary } from '#/components/ErrorBoundary'
 import { useAuth } from '#/lib/auth'
 import { booksQueryOptions } from '#/lib/queries'
 import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from '#/lib/site'
-import { getBooks, type DbBook } from '#/server/books'
-import { BookDetail } from '#/components/books/BookDetail'
-import { BookShelf } from '#/components/books/BookShelf'
-import { BookEditor, type BookEditorInitial } from '#/components/books/BookEditor'
-import { ErrorBoundary } from '#/components/ErrorBoundary'
+import { type DbBook, getBooks } from '#/server/books'
 
 const canonical = `${SITE_URL}/books`
 const pageTitle = `Books | ${SITE_TITLE}`
@@ -42,33 +41,16 @@ function groupBooks(books: DbBook[]) {
   return { reading, read, wantToRead }
 }
 
-function toEditorInitial(book: DbBook): BookEditorInitial {
-  return {
-    id: book.id,
-    title: book.title,
-    author: book.author,
-    isbn: book.isbn ?? '',
-    cover_url: book.cover_url ?? '',
-    status: book.status,
-    rating: book.rating,
-    review: book.review ?? '',
-    started_at: book.started_at,
-    finished_at: book.finished_at,
-  }
-}
-
 function BooksIndex() {
   const loaderBooks = Route.useLoaderData()
   const { data: books = loaderBooks } = useQuery(booksQueryOptions)
   const { isAuthenticated } = useAuth()
   const queryClient = useQueryClient()
-  const [editingBook, setEditingBook] = useState<DbBook | 'new' | null>(null)
-  const [viewingBookId, setViewingBookId] = useState<string | null>(null)
-  const { reading, read, wantToRead } = useMemo(() => groupBooks(books), [books])
-  // Derived from live query data (rather than holding a copy of the book)
-  // so status/review changes made from inside the detail view show up
-  // immediately instead of needing the modal to be reopened.
-  const viewingBook = viewingBookId ? (books.find((b) => b.id === viewingBookId) ?? null) : null
+  const [isAddingBook, setIsAddingBook] = useState(false)
+  const { reading, read, wantToRead } = useMemo(
+    () => groupBooks(books),
+    [books],
+  )
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: booksQueryOptions.queryKey })
@@ -76,33 +58,16 @@ function BooksIndex() {
 
   return (
     <>
-      {editingBook && (
+      {isAddingBook && (
         <ErrorBoundary>
           <BookEditor
-            initial={editingBook === 'new' ? {} : toEditorInitial(editingBook)}
-            onClose={() => setEditingBook(null)}
+            initial={{}}
+            onClose={() => setIsAddingBook(false)}
             onSaved={() => {
               invalidate()
-              setEditingBook(null)
+              setIsAddingBook(false)
             }}
-            onDeleted={() => {
-              invalidate()
-              setEditingBook(null)
-            }}
-          />
-        </ErrorBoundary>
-      )}
-
-      {viewingBook && (
-        <ErrorBoundary>
-          <BookDetail
-            book={viewingBook}
-            showAdmin={isAuthenticated}
-            onClose={() => setViewingBookId(null)}
-            onEdit={(book) => {
-              setViewingBookId(null)
-              setEditingBook(book)
-            }}
+            onDeleted={() => setIsAddingBook(false)}
           />
         </ErrorBoundary>
       )}
@@ -123,7 +88,7 @@ function BooksIndex() {
             <button
               type="button"
               data-testid="new-book-btn"
-              onClick={() => setEditingBook('new')}
+              onClick={() => setIsAddingBook(true)}
               className="rounded-full bg-[var(--blue-deep)] px-4 py-1.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)]"
             >
               + Add Book
@@ -140,7 +105,6 @@ function BooksIndex() {
               shelfKey="reading"
               books={reading}
               defaultOpen
-              onView={(b) => setViewingBookId(b.id)}
             />
             <BookShelf
               label="Read"
@@ -148,14 +112,12 @@ function BooksIndex() {
               books={read}
               defaultOpen
               maxVisible={10}
-              onView={(b) => setViewingBookId(b.id)}
             />
             <BookShelf
               label="Want to Read"
               shelfKey="want_to_read"
               books={wantToRead}
               defaultOpen={false}
-              onView={(b) => setViewingBookId(b.id)}
             />
           </>
         )}

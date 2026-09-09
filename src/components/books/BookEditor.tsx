@@ -29,6 +29,21 @@ export type BookEditorInitial = {
   finished_at?: string | null
 }
 
+export function bookToEditorInitial(book: DbBook): BookEditorInitial {
+  return {
+    id: book.id,
+    title: book.title,
+    author: book.author,
+    isbn: book.isbn ?? '',
+    cover_url: book.cover_url ?? '',
+    status: book.status,
+    rating: book.rating,
+    review: book.review ?? '',
+    started_at: book.started_at,
+    finished_at: book.finished_at,
+  }
+}
+
 type Props = {
   initial: BookEditorInitial
   onClose: () => void
@@ -251,7 +266,7 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-10 backdrop-blur-sm sm:pt-16">
       <div
         data-testid="book-editor"
-        className="w-full max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xl"
+        className="w-full max-w-2xl rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xl"
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="m-0 text-lg font-semibold text-[var(--text)]">
