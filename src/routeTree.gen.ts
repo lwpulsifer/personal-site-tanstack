@@ -22,6 +22,7 @@ import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as BooksIndexRouteImport } from './routes/books.index'
 import { Route as LionsIndexRouteImport } from './routes/lions.index'
 import { Route as PeopleIndexRouteImport } from './routes/people.index'
+import { Route as PeopleQuizRouteImport } from './routes/people.quiz'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -88,6 +89,11 @@ const PeopleIndexRoute = PeopleIndexRouteImport.update({
   path: '/people/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PeopleQuizRoute = PeopleQuizRouteImport.update({
+  id: '/people/quiz',
+  path: '/people/quiz',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/spotifycallback': typeof SpotifycallbackRoute
   '/spotifysync': typeof SpotifysyncRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/people/quiz': typeof PeopleQuizRoute
   '/blog/': typeof BlogIndexRoute
   '/books/': typeof BooksIndexRoute
   '/lions/': typeof LionsIndexRoute
@@ -114,6 +121,7 @@ export interface FileRoutesByTo {
   '/spotifycallback': typeof SpotifycallbackRoute
   '/spotifysync': typeof SpotifysyncRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/people/quiz': typeof PeopleQuizRoute
   '/blog': typeof BlogIndexRoute
   '/books': typeof BooksIndexRoute
   '/lions': typeof LionsIndexRoute
@@ -130,6 +138,7 @@ export interface FileRoutesById {
   '/spotifycallback': typeof SpotifycallbackRoute
   '/spotifysync': typeof SpotifysyncRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/people/quiz': typeof PeopleQuizRoute
   '/blog/': typeof BlogIndexRoute
   '/books/': typeof BooksIndexRoute
   '/lions/': typeof LionsIndexRoute
@@ -147,6 +156,7 @@ export interface FileRouteTypes {
     | '/spotifycallback'
     | '/spotifysync'
     | '/blog/$slug'
+    | '/people/quiz'
     | '/blog/'
     | '/books/'
     | '/lions/'
@@ -162,6 +172,7 @@ export interface FileRouteTypes {
     | '/spotifycallback'
     | '/spotifysync'
     | '/blog/$slug'
+    | '/people/quiz'
     | '/blog'
     | '/books'
     | '/lions'
@@ -177,6 +188,7 @@ export interface FileRouteTypes {
     | '/spotifycallback'
     | '/spotifysync'
     | '/blog/$slug'
+    | '/people/quiz'
     | '/blog/'
     | '/books/'
     | '/lions/'
@@ -193,6 +205,7 @@ export interface RootRouteChildren {
   SpotifycallbackRoute: typeof SpotifycallbackRoute
   SpotifysyncRoute: typeof SpotifysyncRoute
   BlogSlugRoute: typeof BlogSlugRoute
+  PeopleQuizRoute: typeof PeopleQuizRoute
   BlogIndexRoute: typeof BlogIndexRoute
   BooksIndexRoute: typeof BooksIndexRoute
   LionsIndexRoute: typeof LionsIndexRoute
@@ -292,6 +305,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PeopleIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/people/quiz': {
+      id: '/people/quiz'
+      path: '/people/quiz'
+      fullPath: '/people/quiz'
+      preLoaderRoute: typeof PeopleQuizRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -305,6 +325,7 @@ const rootRouteChildren: RootRouteChildren = {
   SpotifycallbackRoute: SpotifycallbackRoute,
   SpotifysyncRoute: SpotifysyncRoute,
   BlogSlugRoute: BlogSlugRoute,
+  PeopleQuizRoute: PeopleQuizRoute,
   BlogIndexRoute: BlogIndexRoute,
   BooksIndexRoute: BooksIndexRoute,
   LionsIndexRoute: LionsIndexRoute,
