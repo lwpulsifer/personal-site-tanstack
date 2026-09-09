@@ -27,7 +27,7 @@ export const PeopleGraph = memo(function PeopleGraph({
   const hydrated = useHydrated()
 
   // The force-graph canvas requires `window`, so render the skeleton during
-  // SSR and hydration — same guard as MapView for Leaflet.
+  // SSR and hydration.
   if (!hydrated) return <PeopleGraphSkeleton />
 
   return (

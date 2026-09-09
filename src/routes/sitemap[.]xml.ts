@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { SITE_URL } from '#/lib/site'
 import { getSupabaseServiceClient } from '#/lib/supabase'
 
-const STATIC_PATHS = ['/', '/blog', '/fun', '/lions']
+const STATIC_PATHS = ['/', '/blog', '/fun']
 
 export const Route = createFileRoute('/sitemap.xml')({
   server: {
