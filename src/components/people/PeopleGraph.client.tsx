@@ -102,10 +102,18 @@ const LINK_DISTANCE: Record<ConnectionKind, number> = {
 }
 
 // Strength of the pull of each node toward its cluster's centroid (see
-// CLUSTER_ID below). Fairly strong: the tighter each cluster packs
-// internally, the more the shared charge/collision repulsion below reads as
-// whitespace *between* clusters rather than just general spread.
-const CLUSTER_STRENGTH = 0.9
+// CLUSTER_ID below). d3-force-clustering applies this as a spring: the
+// per-tick pull is `strength * distanceFromCentroid`, not a constant nudge —
+// so it scales up with how spread out the cluster already is. A high value
+// here fights the radial force below (which wants to spread a multi-
+// generation family across several rings by hop-distance from "me") and the
+// link forces (which want a legible tree shape): the further those forces
+// pull a family member from the shared centroid, the harder this yanks them
+// back, which is what made larger clusters visibly fold in on themselves
+// instead of spreading into a readable shape. Keep this low — just enough
+// to read as "these people belong together" via loose whitespace, not
+// enough to override the layout the other forces are trying to produce.
+const CLUSTER_STRENGTH = 0.1
 
 const NODE_COLLISION_RADIUS = 45
 
