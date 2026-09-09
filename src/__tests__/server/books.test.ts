@@ -27,7 +27,8 @@ vi.mock('#/server/auth.server', () => ({
 }))
 
 // Import after mocks so the module picks up the mocked createServerFn
-const { getBooks, upsertBook, setBookStatus, deleteBook } = await import('#/server/books')
+const { getBooks, getBook, upsertBook, setBookStatus, deleteBook } =
+  await import('#/server/books')
 
 /**
  * A fluent Supabase query-builder mock. Every method returns the chain, and
@@ -35,11 +36,23 @@ const { getBooks, upsertBook, setBookStatus, deleteBook } = await import('#/serv
  */
 function makeChain(resolved: { data: unknown; error: unknown }) {
   const chain: Record<string, unknown> = {}
-  for (const method of ['select', 'order', 'eq', 'single', 'insert', 'update', 'is', 'upsert', 'delete']) {
+  for (const method of [
+    'select',
+    'order',
+    'eq',
+    'single',
+    'maybeSingle',
+    'insert',
+    'update',
+    'is',
+    'upsert',
+    'delete',
+  ]) {
     chain[method] = vi.fn(() => chain)
   }
   // biome-ignore lint/suspicious/noThenProperty: needed for thenable mock in tests
-  chain.then = (resolve: (v: unknown) => void) => Promise.resolve(resolved).then(resolve)
+  chain.then = (resolve: (v: unknown) => void) =>
+    Promise.resolve(resolved).then(resolve)
   return chain
 }
 
@@ -87,7 +100,9 @@ describe('getBooks', () => {
       created_at: '2026-08-01T12:00:00Z',
     }
     vi.mocked(getSupabaseServiceClient).mockReturnValue(
-      mockClient(makeChain({ data: [readingBook, readBook, wantToRead], error: null })),
+      mockClient(
+        makeChain({ data: [readingBook, readBook, wantToRead], error: null }),
+      ),
     )
 
     const result = await (getBooks as () => Promise<{ id: string }[]>)()
@@ -100,7 +115,53 @@ describe('getBooks', () => {
       mockClient(makeChain({ data: null, error: { message: 'DB error' } })),
     )
 
-    await expect((getBooks as () => Promise<unknown>)()).rejects.toThrow('DB error')
+    await expect((getBooks as () => Promise<unknown>)()).rejects.toThrow(
+      'DB error',
+    )
+  })
+})
+
+describe('getBook', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns the book when found', async () => {
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(makeChain({ data: readingBook, error: null })),
+    )
+
+    const result = await (
+      getBook as (a: {
+        data: { bookId: string }
+      }) => Promise<{ id: string } | null>
+    )({ data: { bookId: 'book-1' } })
+
+    expect(result?.id).toBe('book-1')
+  })
+
+  it('returns null when no book matches the id', async () => {
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(makeChain({ data: null, error: null })),
+    )
+
+    const result = await (
+      getBook as (a: {
+        data: { bookId: string }
+      }) => Promise<{ id: string } | null>
+    )({ data: { bookId: 'missing' } })
+
+    expect(result).toBeNull()
+  })
+
+  it('throws when the database returns an error', async () => {
+    vi.mocked(getSupabaseServiceClient).mockReturnValue(
+      mockClient(makeChain({ data: null, error: { message: 'DB error' } })),
+    )
+
+    await expect(
+      (getBook as (a: { data: { bookId: string } }) => Promise<unknown>)({
+        data: { bookId: 'book-1' },
+      }),
+    ).rejects.toThrow('DB error')
   })
 })
 
@@ -111,9 +172,11 @@ describe('upsertBook', () => {
     vi.mocked(requireAuth).mockRejectedValue(new Error('Unauthorized'))
 
     await expect(
-      (upsertBook as (a: { data: { title: string; author: string; status: string } }) => Promise<unknown>)(
-        { data: { title: 'X', author: 'Y', status: 'WANT_TO_READ' } },
-      ),
+      (
+        upsertBook as (a: {
+          data: { title: string; author: string; status: string }
+        }) => Promise<unknown>
+      )({ data: { title: 'X', author: 'Y', status: 'WANT_TO_READ' } }),
     ).rejects.toThrow('Unauthorized')
   })
 })
@@ -125,9 +188,11 @@ describe('setBookStatus', () => {
     vi.mocked(requireAuth).mockRejectedValue(new Error('Unauthorized'))
 
     await expect(
-      (setBookStatus as (a: { data: { bookId: string; status: 'READING' } }) => Promise<unknown>)(
-        { data: { bookId: 'book-1', status: 'READING' } },
-      ),
+      (
+        setBookStatus as (a: {
+          data: { bookId: string; status: 'READING' }
+        }) => Promise<unknown>
+      )({ data: { bookId: 'book-1', status: 'READING' } }),
     ).rejects.toThrow('Unauthorized')
   })
 
@@ -136,12 +201,17 @@ describe('setBookStatus', () => {
     vi.mocked(getSupabaseServiceClient).mockReturnValue(
       mockClient(
         makeChain({ data: { started_at: null }, error: null }),
-        makeChain({ data: { ...readingBook, started_at: '2026-08-17' }, error: null }),
+        makeChain({
+          data: { ...readingBook, started_at: '2026-08-17' },
+          error: null,
+        }),
       ),
     )
 
     const result = await (
-      setBookStatus as (a: { data: { bookId: string; status: 'READING' } }) => Promise<{ started_at: string }>
+      setBookStatus as (a: {
+        data: { bookId: string; status: 'READING' }
+      }) => Promise<{ started_at: string }>
     )({ data: { bookId: 'book-1', status: 'READING' } })
 
     expect(result.started_at).toBeTruthy()
@@ -155,7 +225,9 @@ describe('deleteBook', () => {
     vi.mocked(requireAuth).mockRejectedValue(new Error('Unauthorized'))
 
     await expect(
-      (deleteBook as (a: { data: { bookId: string } }) => Promise<unknown>)({ data: { bookId: 'book-1' } }),
+      (deleteBook as (a: { data: { bookId: string } }) => Promise<unknown>)({
+        data: { bookId: 'book-1' },
+      }),
     ).rejects.toThrow('Unauthorized')
   })
 })

@@ -1,5 +1,5 @@
 import { queryOptions } from '@tanstack/react-query'
-import { getBooks } from '#/server/books'
+import { getBook, getBooks } from '#/server/books'
 import {
   getApprovedLocations,
   getLocationPhotos,
@@ -30,6 +30,18 @@ export const booksQueryOptions = queryOptions({
   queryKey: ['books'],
   queryFn: () => getBooks(),
 })
+
+// Nested under the same 'books' key as booksQueryOptions (rather than a
+// separate top-level 'book' key) so that invalidating booksQueryOptions
+// anywhere (e.g. AdminActions' status-change/delete mutations, which only
+// know about the list query) also invalidates this one via React Query's
+// default prefix-matching — otherwise a book's own page silently keeps
+// showing stale data after a quick action changes it elsewhere.
+export const bookQueryOptions = (bookId: string) =>
+  queryOptions({
+    queryKey: ['books', bookId],
+    queryFn: () => getBook({ data: { bookId } }),
+  })
 
 export const peopleGraphQueryOptions = queryOptions({
   queryKey: ['peopleGraph'],

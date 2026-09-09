@@ -40,7 +40,6 @@ type BookShelfProps = {
   shelfKey: string
   books: DbBook[]
   defaultOpen: boolean
-  onView: (book: DbBook) => void
   // Caps how many cards render initially when the shelf is expanded, with a
   // "Show more" button to reveal the rest. Unlimited if omitted.
   maxVisible?: number
@@ -53,7 +52,6 @@ export function BookShelf({
   shelfKey,
   books,
   defaultOpen,
-  onView,
   maxVisible,
 }: BookShelfProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
@@ -92,7 +90,6 @@ export function BookShelf({
               <BookCard
                 key={book.id}
                 book={book}
-                onView={onView}
                 className="rise-in"
                 style={{ animationDelay: `${i * 60}ms` }}
               />

@@ -1,8 +1,8 @@
 import { createServerFn } from '@tanstack/react-start'
-import { getSupabaseServiceClient } from '#/lib/supabase'
-import { requireAuth } from '#/server/auth.server'
 import { z } from 'zod'
 import type { Enums, Tables, TablesUpdate } from '#/lib/database.types'
+import { getSupabaseServiceClient } from '#/lib/supabase'
+import { requireAuth } from '#/server/auth.server'
 
 export type BookStatus = Enums<'book_status'>
 
@@ -20,14 +20,19 @@ const UpsertBookSchema = z.object({
     .number()
     .min(1)
     .max(5)
-    .refine((n) => n * 2 === Math.round(n * 2), 'Rating must be in half-star increments')
+    .refine(
+      (n) => n * 2 === Math.round(n * 2),
+      'Rating must be in half-star increments',
+    )
     .optional(),
   review: z.string().optional(),
   started_at: z.string().optional(),
   finished_at: z.string().optional(),
 })
 
-function sortKey(book: Pick<DbBook, 'finished_at' | 'started_at' | 'created_at'>) {
+function sortKey(
+  book: Pick<DbBook, 'finished_at' | 'started_at' | 'created_at'>,
+) {
   return book.finished_at ?? book.started_at ?? book.created_at
 }
 
@@ -44,6 +49,19 @@ export const getBooks = createServerFn({ method: 'GET' }).handler(async () => {
     (a, b) => new Date(sortKey(b)).valueOf() - new Date(sortKey(a)).valueOf(),
   )
 })
+
+export const getBook = createServerFn({ method: 'GET' })
+  .inputValidator(z.object({ bookId: z.string() }))
+  .handler(async ({ data }) => {
+    const supabase = getSupabaseServiceClient()
+    const { data: book, error } = await supabase
+      .from('books')
+      .select('*')
+      .eq('id', data.bookId)
+      .maybeSingle()
+    if (error) throw new Error(error.message)
+    return book as DbBook | null
+  })
 
 // ── Admin ────────────────────────────────────────────────────────────────────
 
@@ -73,7 +91,12 @@ export const upsertBook = createServerFn({ method: 'POST' })
   })
 
 export const setBookStatus = createServerFn({ method: 'POST' })
-  .inputValidator(z.object({ bookId: z.string(), status: z.enum(['WANT_TO_READ', 'READING', 'READ']) }))
+  .inputValidator(
+    z.object({
+      bookId: z.string(),
+      status: z.enum(['WANT_TO_READ', 'READING', 'READ']),
+    }),
+  )
   .handler(async ({ data }) => {
     await requireAuth()
     const supabase = getSupabaseServiceClient()
@@ -112,7 +135,10 @@ export const deleteBook = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     await requireAuth()
     const supabase = getSupabaseServiceClient()
-    const { error } = await supabase.from('books').delete().eq('id', data.bookId)
+    const { error } = await supabase
+      .from('books')
+      .delete()
+      .eq('id', data.bookId)
     if (error) throw new Error(error.message)
     return { ok: true }
   })

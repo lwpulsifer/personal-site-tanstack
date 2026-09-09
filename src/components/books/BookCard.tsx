@@ -1,33 +1,30 @@
+import { Link } from '@tanstack/react-router'
 import { CoverImage } from '#/components/books/CoverImage'
 import { StarRating } from '#/components/books/StarRating'
 import type { DbBook } from '#/server/books'
 
 type BookCardProps = {
   book: DbBook
-  onView: (book: DbBook) => void
   className?: string
   style?: React.CSSProperties
 }
 
 // A compact "book cover" tile: image, title, author, rating — nothing else.
-// Everything else (status, dates, review, admin actions) lives behind the
-// click, in BookDetail.
-export function BookCard({
-  book,
-  onView,
-  className = '',
-  style,
-}: BookCardProps) {
+// Everything else (status, dates, review, admin actions) lives on the
+// book's own page, linked to from here.
+export function BookCard({ book, className = '', style }: BookCardProps) {
   return (
-    <button
-      type="button"
+    <Link
+      to="/books/$bookId"
+      params={{ bookId: book.id }}
+      viewTransition
       data-testid={`book-card-${book.id}`}
-      onClick={() => onView(book)}
-      className={`group flex flex-col text-left transition hover:-translate-y-1 ${className}`}
+      className={`group flex flex-col text-left no-underline transition hover:-translate-y-1 ${className}`}
       style={style}
     >
       <CoverImage
         book={book}
+        style={{ viewTransitionName: `book-cover-${book.id}` }}
         className="aspect-[2/3] w-full rounded-lg bg-[var(--chip-bg)] shadow-md transition group-hover:shadow-xl"
       />
 
@@ -43,6 +40,6 @@ export function BookCard({
       <div className="mt-1">
         <StarRating rating={book.rating} />
       </div>
-    </button>
+    </Link>
   )
 }
