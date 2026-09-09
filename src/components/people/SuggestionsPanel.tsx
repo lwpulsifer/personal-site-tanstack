@@ -1,6 +1,7 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { memo, useMemo, useState } from 'react'
-import { type PeopleGraphData, peopleGraphQueryOptions } from '#/lib/queries'
+import { usePatchPeopleGraph } from '#/lib/hooks/usePatchPeopleGraph'
+import { usePeopleById } from '#/lib/hooks/usePeopleById'
 import {
   type ConnectionKind,
   type DbConnection,
@@ -86,10 +87,7 @@ export const SuggestionsPanel = memo(function SuggestionsPanel({
   connections: DbConnection[]
   onChanged: () => void
 }) {
-  const peopleById = useMemo(
-    () => new Map(people.map((p) => [p.id, p])),
-    [people],
-  )
+  const peopleById = usePeopleById(people)
 
   const suggestions = useMemo(
     () => findSiblingSuggestions(connections),
@@ -113,7 +111,7 @@ export const SuggestionsPanel = memo(function SuggestionsPanel({
     (s) => !uncheckedKeys.has(suggestionKey(s)),
   )
 
-  const queryClient = useQueryClient()
+  const patchPeopleGraph = usePatchPeopleGraph()
 
   const addMutation = useMutation({
     mutationFn: () =>
@@ -131,16 +129,10 @@ export const SuggestionsPanel = memo(function SuggestionsPanel({
       // Patch the created connections straight into the cache so the graph
       // updates immediately instead of waiting on onChanged()'s refetch.
       if (result.connections.length > 0) {
-        queryClient.setQueryData<PeopleGraphData>(
-          peopleGraphQueryOptions.queryKey,
-          (old) =>
-            old
-              ? {
-                  ...old,
-                  connections: [...result.connections, ...old.connections],
-                }
-              : old,
-        )
+        patchPeopleGraph((old) => ({
+          ...old,
+          connections: [...result.connections, ...old.connections],
+        }))
       }
       onChanged()
     },

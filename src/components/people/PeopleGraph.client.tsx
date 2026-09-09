@@ -7,6 +7,7 @@ import ForceGraph2D, {
 } from 'react-force-graph-2d'
 import { connectionDisplayText } from '#/lib/connectionKind'
 import { useElementSize } from '#/lib/hooks/useElementSize'
+import { usePeopleById } from '#/lib/hooks/usePeopleById'
 import { useThemeMode } from '#/lib/hooks/useThemeMode'
 import type { ConnectionKind, DbConnection, DbPerson } from '#/server/people'
 import type { GraphFocusRequest } from './graphFocus'
@@ -19,6 +20,70 @@ type GraphLink = {
   displayText: string
   tooltipText: string
   kind: ConnectionKind
+}
+
+// Builds an undirected adjacency map from connections, optionally skipping
+// edges `includeEdge` rejects (e.g. by kind, or touching a given person).
+function buildSymmetricAdjacency(
+  connections: DbConnection[],
+  includeEdge: (c: DbConnection) => boolean = () => true,
+): Map<string, Set<string>> {
+  const adjacency = new Map<string, Set<string>>()
+  for (const c of connections) {
+    if (!includeEdge(c)) continue
+    if (!adjacency.has(c.person_a_id)) adjacency.set(c.person_a_id, new Set())
+    if (!adjacency.has(c.person_b_id)) adjacency.set(c.person_b_id, new Set())
+    adjacency.get(c.person_a_id)?.add(c.person_b_id)
+    adjacency.get(c.person_b_id)?.add(c.person_a_id)
+  }
+  return adjacency
+}
+
+// Hop-distance from `start` to every node reachable from it, via BFS.
+function bfsDistances(
+  adjacency: Map<string, Set<string>>,
+  start: string,
+): Map<string, number> {
+  const distances = new Map<string, number>([[start, 0]])
+  const queue = [start]
+  while (queue.length > 0) {
+    const current = queue.shift()
+    if (!current) break
+    const currentDistance = distances.get(current) ?? 0
+    for (const neighbor of adjacency.get(current) ?? []) {
+      if (!distances.has(neighbor)) {
+        distances.set(neighbor, currentDistance + 1)
+        queue.push(neighbor)
+      }
+    }
+  }
+  return distances
+}
+
+// Assigns every id in `ids` (other than `exclude`) a connected-component id
+// — the id of whichever member of that component comes first in `ids`.
+function connectedComponents(
+  ids: string[],
+  adjacency: Map<string, Set<string>>,
+  exclude?: string | null,
+): Map<string, string> {
+  const componentId = new Map<string, string>()
+  for (const id of ids) {
+    if (id === exclude || componentId.has(id)) continue
+    const queue = [id]
+    componentId.set(id, id)
+    while (queue.length > 0) {
+      const current = queue.shift()
+      if (!current) break
+      for (const neighbor of adjacency.get(current) ?? []) {
+        if (!componentId.has(neighbor)) {
+          componentId.set(neighbor, id)
+          queue.push(neighbor)
+        }
+      }
+    }
+  }
+  return componentId
 }
 
 // The looser relationship kinds used to sit at a flat 480px, which spread
@@ -175,10 +240,7 @@ export function PeopleGraph({
   const pendingFocusRef = useRef<GraphFocusRequest | null>(null)
   const lastFocusRequestId = useRef<number | null>(null)
 
-  const peopleById = useMemo(
-    () => new Map(people.map((p) => [p.id, p])),
-    [people],
-  )
+  const peopleById = usePeopleById(people)
 
   // Nodes with a "partner" connection get pulled tighter together (see the
   // collide force below) so couples visually read as a single unit.
@@ -203,29 +265,8 @@ export function PeopleGraph({
   // there's no "me" node) fall back to Infinity, so the radial force below
   // leaves them alone and the existing charge/link forces place them.
   const distanceFromSelf = useMemo(() => {
-    const distances = new Map<string, number>()
-    if (!selfId) return distances
-    const adjacency = new Map<string, Set<string>>()
-    for (const c of connections) {
-      if (!adjacency.has(c.person_a_id)) adjacency.set(c.person_a_id, new Set())
-      if (!adjacency.has(c.person_b_id)) adjacency.set(c.person_b_id, new Set())
-      adjacency.get(c.person_a_id)?.add(c.person_b_id)
-      adjacency.get(c.person_b_id)?.add(c.person_a_id)
-    }
-    distances.set(selfId, 0)
-    const queue = [selfId]
-    while (queue.length > 0) {
-      const current = queue.shift()
-      if (!current) break
-      const currentDistance = distances.get(current) ?? 0
-      for (const neighbor of adjacency.get(current) ?? []) {
-        if (!distances.has(neighbor)) {
-          distances.set(neighbor, currentDistance + 1)
-          queue.push(neighbor)
-        }
-      }
-    }
-    return distances
+    if (!selfId) return new Map<string, number>()
+    return bfsDistances(buildSymmetricAdjacency(connections), selfId)
   }, [selfId, connections])
 
   // Cluster id per person, used to pull family units / friend circles / coworker
@@ -247,32 +288,18 @@ export function PeopleGraph({
   // of one shared one, so the couple becomes the seam between two distinct
   // family clusters rather than the two families blurring into one.
   const clusterIdByPersonId = useMemo(() => {
-    const adjacency = new Map<string, Set<string>>()
-    for (const c of connections) {
-      if (c.person_a_id === selfId || c.person_b_id === selfId) continue
-      if (c.kind === 'partner') continue
-      if (!adjacency.has(c.person_a_id)) adjacency.set(c.person_a_id, new Set())
-      if (!adjacency.has(c.person_b_id)) adjacency.set(c.person_b_id, new Set())
-      adjacency.get(c.person_a_id)?.add(c.person_b_id)
-      adjacency.get(c.person_b_id)?.add(c.person_a_id)
-    }
-    const clusterIds = new Map<string, string>()
-    for (const person of people) {
-      if (person.id === selfId || clusterIds.has(person.id)) continue
-      const queue = [person.id]
-      clusterIds.set(person.id, person.id)
-      while (queue.length > 0) {
-        const current = queue.shift()
-        if (!current) break
-        for (const neighbor of adjacency.get(current) ?? []) {
-          if (!clusterIds.has(neighbor)) {
-            clusterIds.set(neighbor, person.id)
-            queue.push(neighbor)
-          }
-        }
-      }
-    }
-    return clusterIds
+    const adjacency = buildSymmetricAdjacency(
+      connections,
+      (c) =>
+        c.person_a_id !== selfId &&
+        c.person_b_id !== selfId &&
+        c.kind !== 'partner',
+    )
+    return connectedComponents(
+      people.map((p) => p.id),
+      adjacency,
+      selfId,
+    )
   }, [people, connections, selfId])
 
   // A display name per cluster, so the graph can show one label for a whole

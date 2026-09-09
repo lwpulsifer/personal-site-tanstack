@@ -1,17 +1,16 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { PersonCombobox } from '#/components/people/PersonCombobox'
+import { selectClassName } from '#/components/people/styles'
 import { CONNECTION_KIND_OPTIONS } from '#/lib/connectionKind'
 import { useComboboxNav } from '#/lib/hooks/useComboboxNav'
-import { type PeopleGraphData, peopleGraphQueryOptions } from '#/lib/queries'
+import { usePatchPeopleGraph } from '#/lib/hooks/usePatchPeopleGraph'
+import { usePeopleById } from '#/lib/hooks/usePeopleById'
 import {
   type ConnectionKind,
   type DbPerson,
   insertConnectionGroup,
 } from '#/server/people'
-
-const selectClassName =
-  'rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]'
 
 // Picks people by name into a chip list, keyed by id (not name — names
 // aren't guaranteed unique) so a selected person always maps back to exactly
@@ -173,16 +172,13 @@ export const GroupPanel = memo(function GroupPanel({
   const [kind, setKind] = useState<ConnectionKind>('other')
   const [label, setLabel] = useState('')
 
-  const peopleById = useMemo(
-    () => new Map(people.map((p) => [p.id, p])),
-    [people],
-  )
+  const peopleById = usePeopleById(people)
   const anchorCandidates = useMemo(
     () => people.filter((p) => !selectedIds.includes(p.id)),
     [people, selectedIds],
   )
 
-  const queryClient = useQueryClient()
+  const patchPeopleGraph = usePatchPeopleGraph()
 
   const groupMutation = useMutation({
     mutationFn: () =>
@@ -206,16 +202,10 @@ export const GroupPanel = memo(function GroupPanel({
       // Patch the created connections straight into the cache so the graph
       // updates immediately instead of waiting on onChanged()'s refetch.
       if (result.connections.length > 0) {
-        queryClient.setQueryData<PeopleGraphData>(
-          peopleGraphQueryOptions.queryKey,
-          (old) =>
-            old
-              ? {
-                  ...old,
-                  connections: [...result.connections, ...old.connections],
-                }
-              : old,
-        )
+        patchPeopleGraph((old) => ({
+          ...old,
+          connections: [...result.connections, ...old.connections],
+        }))
       }
       onChanged()
     },
