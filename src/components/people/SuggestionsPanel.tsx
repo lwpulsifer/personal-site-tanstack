@@ -275,107 +275,114 @@ export const SuggestionsPanel = memo(function SuggestionsPanel({
   return (
     <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
       <h2 className="m-0 mb-3 text-sm font-semibold text-[var(--text)]">
-        Suggestions
+        Data quality checks
       </h2>
 
-      {suggestions.length === 0 ? (
-        <p className="text-xs text-[var(--text-muted)]">
-          No suggestions right now — nothing shares a parent without already
-          having a sibling connection.
-        </p>
-      ) : (
-        <>
-          <p className="mb-3 text-xs text-[var(--text-muted)]">
-            People who share a parent but don't have a sibling connection yet.
-            Uncheck any that aren't right, then add the rest.
+      <div>
+        <h3 className="m-0 mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+          Siblings sharing a parent
+        </h3>
+
+        {suggestions.length === 0 ? (
+          <p className="text-xs text-[var(--text-muted)]">
+            No suggestions right now — nothing shares a parent without already
+            having a sibling connection.
           </p>
-
-          <ul
-            data-testid="suggestion-list"
-            className="mb-3 flex flex-col gap-1.5"
-          >
-            {suggestions.map((s) => {
-              const key = suggestionKey(s)
-              const nameA = peopleById.get(s.personAId)?.name ?? 'Unknown'
-              const nameB = peopleById.get(s.personBId)?.name ?? 'Unknown'
-              const viaNames = s.viaParentIds
-                .map((id) => peopleById.get(id)?.name)
-                .filter((name): name is string => !!name)
-              return (
-                <li
-                  key={key}
-                  data-testid="suggestion-item"
-                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-[var(--hover-bg)]"
-                >
-                  <input
-                    type="checkbox"
-                    checked={!uncheckedKeys.has(key)}
-                    onChange={() => toggle(key)}
-                    aria-label={`Accept sibling suggestion: ${nameA} and ${nameB}`}
-                    data-testid="suggestion-checkbox"
-                  />
-                  <span className="text-[var(--text)]">
-                    {nameA}{' '}
-                    <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
-                      sibling
-                    </span>{' '}
-                    {nameB}
-                    {viaNames.length > 0 && (
-                      <span className="ml-1.5 text-xs italic text-[var(--text-muted)]">
-                        via {viaNames.join(', ')}
-                      </span>
-                    )}
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => addMutation.mutate()}
-              disabled={selected.length === 0 || addMutation.isPending}
-              data-testid="suggestion-add-selected-btn"
-              className="rounded-full bg-[var(--blue-deep)] px-3 py-1.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
-            >
-              Add {selected.length} connection{selected.length === 1 ? '' : 's'}
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                setUncheckedKeys(new Set(suggestions.map(suggestionKey)))
-              }
-              disabled={selected.length === 0}
-              data-testid="suggestion-clear-btn"
-              className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--hover-bg)] disabled:opacity-50"
-            >
-              Uncheck all
-            </button>
-          </div>
-
-          {addMutation.error && (
-            <p className="mt-2 text-xs text-red-600 dark:text-red-400">
-              {addMutation.error instanceof Error
-                ? addMutation.error.message
-                : 'Could not add connections'}
+        ) : (
+          <>
+            <p className="mb-3 text-xs text-[var(--text-muted)]">
+              People who share a parent but don't have a sibling connection yet.
+              Uncheck any that aren't right, then add the rest.
             </p>
-          )}
 
-          {addMutation.isSuccess && (
-            <p className="mt-2 text-xs text-[var(--text-muted)]">
-              Added {addMutation.data.connections.length} connection
-              {addMutation.data.connections.length === 1 ? '' : 's'}.
-              {addMutation.data.skipped > 0 &&
-                ` (${addMutation.data.skipped} already existed.)`}
-            </p>
-          )}
-        </>
-      )}
+            <ul
+              data-testid="suggestion-list"
+              className="mb-3 flex flex-col gap-1.5"
+            >
+              {suggestions.map((s) => {
+                const key = suggestionKey(s)
+                const nameA = peopleById.get(s.personAId)?.name ?? 'Unknown'
+                const nameB = peopleById.get(s.personBId)?.name ?? 'Unknown'
+                const viaNames = s.viaParentIds
+                  .map((id) => peopleById.get(id)?.name)
+                  .filter((name): name is string => !!name)
+                return (
+                  <li
+                    key={key}
+                    data-testid="suggestion-item"
+                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-[var(--hover-bg)]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!uncheckedKeys.has(key)}
+                      onChange={() => toggle(key)}
+                      aria-label={`Accept sibling suggestion: ${nameA} and ${nameB}`}
+                      data-testid="suggestion-checkbox"
+                    />
+                    <span className="text-[var(--text)]">
+                      {nameA}{' '}
+                      <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                        sibling
+                      </span>{' '}
+                      {nameB}
+                      {viaNames.length > 0 && (
+                        <span className="ml-1.5 text-xs italic text-[var(--text-muted)]">
+                          via {viaNames.join(', ')}
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => addMutation.mutate()}
+                disabled={selected.length === 0 || addMutation.isPending}
+                data-testid="suggestion-add-selected-btn"
+                className="rounded-full bg-[var(--blue-deep)] px-3 py-1.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
+              >
+                Add {selected.length} connection
+                {selected.length === 1 ? '' : 's'}
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setUncheckedKeys(new Set(suggestions.map(suggestionKey)))
+                }
+                disabled={selected.length === 0}
+                data-testid="suggestion-clear-btn"
+                className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--hover-bg)] disabled:opacity-50"
+              >
+                Uncheck all
+              </button>
+            </div>
+
+            {addMutation.error && (
+              <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+                {addMutation.error instanceof Error
+                  ? addMutation.error.message
+                  : 'Could not add connections'}
+              </p>
+            )}
+
+            {addMutation.isSuccess && (
+              <p className="mt-2 text-xs text-[var(--text-muted)]">
+                Added {addMutation.data.connections.length} connection
+                {addMutation.data.connections.length === 1 ? '' : 's'}.
+                {addMutation.data.skipped > 0 &&
+                  ` (${addMutation.data.skipped} already existed.)`}
+              </p>
+            )}
+          </>
+        )}
+      </div>
 
       <div className="mt-4 border-t border-[var(--border)] pt-4">
         <h3 className="m-0 mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-          Data quality: siblings without a shared parent
+          Siblings without a shared parent
         </h3>
 
         {parentFixSuggestions.length === 0 && noParentPairs.length === 0 ? (
