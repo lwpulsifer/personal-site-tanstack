@@ -113,7 +113,7 @@ const LINK_DISTANCE: Record<ConnectionKind, number> = {
 // instead of spreading into a readable shape. Keep this low — just enough
 // to read as "these people belong together" via loose whitespace, not
 // enough to override the layout the other forces are trying to produce.
-const CLUSTER_STRENGTH = 0.15
+const CLUSTER_STRENGTH = 0.1
 
 const NODE_COLLISION_RADIUS = 45
 
