@@ -489,6 +489,75 @@ test.describe('admin: people graph', () => {
     }
   })
 
+  test('suggests duplicating a parent connection onto the sibling missing it', async ({
+    page,
+  }) => {
+    const nameA = uniqueName('DupParentA')
+    const nameB = uniqueName('DupParentB')
+    const nameParent = uniqueName('DupParentParent')
+
+    await page.goto('/people')
+    await ensureHydrated(page)
+
+    for (const name of [nameA, nameB, nameParent]) {
+      await fillStable(page.getByTestId('person-name-input'), name, 15_000)
+      await page.getByTestId('add-person-btn').click()
+      await authExpect(page.getByTestId('person-list')).toContainText(name, { timeout: 20_000 })
+    }
+
+    async function connect(a: string, b: string, kind: string) {
+      await pickPerson(page, 'connection-person-a-select', a)
+      await pickPerson(page, 'connection-person-b-select', b)
+      await page.getByTestId('connection-kind-select').selectOption(kind)
+      await page.getByTestId('add-connection-btn').click()
+      const item = page.getByTestId('connection-list-item').filter({ hasText: a })
+      await authExpect(item.filter({ hasText: b })).toBeVisible({ timeout: 20_000 })
+    }
+
+    await connect(nameA, nameB, 'sibling')
+    // Only A has a parent connection — B is missing the matching one.
+    await connect(nameParent, nameA, 'parent_child')
+
+    const fixItem = page
+      .getByTestId('parent-fix-item')
+      .filter({ hasText: nameParent })
+      .filter({ hasText: nameB })
+    await authExpect(fixItem).toBeVisible({ timeout: 20_000 })
+    await authExpect(fixItem).toContainText(nameA)
+
+    await page.getByTestId('parent-fix-add-selected-btn').click()
+
+    const newParentConnection = page
+      .getByTestId('connection-list-item')
+      .filter({ hasText: nameParent })
+      .filter({ hasText: nameB })
+    await authExpect(newParentConnection).toBeVisible({ timeout: 20_000 })
+
+    // Now that B has the duplicated parent connection, the fix suggestion
+    // for this pair should be gone.
+    await authExpect(fixItem).toHaveCount(0)
+
+    // Clean up
+    for (const [a, b] of [
+      [nameA, nameB],
+      [nameParent, nameA],
+      [nameParent, nameB],
+    ]) {
+      const item = page
+        .getByTestId('connection-list-item')
+        .filter({ hasText: a })
+        .filter({ hasText: b })
+      await item.getByTestId('delete-connection-btn').click()
+      await authExpect(item).toHaveCount(0, { timeout: 20_000 })
+    }
+    for (const name of [nameA, nameB, nameParent]) {
+      const personItem = page.getByTestId('person-list-item').filter({ hasText: name })
+      page.once('dialog', (dialog) => dialog.accept())
+      await personItem.getByTestId('delete-person-btn').click()
+      await authExpect(personItem).toHaveCount(0, { timeout: 20_000 })
+    }
+  })
+
   test('swap button flips connection direction while editing', async ({ page }) => {
     const nameA = uniqueName('SwapA')
     const nameB = uniqueName('SwapB')
