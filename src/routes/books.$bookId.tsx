@@ -128,24 +128,9 @@ function BookPage() {
       <main className="page-wrap flex justify-center px-4 pb-12 pt-16">
         <article
           data-testid="book-page"
-          className="relative w-full max-w-2xl rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xl sm:p-8"
+          className="w-full max-w-2xl rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xl sm:p-8"
         >
-          <button
-            type="button"
-            onClick={copyLink}
-            data-testid="book-copy-link-btn"
-            aria-label={
-              copyStatus === 'copied' ? 'Link copied' : 'Copy link to share'
-            }
-            title={
-              copyStatus === 'copied' ? 'Link copied!' : 'Copy link to share'
-            }
-            className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] text-sm text-[var(--text-muted)] transition hover:bg-[var(--hover-bg)] hover:text-[var(--text)]"
-          >
-            {copyStatus === 'copied' ? '✓' : '🔗'}
-          </button>
-
-          <div className="mb-6 border-b border-[var(--border)] pb-4">
+          <div className="mb-6 flex items-center justify-between border-b border-[var(--border)] pb-4">
             <Link
               to="/books"
               viewTransition
@@ -154,6 +139,21 @@ function BookPage() {
             >
               ← Back to all books
             </Link>
+
+            <button
+              type="button"
+              onClick={copyLink}
+              data-testid="book-copy-link-btn"
+              aria-label={
+                copyStatus === 'copied' ? 'Link copied' : 'Copy link to share'
+              }
+              title={
+                copyStatus === 'copied' ? 'Link copied!' : 'Copy link to share'
+              }
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-sm text-[var(--text-muted)] transition hover:bg-[var(--hover-bg)] hover:text-[var(--text)]"
+            >
+              {copyStatus === 'copied' ? '✓' : '🔗'}
+            </button>
           </div>
 
           <div className="flex gap-5">
