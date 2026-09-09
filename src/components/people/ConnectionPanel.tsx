@@ -1,8 +1,10 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { PersonCombobox } from '#/components/people/PersonCombobox'
+import { selectClassName } from '#/components/people/styles'
 import { CONNECTION_KIND_OPTIONS } from '#/lib/connectionKind'
-import { type PeopleGraphData, peopleGraphQueryOptions } from '#/lib/queries'
+import { usePatchPeopleGraph } from '#/lib/hooks/usePatchPeopleGraph'
+import { usePeopleById } from '#/lib/hooks/usePeopleById'
 import {
   type ConnectionKind,
   type DbConnection,
@@ -21,9 +23,6 @@ const KIND_BADGE_STYLES: Record<ConnectionKind, string> = {
   coworker: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
   other: 'bg-[var(--chip-bg)] text-[var(--text-muted)]',
 }
-
-const selectClassName =
-  'rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]'
 
 // Both add and edit rows label their two person pickers "Parent"/"Child" for
 // parent_child connections and "Person A"/"Person B" otherwise; edit rows
@@ -130,10 +129,7 @@ export const ConnectionPanel = memo(function ConnectionPanel({
   const [label, setLabel] = useState('')
   const [connectionSearch, setConnectionSearch] = useState('')
 
-  const peopleById = useMemo(
-    () => new Map(people.map((p) => [p.id, p])),
-    [people],
-  )
+  const peopleById = usePeopleById(people)
 
   const filteredConnections = useMemo(() => {
     const q = connectionSearch.trim().toLowerCase()
@@ -151,21 +147,7 @@ export const ConnectionPanel = memo(function ConnectionPanel({
   const [editKind, setEditKind] = useState<ConnectionKind>('other')
   const [editLabel, setEditLabel] = useState('')
 
-  const queryClient = useQueryClient()
-  // The mutation already hands back the affected row, so patch the
-  // people-graph query cache with it directly instead of relying solely on
-  // invalidate()'s round-trip refetch (still triggered via onChanged below,
-  // for eventual consistency) — this is what lets the graph/panels update
-  // immediately instead of every edit waiting on a full network refetch.
-  const patchPeopleGraph = useCallback(
-    (updater: (old: PeopleGraphData) => PeopleGraphData) => {
-      queryClient.setQueryData<PeopleGraphData>(
-        peopleGraphQueryOptions.queryKey,
-        (old) => (old ? updater(old) : old),
-      )
-    },
-    [queryClient],
-  )
+  const patchPeopleGraph = usePatchPeopleGraph()
 
   const addMutation = useMutation({
     mutationFn: () =>

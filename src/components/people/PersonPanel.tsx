@@ -1,11 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { memo, useCallback, useId, useState } from 'react'
 import { useDebouncedValue } from '#/lib/hooks/useDebouncedValue'
-import {
-  type PeopleGraphData,
-  peopleGraphQueryOptions,
-  searchPeopleQueryOptions,
-} from '#/lib/queries'
+import { usePatchPeopleGraph } from '#/lib/hooks/usePatchPeopleGraph'
+import { searchPeopleQueryOptions } from '#/lib/queries'
 import {
   type DbPerson,
   deletePerson,
@@ -89,21 +86,7 @@ export const PersonPanel = memo(function PersonPanel({
     queryClient.invalidateQueries({ queryKey: ['searchPeople'] })
   }
 
-  // The mutation already hands back the affected row(s), so patch the
-  // people-graph query cache with them directly instead of relying solely
-  // on invalidate()'s round-trip refetch — that refetch still runs (via
-  // onChanged below) for eventual consistency, but the graph/panels update
-  // immediately rather than waiting on it, which is what made every edit
-  // feel slow to land.
-  const patchPeopleGraph = useCallback(
-    (updater: (old: PeopleGraphData) => PeopleGraphData) => {
-      queryClient.setQueryData<PeopleGraphData>(
-        peopleGraphQueryOptions.queryKey,
-        (old) => (old ? updater(old) : old),
-      )
-    },
-    [queryClient],
-  )
+  const patchPeopleGraph = usePatchPeopleGraph()
 
   const addMutation = useMutation({
     mutationFn: () => insertPerson({ data: { name } }),

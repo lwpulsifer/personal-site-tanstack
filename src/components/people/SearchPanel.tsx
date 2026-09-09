@@ -1,6 +1,8 @@
 import { memo, useMemo, useState } from 'react'
 import { PersonCombobox } from '#/components/people/PersonCombobox'
+import { selectClassName } from '#/components/people/styles'
 import { CONNECTION_KIND_LABELS } from '#/lib/connectionKind'
+import { usePeopleById } from '#/lib/hooks/usePeopleById'
 import type { ConnectionKind, DbConnection, DbPerson } from '#/server/people'
 
 // A "step" walks from the current set of people to everyone reachable via one
@@ -26,9 +28,6 @@ const PRESETS: { label: string; steps: RelationStep[] }[] = [
   { label: 'Grandparents', steps: ['parent', 'parent'] },
   { label: 'Grandchildren', steps: ['child', 'child'] },
 ]
-
-const selectClassName =
-  'rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]'
 
 function buildGraph(connections: DbConnection[]) {
   const parentToChildren = new Map<string, Set<string>>()
@@ -92,10 +91,7 @@ export const SearchPanel = memo(function SearchPanel({
   const [steps, setSteps] = useState<RelationStep[]>([])
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle')
 
-  const peopleById = useMemo(
-    () => new Map(people.map((p) => [p.id, p])),
-    [people],
-  )
+  const peopleById = usePeopleById(people)
 
   const graph = useMemo(() => buildGraph(connections), [connections])
 
