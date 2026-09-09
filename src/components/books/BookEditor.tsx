@@ -518,7 +518,7 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
             id={`${id}-review`}
             value={review}
             onChange={(e) => setReview(e.target.value)}
-            rows={4}
+            rows={10}
             data-testid="book-review-input"
             className="w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
           />
