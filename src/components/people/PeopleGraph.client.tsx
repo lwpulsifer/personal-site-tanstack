@@ -5,11 +5,7 @@ import ForceGraph2D, {
   type ForceGraphMethods,
   type NodeObject,
 } from 'react-force-graph-2d'
-import { PersonCombobox } from '#/components/people/PersonCombobox'
-import {
-  CONNECTION_KIND_OPTIONS,
-  connectionDisplayText,
-} from '#/lib/connectionKind'
+import { connectionDisplayText } from '#/lib/connectionKind'
 import { useElementSize } from '#/lib/hooks/useElementSize'
 import { useThemeMode } from '#/lib/hooks/useThemeMode'
 import type { ConnectionKind, DbConnection, DbPerson } from '#/server/people'
@@ -90,13 +86,13 @@ const CHARGE_DISTANCE_MAX = 2200
 // Owns the search-input state so that typing never causes the parent (and
 // therefore ForceGraph2D) to re-render.
 const GraphSearchOverlay = memo(function GraphSearchOverlay({
-  visiblePeople,
+  people,
   fgRef,
   graphNodes,
   onSelectPerson,
   onHighlight,
 }: {
-  visiblePeople: DbPerson[]
+  people: DbPerson[]
   fgRef: React.RefObject<ForceGraphMethods<GraphNode, GraphLink> | undefined>
   graphNodes: GraphNode[]
   onSelectPerson?: (person: DbPerson) => void
@@ -107,10 +103,8 @@ const GraphSearchOverlay = memo(function GraphSearchOverlay({
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return []
-    return visiblePeople
-      .filter((p) => p.name.toLowerCase().includes(q))
-      .slice(0, 8)
-  }, [visiblePeople, query])
+    return people.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 8)
+  }, [people, query])
 
   function jumpToPerson(person: DbPerson) {
     const node = graphNodes.find((n) => n.id === person.id)
@@ -160,81 +154,6 @@ const GraphSearchOverlay = memo(function GraphSearchOverlay({
   )
 })
 
-// ── GraphFilterPanel ──────────────────────────────────────────────────────────
-// Owns the filter-dropdown state so that selecting a person / kind only
-// re-renders this panel, not the graph, until the user clicks "Filter".
-const GraphFilterPanel = memo(function GraphFilterPanel({
-  people,
-  activeFilter,
-  onApply,
-  onClear,
-}: {
-  people: DbPerson[]
-  activeFilter: { personId: string; kind: ConnectionKind } | null
-  onApply: (filter: { personId: string; kind: ConnectionKind }) => void
-  onClear: () => void
-}) {
-  const [filterPersonId, setFilterPersonId] = useState('')
-  const [filterKind, setFilterKind] = useState<ConnectionKind>(
-    CONNECTION_KIND_OPTIONS[0].value,
-  )
-  const peopleById = useMemo(
-    () => new Map(people.map((p) => [p.id, p])),
-    [people],
-  )
-
-  return (
-    <div className="absolute right-3 top-3 z-10 flex w-60 flex-col gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-sm">
-      <PersonCombobox
-        people={people}
-        peopleById={peopleById}
-        value={filterPersonId}
-        onChange={setFilterPersonId}
-        placeholder="Person…"
-        ariaLabel="Filter: person"
-        testId="people-filter-person-select"
-        className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs text-[var(--text)] outline-none focus:border-[var(--blue)]"
-      />
-      <select
-        aria-label="Filter: relationship type"
-        value={filterKind}
-        onChange={(e) => setFilterKind(e.target.value as ConnectionKind)}
-        data-testid="people-filter-kind-select"
-        className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs text-[var(--text)] outline-none focus:border-[var(--blue)]"
-      >
-        {CONNECTION_KIND_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-      <div className="flex gap-1.5">
-        <button
-          type="button"
-          disabled={!filterPersonId}
-          onClick={() =>
-            onApply({ personId: filterPersonId, kind: filterKind })
-          }
-          data-testid="people-filter-apply-btn"
-          className="flex-1 rounded-full bg-[var(--blue-deep)] px-2 py-1 text-xs font-semibold text-white transition hover:bg-[var(--blue-darker)] disabled:opacity-50"
-        >
-          Filter
-        </button>
-        {activeFilter && (
-          <button
-            type="button"
-            onClick={onClear}
-            data-testid="people-filter-clear-btn"
-            className="rounded-full border border-[var(--border)] px-2 py-1 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--hover-bg)]"
-          >
-            Clear
-          </button>
-        )}
-      </div>
-    </div>
-  )
-})
-
 // ── PeopleGraph ───────────────────────────────────────────────────────────────
 export function PeopleGraph({
   people,
@@ -256,61 +175,6 @@ export function PeopleGraph({
   const pendingFocusRef = useRef<GraphFocusRequest | null>(null)
   const lastFocusRequestId = useRef<number | null>(null)
 
-  const [activeFilter, setActiveFilter] = useState<{
-    personId: string
-    kind: ConnectionKind
-  } | null>(null)
-
-  const handleApplyFilter = useCallback(
-    (filter: { personId: string; kind: ConnectionKind }) =>
-      setActiveFilter(filter),
-    [],
-  )
-  const handleClearFilter = useCallback(() => setActiveFilter(null), [])
-
-  const reachableIds = useMemo(() => {
-    if (!activeFilter) return null
-    const adjacency = new Map<string, Set<string>>()
-    for (const c of connections) {
-      if (c.kind !== activeFilter.kind) continue
-      if (!adjacency.has(c.person_a_id)) adjacency.set(c.person_a_id, new Set())
-      if (!adjacency.has(c.person_b_id)) adjacency.set(c.person_b_id, new Set())
-      adjacency.get(c.person_a_id)?.add(c.person_b_id)
-      adjacency.get(c.person_b_id)?.add(c.person_a_id)
-    }
-    const visited = new Set<string>([activeFilter.personId])
-    const queue = [activeFilter.personId]
-    while (queue.length > 0) {
-      const current = queue.shift()
-      if (!current) break
-      for (const neighbor of adjacency.get(current) ?? []) {
-        if (!visited.has(neighbor)) {
-          visited.add(neighbor)
-          queue.push(neighbor)
-        }
-      }
-    }
-    return visited
-  }, [activeFilter, connections])
-
-  const visiblePeople = useMemo(
-    () =>
-      reachableIds ? people.filter((p) => reachableIds.has(p.id)) : people,
-    [people, reachableIds],
-  )
-  const visibleConnections = useMemo(
-    () =>
-      reachableIds && activeFilter
-        ? connections.filter(
-            (c) =>
-              c.kind === activeFilter.kind &&
-              reachableIds.has(c.person_a_id) &&
-              reachableIds.has(c.person_b_id),
-          )
-        : connections,
-    [connections, reachableIds, activeFilter],
-  )
-
   const peopleById = useMemo(
     () => new Map(people.map((p) => [p.id, p])),
     [people],
@@ -320,20 +184,20 @@ export function PeopleGraph({
   // collide force below) so couples visually read as a single unit.
   const partnerNodeIds = useMemo(() => {
     const ids = new Set<string>()
-    for (const c of visibleConnections) {
+    for (const c of connections) {
       if (c.kind !== 'partner') continue
       ids.add(c.person_a_id)
       ids.add(c.person_b_id)
     }
     return ids
-  }, [visibleConnections])
+  }, [connections])
 
   const selfId = useMemo(
     () => people.find((p) => p.name === SELF_PERSON_NAME)?.id ?? null,
     [people],
   )
 
-  // Hop-distance from "me" through the visible connections, via BFS. Used to
+  // Hop-distance from "me" through the connections, via BFS. Used to
   // lay the graph out in rings around me: further relationships (more hops
   // away) sit physically further out. Nodes not reachable from me (or when
   // there's no "me" node) fall back to Infinity, so the radial force below
@@ -342,7 +206,7 @@ export function PeopleGraph({
     const distances = new Map<string, number>()
     if (!selfId) return distances
     const adjacency = new Map<string, Set<string>>()
-    for (const c of visibleConnections) {
+    for (const c of connections) {
       if (!adjacency.has(c.person_a_id)) adjacency.set(c.person_a_id, new Set())
       if (!adjacency.has(c.person_b_id)) adjacency.set(c.person_b_id, new Set())
       adjacency.get(c.person_a_id)?.add(c.person_b_id)
@@ -362,7 +226,7 @@ export function PeopleGraph({
       }
     }
     return distances
-  }, [selfId, visibleConnections])
+  }, [selfId, connections])
 
   // Cluster id per person, used to pull family units / friend circles / coworker
   // groups together (see the cluster force below). There's no explicit
@@ -384,7 +248,7 @@ export function PeopleGraph({
   // family clusters rather than the two families blurring into one.
   const clusterIdByPersonId = useMemo(() => {
     const adjacency = new Map<string, Set<string>>()
-    for (const c of visibleConnections) {
+    for (const c of connections) {
       if (c.person_a_id === selfId || c.person_b_id === selfId) continue
       if (c.kind === 'partner') continue
       if (!adjacency.has(c.person_a_id)) adjacency.set(c.person_a_id, new Set())
@@ -393,7 +257,7 @@ export function PeopleGraph({
       adjacency.get(c.person_b_id)?.add(c.person_a_id)
     }
     const clusterIds = new Map<string, string>()
-    for (const person of visiblePeople) {
+    for (const person of people) {
       if (person.id === selfId || clusterIds.has(person.id)) continue
       const queue = [person.id]
       clusterIds.set(person.id, person.id)
@@ -409,7 +273,7 @@ export function PeopleGraph({
       }
     }
     return clusterIds
-  }, [visiblePeople, visibleConnections, selfId])
+  }, [people, connections, selfId])
 
   // A display name per cluster, so the graph can show one label for a whole
   // group instead of every member's name. Picks the most common free-text
@@ -430,7 +294,7 @@ export function PeopleGraph({
     // meaningful "who is this" label than a generic relationship kind.
     const directlyConnectedToSelf = new Set<string>()
     if (selfId) {
-      for (const c of visibleConnections) {
+      for (const c of connections) {
         if (c.person_a_id === selfId) directlyConnectedToSelf.add(c.person_b_id)
         else if (c.person_b_id === selfId)
           directlyConnectedToSelf.add(c.person_a_id)
@@ -442,7 +306,7 @@ export function PeopleGraph({
       if (memberIds.length < 2) continue
       const memberSet = new Set(memberIds)
       const labelCounts = new Map<string, number>()
-      for (const c of visibleConnections) {
+      for (const c of connections) {
         if (!memberSet.has(c.person_a_id) || !memberSet.has(c.person_b_id))
           continue
         const tag = c.label?.trim()
@@ -462,7 +326,7 @@ export function PeopleGraph({
       if (name) meta.set(clusterId, { memberIds, name })
     }
     return meta
-  }, [clusterIdByPersonId, visibleConnections, selfId, peopleById])
+  }, [clusterIdByPersonId, connections, selfId, peopleById])
 
   // react-force-graph mutates node objects in place with their simulated
   // x/y/vx/vy every tick. If we handed it a brand-new node literal per
@@ -477,7 +341,7 @@ export function PeopleGraph({
 
   // react-force-graph reheats the ENTIRE simulation from alpha 1 whenever it
   // sees a new `graphData` object reference, no matter what's inside it —
-  // so a `useMemo` keyed on `[visiblePeople, visibleConnections, ...]` alone
+  // so a `useMemo` keyed on `[people, connections, ...]` alone
   // still rebuilds (and reheats) on every refetch that returns
   // content-identical data (e.g. React Query's default refetch-on-focus).
   // Guarding with a content signature and returning the previous result
@@ -489,9 +353,9 @@ export function PeopleGraph({
   } | null>(null)
 
   const graphData = useMemo(() => {
-    const signature = `${visiblePeople
+    const signature = `${people
       .map((p) => `${p.id}:${p.name}`)
-      .join('|')}::${visibleConnections
+      .join('|')}::${connections
       .map(
         (c) =>
           `${c.id}:${c.kind}:${c.label ?? ''}:${c.person_a_id}:${c.person_b_id}`,
@@ -503,7 +367,7 @@ export function PeopleGraph({
 
     const cache = nodeCacheRef.current
     const seenIds = new Set<string>()
-    const nodes = visiblePeople.map((p) => {
+    const nodes = people.map((p) => {
       seenIds.add(p.id)
       const existing = cache.get(p.id)
       if (existing) {
@@ -519,7 +383,7 @@ export function PeopleGraph({
     }
     const result = {
       nodes,
-      links: visibleConnections.map((c) => {
+      links: connections.map((c) => {
         const displayText = connectionDisplayText(c.kind, c.label)
         const nameA = peopleById.get(c.person_a_id)?.name ?? 'Unknown'
         const nameB = peopleById.get(c.person_b_id)?.name ?? 'Unknown'
@@ -535,7 +399,7 @@ export function PeopleGraph({
     }
     graphDataCacheRef.current = { signature, result }
     return result
-  }, [visiblePeople, visibleConnections, peopleById])
+  }, [people, connections, peopleById])
 
   // Keeps references to each cluster's live node objects (react-force-graph
   // mutates these in place with x/y every simulation tick), so the cluster
@@ -850,18 +714,11 @@ export function PeopleGraph({
       className="relative h-full w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
     >
       <GraphSearchOverlay
-        visiblePeople={visiblePeople}
+        people={people}
         fgRef={fgRef}
         graphNodes={graphData.nodes}
         onSelectPerson={onSelectPerson}
         onHighlight={setHighlightedId}
-      />
-
-      <GraphFilterPanel
-        people={people}
-        activeFilter={activeFilter}
-        onApply={handleApplyFilter}
-        onClear={handleClearFilter}
       />
 
       {width > 0 && height > 0 && (
