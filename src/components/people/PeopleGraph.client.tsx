@@ -5,6 +5,7 @@ import ForceGraph2D, {
   type ForceGraphMethods,
   type NodeObject,
 } from 'react-force-graph-2d'
+import { PersonCombobox } from '#/components/people/PersonCombobox'
 import {
   CONNECTION_KIND_OPTIONS,
   connectionDisplayText,
@@ -177,23 +178,23 @@ const GraphFilterPanel = memo(function GraphFilterPanel({
   const [filterKind, setFilterKind] = useState<ConnectionKind>(
     CONNECTION_KIND_OPTIONS[0].value,
   )
+  const peopleById = useMemo(
+    () => new Map(people.map((p) => [p.id, p])),
+    [people],
+  )
 
   return (
     <div className="absolute right-3 top-3 z-10 flex w-60 flex-col gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-sm">
-      <select
-        aria-label="Filter: person"
+      <PersonCombobox
+        people={people}
+        peopleById={peopleById}
         value={filterPersonId}
-        onChange={(e) => setFilterPersonId(e.target.value)}
-        data-testid="people-filter-person-select"
+        onChange={setFilterPersonId}
+        placeholder="Person…"
+        ariaLabel="Filter: person"
+        testId="people-filter-person-select"
         className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs text-[var(--text)] outline-none focus:border-[var(--blue)]"
-      >
-        <option value="">Person…</option>
-        {people.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-      </select>
+      />
       <select
         aria-label="Filter: relationship type"
         value={filterKind}

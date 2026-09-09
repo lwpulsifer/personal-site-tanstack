@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { memo, useRef, useState } from 'react'
+import { memo, useMemo, useRef, useState } from 'react'
+import { PersonCombobox } from '#/components/people/PersonCombobox'
 import { CONNECTION_KIND_OPTIONS } from '#/lib/connectionKind'
 import { type PeopleGraphData, peopleGraphQueryOptions } from '#/lib/queries'
 import {
@@ -152,6 +153,15 @@ export const GroupPanel = memo(function GroupPanel({
   const [kind, setKind] = useState<ConnectionKind>('other')
   const [label, setLabel] = useState('')
 
+  const peopleById = useMemo(
+    () => new Map(people.map((p) => [p.id, p])),
+    [people],
+  )
+  const anchorCandidates = useMemo(
+    () => people.filter((p) => !selectedIds.includes(p.id)),
+    [people, selectedIds],
+  )
+
   const queryClient = useQueryClient()
 
   const groupMutation = useMutation({
@@ -250,26 +260,19 @@ export const GroupPanel = memo(function GroupPanel({
         className="flex flex-wrap items-center gap-2"
       >
         {mode === 'star' && (
-          <select
-            aria-label="Anchor person"
+          <PersonCombobox
+            people={anchorCandidates}
+            peopleById={peopleById}
             value={anchorId}
-            onChange={(e) => {
-              const id = e.target.value
+            onChange={(id) => {
               setAnchorId(id)
               setSelectedIds((ids) => ids.filter((existing) => existing !== id))
             }}
-            data-testid="group-anchor-select"
-            className={selectClassName}
-          >
-            <option value="">Anchor person…</option>
-            {people
-              .filter((p) => !selectedIds.includes(p.id))
-              .map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-          </select>
+            placeholder="Anchor person…"
+            ariaLabel="Anchor person"
+            testId="group-anchor-select"
+            className={`w-36 ${selectClassName}`}
+          />
         )}
 
         <PeoplePicker

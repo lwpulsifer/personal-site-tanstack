@@ -1,4 +1,5 @@
 import { memo, useMemo, useState } from 'react'
+import { PersonCombobox } from '#/components/people/PersonCombobox'
 import { CONNECTION_KIND_LABELS } from '#/lib/connectionKind'
 import type { ConnectionKind, DbConnection, DbPerson } from '#/server/people'
 
@@ -161,23 +162,19 @@ export const SearchPanel = memo(function SearchPanel({
       </p>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <select
-          aria-label="Start person"
+        <PersonCombobox
+          people={people}
+          peopleById={peopleById}
           value={startId}
-          onChange={(e) => {
-            setStartId(e.target.value)
+          onChange={(id) => {
+            setStartId(id)
             setCopyStatus('idle')
           }}
-          data-testid="search-start-select"
-          className={selectClassName}
-        >
-          <option value="">Start person…</option>
-          {people.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+          placeholder="Start person…"
+          ariaLabel="Start person"
+          testId="search-start-select"
+          className={`w-36 ${selectClassName}`}
+        />
 
         {PRESETS.map((preset) => (
           <button

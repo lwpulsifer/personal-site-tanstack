@@ -123,7 +123,7 @@ test.describe('admin: people graph', () => {
     await connect(nameB, nameC, 'friend')
     await connect(nameA, nameD, 'coworker')
 
-    await page.getByTestId('people-filter-person-select').selectOption({ label: nameA })
+    await pickPerson(page, 'people-filter-person-select', nameA)
     await page.getByTestId('people-filter-kind-select').selectOption('friend')
     await page.getByTestId('people-filter-apply-btn').click()
 
@@ -296,8 +296,8 @@ test.describe('admin: people graph', () => {
 
     await page.getByTestId('group-mode-star-btn').click()
 
-    // Anchor is picked from a standalone select, independent of the members picker.
-    await page.getByTestId('group-anchor-select').selectOption({ label: nameAnchor })
+    // Anchor is picked from a standalone combobox, independent of the members picker.
+    await pickPerson(page, 'group-anchor-select', nameAnchor)
 
     const groupInput = page.getByTestId('group-people-input')
     for (const name of [nameB, nameC]) {
@@ -332,9 +332,7 @@ test.describe('admin: people graph', () => {
     await authExpect(bcItem).toHaveCount(0)
 
     // Anchor and members are preserved after submission, not reset.
-    await authExpect(
-      page.getByTestId('group-anchor-select').locator('option:checked'),
-    ).toHaveText(nameAnchor)
+    await authExpect(page.getByTestId('group-anchor-select')).toHaveValue(nameAnchor)
     await authExpect(page.getByTestId('group-person-chip').filter({ hasText: nameB })).toBeVisible()
     await authExpect(page.getByTestId('group-person-chip').filter({ hasText: nameC })).toBeVisible()
 
@@ -389,7 +387,7 @@ test.describe('admin: people graph', () => {
     await connect(nameParent, nameAunt, 'sibling')
     await connect(nameAunt, nameCousin, 'parent_child')
 
-    await page.getByTestId('search-start-select').selectOption({ label: nameMe })
+    await pickPerson(page, 'search-start-select', nameMe)
     await page.getByTestId('search-preset-btn').filter({ hasText: 'Cousins' }).click()
 
     await authExpect(
