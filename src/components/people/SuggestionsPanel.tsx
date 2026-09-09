@@ -19,6 +19,11 @@ type Suggestion = {
   viaParentIds: string[]
 }
 
+type SiblingWithoutParent = {
+  personAId: string
+  personBId: string
+}
+
 function pairKey(a: string, b: string) {
   return [a, b].sort((x, y) => x.localeCompare(y)).join(':')
 }
@@ -78,6 +83,46 @@ function findSiblingSuggestions(connections: DbConnection[]): Suggestion[] {
   return [...byPair.values()]
 }
 
+// The reverse data-quality check: existing sibling connections where the two
+// people don't share any parent_child connection to a common parent. This
+// doesn't necessarily mean the sibling tag is wrong — it's just as likely
+// that a parent_child connection for one (or both) of them hasn't been
+// entered yet — so unlike findSiblingSuggestions above, there's no single
+// obvious fix to offer; this only surfaces the pair for a human to check.
+function findSiblingsWithoutSharedParent(
+  connections: DbConnection[],
+): SiblingWithoutParent[] {
+  const parentsByChild = new Map<string, Set<string>>()
+  for (const c of connections) {
+    if (c.kind !== 'parent_child') continue
+    if (c.person_a_id === c.person_b_id) continue
+    if (!parentsByChild.has(c.person_b_id)) {
+      parentsByChild.set(c.person_b_id, new Set())
+    }
+    parentsByChild.get(c.person_b_id)?.add(c.person_a_id)
+  }
+
+  const seenPairs = new Set<string>()
+  const result: SiblingWithoutParent[] = []
+  for (const c of connections) {
+    if (c.kind !== 'sibling') continue
+    const key = pairKey(c.person_a_id, c.person_b_id)
+    if (seenPairs.has(key)) continue
+    seenPairs.add(key)
+
+    const parentsA = parentsByChild.get(c.person_a_id)
+    const parentsB = parentsByChild.get(c.person_b_id)
+    const sharesParent =
+      parentsA != null &&
+      parentsB != null &&
+      [...parentsA].some((p) => parentsB.has(p))
+    if (!sharesParent) {
+      result.push({ personAId: c.person_a_id, personBId: c.person_b_id })
+    }
+  }
+  return result
+}
+
 export const SuggestionsPanel = memo(function SuggestionsPanel({
   people,
   connections,
@@ -91,6 +136,11 @@ export const SuggestionsPanel = memo(function SuggestionsPanel({
 
   const suggestions = useMemo(
     () => findSiblingSuggestions(connections),
+    [connections],
+  )
+
+  const siblingsWithoutSharedParent = useMemo(
+    () => findSiblingsWithoutSharedParent(connections),
     [connections],
   )
 
@@ -138,107 +188,152 @@ export const SuggestionsPanel = memo(function SuggestionsPanel({
     },
   })
 
-  if (suggestions.length === 0) {
-    return (
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
-        <h2 className="m-0 mb-3 text-sm font-semibold text-[var(--text)]">
-          Suggestions
-        </h2>
-        <p className="text-xs text-[var(--text-muted)]">
-          No suggestions right now — nothing shares a parent without already
-          having a sibling connection.
-        </p>
-      </div>
-    )
-  }
-
   return (
     <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
       <h2 className="m-0 mb-3 text-sm font-semibold text-[var(--text)]">
         Suggestions
       </h2>
-      <p className="mb-3 text-xs text-[var(--text-muted)]">
-        People who share a parent but don't have a sibling connection yet.
-        Uncheck any that aren't right, then add the rest.
-      </p>
 
-      <ul data-testid="suggestion-list" className="mb-3 flex flex-col gap-1.5">
-        {suggestions.map((s) => {
-          const key = suggestionKey(s)
-          const nameA = peopleById.get(s.personAId)?.name ?? 'Unknown'
-          const nameB = peopleById.get(s.personBId)?.name ?? 'Unknown'
-          const viaNames = s.viaParentIds
-            .map((id) => peopleById.get(id)?.name)
-            .filter((name): name is string => !!name)
-          return (
-            <li
-              key={key}
-              data-testid="suggestion-item"
-              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-[var(--hover-bg)]"
-            >
-              <input
-                type="checkbox"
-                checked={!uncheckedKeys.has(key)}
-                onChange={() => toggle(key)}
-                aria-label={`Accept sibling suggestion: ${nameA} and ${nameB}`}
-                data-testid="suggestion-checkbox"
-              />
-              <span className="text-[var(--text)]">
-                {nameA}{' '}
-                <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
-                  sibling
-                </span>{' '}
-                {nameB}
-                {viaNames.length > 0 && (
-                  <span className="ml-1.5 text-xs italic text-[var(--text-muted)]">
-                    via {viaNames.join(', ')}
+      {suggestions.length === 0 ? (
+        <p className="text-xs text-[var(--text-muted)]">
+          No suggestions right now — nothing shares a parent without already
+          having a sibling connection.
+        </p>
+      ) : (
+        <>
+          <p className="mb-3 text-xs text-[var(--text-muted)]">
+            People who share a parent but don't have a sibling connection yet.
+            Uncheck any that aren't right, then add the rest.
+          </p>
+
+          <ul
+            data-testid="suggestion-list"
+            className="mb-3 flex flex-col gap-1.5"
+          >
+            {suggestions.map((s) => {
+              const key = suggestionKey(s)
+              const nameA = peopleById.get(s.personAId)?.name ?? 'Unknown'
+              const nameB = peopleById.get(s.personBId)?.name ?? 'Unknown'
+              const viaNames = s.viaParentIds
+                .map((id) => peopleById.get(id)?.name)
+                .filter((name): name is string => !!name)
+              return (
+                <li
+                  key={key}
+                  data-testid="suggestion-item"
+                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-[var(--hover-bg)]"
+                >
+                  <input
+                    type="checkbox"
+                    checked={!uncheckedKeys.has(key)}
+                    onChange={() => toggle(key)}
+                    aria-label={`Accept sibling suggestion: ${nameA} and ${nameB}`}
+                    data-testid="suggestion-checkbox"
+                  />
+                  <span className="text-[var(--text)]">
+                    {nameA}{' '}
+                    <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                      sibling
+                    </span>{' '}
+                    {nameB}
+                    {viaNames.length > 0 && (
+                      <span className="ml-1.5 text-xs italic text-[var(--text-muted)]">
+                        via {viaNames.join(', ')}
+                      </span>
+                    )}
                   </span>
-                )}
-              </span>
-            </li>
-          )
-        })}
-      </ul>
+                </li>
+              )
+            })}
+          </ul>
 
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => addMutation.mutate()}
-          disabled={selected.length === 0 || addMutation.isPending}
-          data-testid="suggestion-add-selected-btn"
-          className="rounded-full bg-[var(--blue-deep)] px-3 py-1.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
-        >
-          Add {selected.length} connection{selected.length === 1 ? '' : 's'}
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            setUncheckedKeys(new Set(suggestions.map(suggestionKey)))
-          }
-          disabled={selected.length === 0}
-          data-testid="suggestion-clear-btn"
-          className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--hover-bg)] disabled:opacity-50"
-        >
-          Uncheck all
-        </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => addMutation.mutate()}
+              disabled={selected.length === 0 || addMutation.isPending}
+              data-testid="suggestion-add-selected-btn"
+              className="rounded-full bg-[var(--blue-deep)] px-3 py-1.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
+            >
+              Add {selected.length} connection{selected.length === 1 ? '' : 's'}
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setUncheckedKeys(new Set(suggestions.map(suggestionKey)))
+              }
+              disabled={selected.length === 0}
+              data-testid="suggestion-clear-btn"
+              className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--hover-bg)] disabled:opacity-50"
+            >
+              Uncheck all
+            </button>
+          </div>
+
+          {addMutation.error && (
+            <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+              {addMutation.error instanceof Error
+                ? addMutation.error.message
+                : 'Could not add connections'}
+            </p>
+          )}
+
+          {addMutation.isSuccess && (
+            <p className="mt-2 text-xs text-[var(--text-muted)]">
+              Added {addMutation.data.connections.length} connection
+              {addMutation.data.connections.length === 1 ? '' : 's'}.
+              {addMutation.data.skipped > 0 &&
+                ` (${addMutation.data.skipped} already existed.)`}
+            </p>
+          )}
+        </>
+      )}
+
+      <div className="mt-4 border-t border-[var(--border)] pt-4">
+        <h3 className="m-0 mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+          Data quality: siblings without a shared parent
+        </h3>
+
+        {siblingsWithoutSharedParent.length === 0 ? (
+          <p className="text-xs text-[var(--text-muted)]">
+            No issues found — every sibling connection shares at least one
+            parent.
+          </p>
+        ) : (
+          <>
+            <p className="mb-2 text-xs text-[var(--text-muted)]">
+              These sibling connections don't share a parent_child connection to
+              a common parent yet — either a parent connection is missing, or
+              the sibling tag itself is wrong. Review manually.
+            </p>
+            <ul
+              data-testid="sibling-without-parent-list"
+              className="flex flex-col gap-1.5"
+            >
+              {siblingsWithoutSharedParent.map((pair) => {
+                const nameA = peopleById.get(pair.personAId)?.name ?? 'Unknown'
+                const nameB = peopleById.get(pair.personBId)?.name ?? 'Unknown'
+                return (
+                  <li
+                    key={pairKey(pair.personAId, pair.personBId)}
+                    data-testid="sibling-without-parent-item"
+                    className="rounded-lg px-2 py-1.5 text-sm text-[var(--text)]"
+                  >
+                    {nameA}{' '}
+                    <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                      sibling
+                    </span>{' '}
+                    {nameB}
+                    <span className="ml-1.5 text-xs italic text-[var(--text-muted)]">
+                      — no shared parent found
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          </>
+        )}
       </div>
-
-      {addMutation.error && (
-        <p className="mt-2 text-xs text-red-600 dark:text-red-400">
-          {addMutation.error instanceof Error
-            ? addMutation.error.message
-            : 'Could not add connections'}
-        </p>
-      )}
-
-      {addMutation.isSuccess && (
-        <p className="mt-2 text-xs text-[var(--text-muted)]">
-          Added {addMutation.data.connections.length} connection
-          {addMutation.data.connections.length === 1 ? '' : 's'}.
-          {addMutation.data.skipped > 0 &&
-            ` (${addMutation.data.skipped} already existed.)`}
-        </p>
-      )}
     </div>
   )
 })
