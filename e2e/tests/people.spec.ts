@@ -429,6 +429,66 @@ test.describe('admin: people graph', () => {
     }
   })
 
+  test('flags a sibling connection without a shared parent, then clears once one is added', async ({
+    page,
+  }) => {
+    const nameA = uniqueName('NoParentSibA')
+    const nameB = uniqueName('NoParentSibB')
+    const nameParent = uniqueName('NoParentSibParent')
+
+    await page.goto('/people')
+    await ensureHydrated(page)
+
+    for (const name of [nameA, nameB, nameParent]) {
+      await fillStable(page.getByTestId('person-name-input'), name, 15_000)
+      await page.getByTestId('add-person-btn').click()
+      await authExpect(page.getByTestId('person-list')).toContainText(name, { timeout: 20_000 })
+    }
+
+    async function connect(a: string, b: string, kind: string) {
+      await pickPerson(page, 'connection-person-a-select', a)
+      await pickPerson(page, 'connection-person-b-select', b)
+      await page.getByTestId('connection-kind-select').selectOption(kind)
+      await page.getByTestId('add-connection-btn').click()
+      const item = page.getByTestId('connection-list-item').filter({ hasText: a })
+      await authExpect(item.filter({ hasText: b })).toBeVisible({ timeout: 20_000 })
+    }
+
+    await connect(nameA, nameB, 'sibling')
+
+    const warningItem = page
+      .getByTestId('sibling-without-parent-item')
+      .filter({ hasText: nameA })
+      .filter({ hasText: nameB })
+    await authExpect(warningItem).toBeVisible({ timeout: 20_000 })
+
+    // Adding a shared parent for both should clear the warning.
+    await connect(nameParent, nameA, 'parent_child')
+    await connect(nameParent, nameB, 'parent_child')
+
+    await authExpect(warningItem).toHaveCount(0, { timeout: 20_000 })
+
+    // Clean up
+    for (const [a, b] of [
+      [nameA, nameB],
+      [nameParent, nameA],
+      [nameParent, nameB],
+    ]) {
+      const item = page
+        .getByTestId('connection-list-item')
+        .filter({ hasText: a })
+        .filter({ hasText: b })
+      await item.getByTestId('delete-connection-btn').click()
+      await authExpect(item).toHaveCount(0, { timeout: 20_000 })
+    }
+    for (const name of [nameA, nameB, nameParent]) {
+      const personItem = page.getByTestId('person-list-item').filter({ hasText: name })
+      page.once('dialog', (dialog) => dialog.accept())
+      await personItem.getByTestId('delete-person-btn').click()
+      await authExpect(personItem).toHaveCount(0, { timeout: 20_000 })
+    }
+  })
+
   test('swap button flips connection direction while editing', async ({ page }) => {
     const nameA = uniqueName('SwapA')
     const nameB = uniqueName('SwapB')
