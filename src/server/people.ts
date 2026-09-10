@@ -30,8 +30,8 @@ export const getPeopleGraph = createServerFn({ method: 'GET' }).handler(
         .order('created_at', { ascending: false }),
     ])
 
-    if (peopleError) throw new Error(peopleError.message)
-    if (connectionsError) throw new Error(connectionsError.message)
+    if (peopleError) throw peopleError
+    if (connectionsError) throw connectionsError
 
     return {
       people: (people ?? []) as DbPerson[],
@@ -54,7 +54,7 @@ export const insertPerson = createServerFn({ method: 'POST' })
       .insert({ name: data.name })
       .select()
       .single()
-    if (error) throw new Error(error.message)
+    if (error) throw error
     return person as DbPerson
   })
 
@@ -69,7 +69,7 @@ export const updatePerson = createServerFn({ method: 'POST' })
       .eq('id', data.personId)
       .select()
       .single()
-    if (error) throw new Error(error.message)
+    if (error) throw error
     return person as DbPerson
   })
 
@@ -82,7 +82,7 @@ export const deletePerson = createServerFn({ method: 'POST' })
       .from('people')
       .delete()
       .eq('id', data.personId)
-    if (error) throw new Error(error.message)
+    if (error) throw error
     return { ok: true }
   })
 
@@ -123,7 +123,7 @@ export const insertConnection = createServerFn({ method: 'POST' })
       })
       .select()
       .single()
-    if (error) throw new Error(error.message)
+    if (error) throw error
     return connection as DbConnection
   })
 
@@ -155,7 +155,7 @@ export const updateConnection = createServerFn({ method: 'POST' })
       .eq('id', data.connectionId)
       .select()
       .single()
-    if (error) throw new Error(error.message)
+    if (error) throw error
     return connection as DbConnection
   })
 
@@ -168,7 +168,7 @@ export const deleteConnection = createServerFn({ method: 'POST' })
       .from('people_connections')
       .delete()
       .eq('id', data.connectionId)
-    if (error) throw new Error(error.message)
+    if (error) throw error
     return { ok: true }
   })
 
@@ -218,7 +218,7 @@ export const insertConnectionGroup = createServerFn({ method: 'POST' })
       .select('person_a_id, person_b_id')
       .eq('kind', data.kind)
       .or(`person_a_id.in.(${ids.join(',')}),person_b_id.in.(${ids.join(',')})`)
-    if (existingError) throw new Error(existingError.message)
+    if (existingError) throw existingError
 
     const pairKey = (a: string, b: string) =>
       [a, b].sort((x, y) => x.localeCompare(y)).join(':')
@@ -251,7 +251,7 @@ export const insertConnectionGroup = createServerFn({ method: 'POST' })
       .from('people_connections')
       .insert(rows)
       .select()
-    if (error) throw new Error(error.message)
+    if (error) throw error
     return { connections: (connections ?? []) as DbConnection[], skipped }
   })
 
@@ -290,7 +290,7 @@ export const insertConnectionBatch = createServerFn({ method: 'POST' })
       .from('people_connections')
       .select('person_a_id, person_b_id, kind')
       .or(`person_a_id.in.(${ids.join(',')}),person_b_id.in.(${ids.join(',')})`)
-    if (existingError) throw new Error(existingError.message)
+    if (existingError) throw existingError
 
     const tripleKey = (a: string, b: string, kind: ConnectionKind) =>
       `${[a, b].sort((x, y) => x.localeCompare(y)).join(':')}:${kind}`
@@ -321,7 +321,7 @@ export const insertConnectionBatch = createServerFn({ method: 'POST' })
       .from('people_connections')
       .insert(rows)
       .select()
-    if (error) throw new Error(error.message)
+    if (error) throw error
     return { connections: (connections ?? []) as DbConnection[], skipped }
   })
 
@@ -348,6 +348,6 @@ export const searchPeople = createServerFn({ method: 'GET' })
       error,
       count,
     } = await q.range(data.offset, data.offset + data.limit - 1)
-    if (error) throw new Error(error.message)
+    if (error) throw error
     return { people: (people ?? []) as DbPerson[], total: count ?? 0 }
   })
