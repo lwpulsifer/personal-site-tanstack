@@ -10,6 +10,9 @@ on:
       confirm:
         description: 'Type "migrate" to confirm you want to apply pending migrations to production'
         required: true
+  push:
+    branches: [main]
+    paths: [supabase/migrations/**]
 
 jobs:
   migrate:
@@ -19,17 +22,17 @@ jobs:
 
     steps:
       - name: Check confirmation input
-        if: github.event.inputs.confirm != 'migrate'
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.confirm != 'migrate'
         run: |
           echo "Confirmation input did not match 'migrate' — aborting."
           exit 1
 
       - name: Show target branch
-        run: echo "Pushing migrations from branch '${{ github.event.inputs.branch }}' to production."
+        run: echo "Pushing migrations from branch '${{ github.event.inputs.branch || github.ref_name }}' to production."
 
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.branch }}
+          ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - uses: supabase/setup-cli@v1
         with:
