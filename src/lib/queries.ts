@@ -1,5 +1,6 @@
 import { queryOptions } from '@tanstack/react-query'
 import { getBook, getBooks } from '#/server/books'
+import { getBookComments, getPendingComments } from '#/server/comments'
 import {
   getApprovedLocations,
   getLocationPhotos,
@@ -42,6 +43,23 @@ export const bookQueryOptions = (bookId: string) =>
     queryKey: ['books', bookId],
     queryFn: () => getBook({ data: { bookId } }),
   })
+
+// ── Comments ─────────────────────────────────────────────────────────────────
+// Both keyed under 'bookComments' so approve/reject can invalidate the whole
+// prefix — one book's comment list and the cross-book pending list — the
+// same broad-invalidation convention used for bookQueryOptions above.
+
+export const bookCommentsQueryOptions = (bookId: string) =>
+  queryOptions({
+    queryKey: ['bookComments', bookId],
+    queryFn: () => getBookComments({ data: { bookId } }),
+  })
+
+export const pendingCommentsQueryOptions = queryOptions({
+  queryKey: ['bookComments', 'pending'],
+  queryFn: () => getPendingComments(),
+  refetchInterval: 45_000,
+})
 
 export const peopleGraphQueryOptions = queryOptions({
   queryKey: ['peopleGraph'],
