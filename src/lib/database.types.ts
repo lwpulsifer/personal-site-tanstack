@@ -34,6 +34,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      book_comments: {
+        Row: {
+          author_name: string
+          body: string
+          book_id: string
+          commenter_token: string
+          created_at: string
+          id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["comment_status"]
+        }
+        Insert: {
+          author_name: string
+          body: string
+          book_id: string
+          commenter_token: string
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["comment_status"]
+        }
+        Update: {
+          author_name?: string
+          body?: string
+          book_id?: string
+          commenter_token?: string
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["comment_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_comments_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       books: {
         Row: {
           author: string
@@ -481,6 +525,7 @@ export type Database = {
     }
     Enums: {
       book_status: "WANT_TO_READ" | "READING" | "READ"
+      comment_status: "pending" | "approved"
       connection_kind:
         | "partner"
         | "family"
@@ -622,6 +667,7 @@ export const Constants = {
   public: {
     Enums: {
       book_status: ["WANT_TO_READ", "READING", "READ"],
+      comment_status: ["pending", "approved"],
       connection_kind: [
         "partner",
         "family",

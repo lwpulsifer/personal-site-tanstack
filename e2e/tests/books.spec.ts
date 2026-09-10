@@ -315,4 +315,90 @@ test.describe('admin: book management', () => {
     await authExpect(page.getByTestId('books-heading')).toBeVisible({ timeout: 20_000 })
     await authExpect(card).toHaveCount(0, { timeout: 20_000 })
   })
+
+  test('an anonymous comment is visible only to its author and the admin until approved', async ({
+    page,
+    browser,
+  }) => {
+    const title = uniqueTitle('Comments')
+    const commenterName = uniqueTitle('Commenter')
+    const commentBody = `E2E comment body ${Date.now()}`
+
+    await page.goto('/books')
+    await ensureHydrated(page)
+    const card = await addBook(page, title)
+    const bookPage = await openBookPage(page, card)
+    const bookUrl = page.url()
+
+    // Anonymous author, in a separate browser context (own cookies).
+    const authorContext = await browser.newContext()
+    const authorPage = await authorContext.newPage()
+    await authorPage.goto(bookUrl)
+    await ensureHydrated(authorPage)
+    await fillStable(
+      authorPage.getByTestId('book-comment-name-input'),
+      commenterName,
+      15_000,
+    )
+    await fillStable(
+      authorPage.getByTestId('book-comment-body-input'),
+      commentBody,
+      15_000,
+    )
+    await authorPage.getByTestId('book-comment-submit').click()
+
+    const ownComment = authorPage.locator('[data-testid^="book-comment-item-"]', {
+      hasText: commentBody,
+    })
+    await expect(ownComment).toBeVisible({ timeout: 20_000 })
+    await expect(ownComment).toContainText('only visible to you')
+
+    // A different anonymous visitor must not see the pending comment yet.
+    const strangerContext = await browser.newContext()
+    const strangerPage = await strangerContext.newPage()
+    await strangerPage.goto(bookUrl)
+    await ensureHydrated(strangerPage)
+    await expect(
+      strangerPage.locator('[data-testid^="book-comment-item-"]', {
+        hasText: commentBody,
+      }),
+    ).toHaveCount(0)
+
+    // Admin sees it pending after a refresh, both on the book page and via
+    // the header notification panel.
+    await page.reload()
+    await ensureHydrated(page)
+    await authExpect(
+      page.locator('[data-testid^="book-comment-item-"]', { hasText: commentBody }),
+    ).toBeVisible({ timeout: 20_000 })
+
+    await authExpect(page.getByTestId('pending-comments-badge')).toBeVisible({
+      timeout: 20_000,
+    })
+    await page.getByTestId('pending-comments-badge').click()
+    const pendingRow = page.locator('[data-testid^="pending-comment-"]', {
+      hasText: commentBody,
+    })
+    await authExpect(pendingRow).toBeVisible({ timeout: 20_000 })
+    await pendingRow.locator('[data-testid^="pending-comment-approve-"]').click()
+    await authExpect(pendingRow).toHaveCount(0, { timeout: 20_000 })
+
+    // Approved — now visible to the original stranger too.
+    await strangerPage.reload()
+    await ensureHydrated(strangerPage)
+    const publicComment = strangerPage.locator(
+      '[data-testid^="book-comment-item-"]',
+      { hasText: commentBody },
+    )
+    await expect(publicComment).toBeVisible({ timeout: 20_000 })
+    await expect(publicComment).not.toContainText('only visible to you')
+
+    await authorContext.close()
+    await strangerContext.close()
+
+    // Clean up
+    page.once('dialog', (dialog) => dialog.accept())
+    await bookPage.getByTestId('book-delete').click()
+    await authExpect(page.getByTestId('books-heading')).toBeVisible({ timeout: 20_000 })
+  })
 })
