@@ -90,7 +90,7 @@ async function findExistingLocationWithinRadius(opts: {
     .gte('lng', opts.coords.lng - deltaLng)
     .lte('lng', opts.coords.lng + deltaLng)
 
-  if (error) throw new Error(error.message)
+  if (error) throw error
   let best: { id: string; dist: number } | null = null
   for (const c of candidates ?? []) {
     if (typeof c.lat !== 'number' || typeof c.lng !== 'number') continue
@@ -117,7 +117,7 @@ export const getApprovedLocations = createServerFn({ method: 'GET' })
       .eq('map_slug', data.mapSlug)
       .order('created_at', { ascending: false })
 
-    if (error) throw new Error(error.message)
+    if (error) throw error
 
     // Get photo counts and first photo per location
     const locs = (locations ?? []) as Tables<'map_locations'>[]
@@ -182,7 +182,7 @@ export const getLocationPhotos = createServerFn({ method: 'GET' })
       .eq('location_id', data.locationId)
       .order('created_at', { ascending: false })
 
-    if (error) throw new Error(error.message)
+    if (error) throw error
 
     const photoRows = (photos ?? []) as Tables<'map_photos'>[]
     const submissionIds = [
@@ -278,7 +278,7 @@ export const submitSighting = createServerFn({ method: 'POST' })
       .select('*', { count: 'exact', head: true })
       .eq('status', 'pending')
 
-    if (countError) throw new Error(countError.message)
+    if (countError) throw countError
     if ((count ?? 0) >= 100) {
       throw new Error('Too many pending submissions. Please try again later.')
     }
@@ -315,7 +315,7 @@ export const submitSighting = createServerFn({ method: 'POST' })
       .select()
       .single()
 
-    if (error) throw new Error(error.message)
+    if (error) throw error
     const sub = submission as Tables<'map_submissions'>
 
     // Link photos to submission — location_id is null until approval
@@ -341,7 +341,7 @@ export const submitSighting = createServerFn({ method: 'POST' })
       const { error: photoError } = await supabase
         .from('map_photos')
         .insert(photoRows)
-      if (photoError) throw new Error(photoError.message)
+      if (photoError) throw photoError
     }
 
     return sub
@@ -367,7 +367,7 @@ export const getPendingSubmissions = createServerFn({ method: 'GET' })
 
     const { data: submissions, error } = await query
 
-    if (error) throw new Error(error.message)
+    if (error) throw error
 
     // Fetch photos for each submission
     const subs = (submissions ?? []) as Tables<'map_submissions'>[]
@@ -456,7 +456,7 @@ export const approveSubmission = createServerFn({ method: 'POST' })
           .select()
           .single()
 
-        if (locError) throw new Error(locError.message)
+        if (locError) throw locError
         locationId = (newLoc as Tables<'map_locations'>).id
       }
     }
@@ -501,7 +501,7 @@ export const approveSubmission = createServerFn({ method: 'POST' })
       })
       .eq('id', data.submissionId)
 
-    if (updateError) throw new Error(updateError.message)
+    if (updateError) throw updateError
 
     return { ok: true, locationId, eventId: ev.id }
   })
@@ -521,7 +521,7 @@ export const rejectSubmission = createServerFn({ method: 'POST' })
       })
       .eq('id', data.submissionId)
 
-    if (error) throw new Error(error.message)
+    if (error) throw error
     return { ok: true }
   })
 
@@ -536,6 +536,6 @@ export const deleteLocation = createServerFn({ method: 'POST' })
       .delete()
       .eq('id', data.id)
 
-    if (error) throw new Error(error.message)
+    if (error) throw error
     return { ok: true }
   })
