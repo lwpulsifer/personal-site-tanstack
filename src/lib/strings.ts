@@ -1,3 +1,11 @@
+/** Get a user-facing message from an unknown error, falling back if it's not an Error. */
+export function getErrorMessage(
+  error: unknown,
+  fallback = 'Something went wrong',
+): string {
+  return error instanceof Error ? error.message : fallback
+}
+
 /** Convert a string to a kebab-case test ID segment. */
 export function toTestIdPart(value: string) {
   return value

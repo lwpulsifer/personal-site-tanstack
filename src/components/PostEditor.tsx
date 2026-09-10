@@ -10,6 +10,7 @@ import { STATUS_STYLES } from '#/components/blog/StatusBadge'
 import { TagsInput } from '#/components/blog/TagsInput'
 import { useOnEscapeKey } from '#/lib/hooks/useOnEscapeKey'
 import { sanitize } from '#/lib/sanitize'
+import { getErrorMessage } from '#/lib/strings'
 import type { DbPost, PostStatus } from '#/server/posts'
 import { setPostStatus, upsertPost } from '#/server/posts'
 
@@ -418,7 +419,7 @@ export function PostEditor({
       {/* ── Error banner ─────────────────────────────────────────────────── */}
       {error && (
         <div className="shrink-0 bg-red-50 px-4 py-2.5 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400">
-          {error instanceof Error ? error.message : 'Something went wrong'}
+          {getErrorMessage(error)}
         </div>
       )}
 

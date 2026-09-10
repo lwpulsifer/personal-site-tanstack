@@ -9,6 +9,7 @@ import {
   isLookupableIsbn,
   normalizeIsbn,
 } from '#/lib/openLibrary'
+import { getErrorMessage } from '#/lib/strings'
 import {
   type BookStatus,
   type DbBook,
@@ -526,7 +527,7 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
 
         {error && (
           <p className="mt-3 text-sm text-red-600 dark:text-red-400">
-            {error instanceof Error ? error.message : 'Something went wrong'}
+            {getErrorMessage(error)}
           </p>
         )}
 
