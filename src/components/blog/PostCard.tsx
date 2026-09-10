@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { formatDate } from '#/lib/strings'
 import type { DbPost } from '#/server/posts'
 import { AdminActions } from './AdminActions'
 import { StatusBadge } from './StatusBadge'
@@ -6,14 +7,7 @@ import { StatusBadge } from './StatusBadge'
 function PostDate({ post }: { post: DbPost }) {
   return (
     <p className="m-0 text-xs text-[var(--text-muted)]">
-      {new Date(post.published_at ?? post.created_at).toLocaleDateString(
-        'en-US',
-        {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-        },
-      )}
+      {formatDate(post.published_at ?? post.created_at)}
     </p>
   )
 }
