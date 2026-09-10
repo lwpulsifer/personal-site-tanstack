@@ -7,12 +7,14 @@ import {
 } from '@tanstack/react-router'
 import { useState } from 'react'
 import { AdminActions } from '#/components/books/AdminActions'
+import { BookComments } from '#/components/books/BookComments'
 import { BookEditor, bookToEditorInitial } from '#/components/books/BookEditor'
 import { STATUS_LABEL, STATUS_STYLES } from '#/components/books/bookStatus'
 import { CoverImage } from '#/components/books/CoverImage'
 import { StarRating } from '#/components/books/StarRating'
 import { ErrorBoundary } from '#/components/ErrorBoundary'
 import { useAuth } from '#/lib/auth'
+import { formatDate } from '#/lib/dates'
 import {
   getOpenLibraryCoverUrl,
   isLookupableIsbn,
@@ -21,15 +23,6 @@ import {
 import { bookQueryOptions, booksQueryOptions } from '#/lib/queries'
 import { SITE_TITLE, SITE_URL } from '#/lib/site'
 import { type DbBook, getBook } from '#/server/books'
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  })
-}
 
 // Same cover-resolution logic as CoverImage, but returning a plain URL for
 // use in og:image rather than rendering a component.
@@ -226,6 +219,8 @@ function BookPage() {
               onDeleted={() => navigate({ to: '/books' })}
             />
           )}
+
+          <BookComments bookId={bookId} />
         </article>
       </main>
     </>
