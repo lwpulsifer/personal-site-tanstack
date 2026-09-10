@@ -20,16 +20,8 @@ import {
 } from '#/lib/openLibrary'
 import { bookQueryOptions, booksQueryOptions } from '#/lib/queries'
 import { SITE_TITLE, SITE_URL } from '#/lib/site'
+import { formatDate } from '#/lib/strings'
 import { type DbBook, getBook } from '#/server/books'
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  })
-}
 
 // Same cover-resolution logic as CoverImage, but returning a plain URL for
 // use in og:image rather than rendering a component.
@@ -190,13 +182,27 @@ function BookPage() {
             {book.started_at && (
               <div>
                 <dt className="font-semibold text-[var(--text)]">Started</dt>
-                <dd className="m-0">{formatDate(book.started_at)}</dd>
+                <dd className="m-0">
+                  {formatDate(book.started_at, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    timeZone: 'UTC',
+                  })}
+                </dd>
               </div>
             )}
             {book.finished_at && (
               <div>
                 <dt className="font-semibold text-[var(--text)]">Finished</dt>
-                <dd className="m-0">{formatDate(book.finished_at)}</dd>
+                <dd className="m-0">
+                  {formatDate(book.finished_at, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    timeZone: 'UTC',
+                  })}
+                </dd>
               </div>
             )}
           </dl>
