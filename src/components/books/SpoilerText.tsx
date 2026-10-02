@@ -44,7 +44,7 @@ function Spoiler({ children }: { children: string }) {
       data-testid="spoiler"
       aria-pressed={revealed}
       onClick={() => setRevealed(true)}
-      className={`-my-0.5 rounded px-1 font-sans transition-colors duration-300 ${
+      className={`inline rounded px-1 text-left align-baseline font-sans transition-colors duration-300 ${
         revealed
           ? 'cursor-text bg-transparent text-[var(--text)]'
           : 'cursor-pointer bg-[var(--text)] text-transparent hover:opacity-80'
