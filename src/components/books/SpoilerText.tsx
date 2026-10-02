@@ -62,7 +62,7 @@ function Spoiler({ children }: { children: string }) {
           reveal()
         }
       }}
-      className={`rounded px-1 transition-colors duration-300 ${
+      className={`rounded-sm transition-colors duration-300 ${
         revealed
           ? 'cursor-text bg-transparent text-[var(--text)]'
           : 'cursor-pointer bg-[var(--text)] text-transparent hover:opacity-80'
