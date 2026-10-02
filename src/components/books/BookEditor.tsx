@@ -526,7 +526,7 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
               Review / notes
             </label>
             <ToolbarButton
-              label="🙈 Spoiler"
+              label="Insert spoiler"
               title="Mark selection as a spoiler (wrap with ||)"
               onAction={() => applyReviewWrap('||', '||', 'spoiler text')}
             />

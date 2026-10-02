@@ -38,20 +38,38 @@ export function redactSpoilers(text: string): string {
 function Spoiler({ children }: { children: string }) {
   const [revealed, setRevealed] = useState(false)
 
+  function reveal() {
+    setRevealed(true)
+  }
+
+  // A <span role="button"> rather than a real <button>: browsers force
+  // replaced form controls to "blockify" even under `display: inline`, so a
+  // <button> here breaks onto its own line instead of flowing with the rest
+  // of the paragraph. A span has no such restriction. Keyboard activation
+  // (Enter/Space) and tabIndex below cover what the semantic element would
+  // have given for free.
   return (
-    <button
-      type="button"
+    // biome-ignore lint/a11y/useSemanticElements: a real <button> can't render inline here — see comment above
+    <span
+      role="button"
+      tabIndex={0}
       data-testid="spoiler"
       aria-pressed={revealed}
-      onClick={() => setRevealed(true)}
-      className={`inline rounded px-1 text-left align-baseline font-sans transition-colors duration-300 ${
+      onClick={reveal}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          reveal()
+        }
+      }}
+      className={`rounded px-1 transition-colors duration-300 ${
         revealed
           ? 'cursor-text bg-transparent text-[var(--text)]'
           : 'cursor-pointer bg-[var(--text)] text-transparent hover:opacity-80'
       }`}
     >
       {children}
-    </button>
+    </span>
   )
 }
 

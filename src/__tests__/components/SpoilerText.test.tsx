@@ -68,4 +68,23 @@ describe('ReviewText', () => {
 
     expect(spoiler.getAttribute('aria-pressed')).toBe('true')
   })
+
+  it('reveals on Enter or Space, same as a real button would', async () => {
+    const user = userEvent.setup()
+    render(<ReviewText text="it was good until ||he dies|| at the end" />)
+
+    const spoiler = screen.getByTestId('spoiler')
+    spoiler.focus()
+    await user.keyboard('{Enter}')
+
+    expect(spoiler.getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('is keyboard-focusable and exposes a button role', () => {
+    render(<ReviewText text="it was good until ||he dies|| at the end" />)
+
+    const spoiler = screen.getByTestId('spoiler')
+    expect(spoiler.getAttribute('role')).toBe('button')
+    expect(spoiler.getAttribute('tabindex')).toBe('0')
+  })
 })
