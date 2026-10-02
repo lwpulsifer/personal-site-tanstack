@@ -28,13 +28,13 @@ function byDateDesc(dateA: string | null, dateB: string | null) {
   return new Date(dateB ?? 0).valueOf() - new Date(dateA ?? 0).valueOf()
 }
 
-function groupBooks(books: DbBook[]) {
+export function groupBooks(books: DbBook[]) {
   const reading = books
     .filter((b) => b.status === 'READING')
     .sort((a, b) => byDateDesc(a.started_at, b.started_at))
   const read = books
     .filter((b) => b.status === 'READ')
-    .sort((a, b) => byDateDesc(a.started_at, b.started_at))
+    .sort((a, b) => byDateDesc(a.finished_at, b.finished_at))
   const wantToRead = books
     .filter((b) => b.status === 'WANT_TO_READ')
     .sort((a, b) => byDateDesc(a.created_at, b.created_at))
