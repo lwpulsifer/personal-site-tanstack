@@ -10,6 +10,7 @@ import { AdminActions } from '#/components/books/AdminActions'
 import { BookEditor, bookToEditorInitial } from '#/components/books/BookEditor'
 import { STATUS_LABEL, STATUS_STYLES } from '#/components/books/bookStatus'
 import { CoverImage } from '#/components/books/CoverImage'
+import { ReviewText, redactSpoilers } from '#/components/books/SpoilerText'
 import { StarRating } from '#/components/books/StarRating'
 import { ErrorBoundary } from '#/components/ErrorBoundary'
 import { useAuth } from '#/lib/auth'
@@ -51,7 +52,7 @@ export const Route = createFileRoute('/books/$bookId')({
     if (!loaderData) return {}
     const book = loaderData
     const description = book.review
-      ? book.review.slice(0, 200)
+      ? redactSpoilers(book.review).slice(0, 200)
       : `${book.title} by ${book.author}, on Liam's reading list.`
     const image = resolveCoverUrl(book)
     return {
@@ -210,7 +211,7 @@ function BookPage() {
                 data-testid="book-page-review"
                 className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--text)]"
               >
-                {book.review}
+                <ReviewText text={book.review} />
               </p>
             ) : (
               <p className="text-sm italic text-[var(--text-muted)]">

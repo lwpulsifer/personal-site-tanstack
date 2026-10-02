@@ -1,6 +1,11 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
+import {
+  ToolbarButton,
+  useEditorFormatting,
+} from '#/components/blog/EditorToolbar'
 import { CoverImage } from '#/components/books/CoverImage'
+import { ReviewText } from '#/components/books/SpoilerText'
 import { StarRating } from '#/components/books/StarRating'
 import { useDebouncedValue } from '#/lib/hooks/useDebouncedValue'
 import { useOnEscapeKey } from '#/lib/hooks/useOnEscapeKey'
@@ -154,6 +159,11 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
   const [startedAt, setStartedAt] = useState(initial.started_at ?? '')
   const [finishedAt, setFinishedAt] = useState(initial.finished_at ?? '')
   const id = useId()
+  const reviewRef = useRef<HTMLTextAreaElement>(null)
+  const { applyWrap: applyReviewWrap } = useEditorFormatting(
+    reviewRef,
+    setReview,
+  )
 
   useOnEscapeKey(onClose)
 
@@ -508,13 +518,21 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
         )}
 
         <div className="mt-3">
-          <label
-            htmlFor={`${id}-review`}
-            className="mb-1 block text-xs font-semibold text-[var(--text-muted)]"
-          >
-            Review / notes
-          </label>
+          <div className="mb-1 flex items-center justify-between">
+            <label
+              htmlFor={`${id}-review`}
+              className="block text-xs font-semibold text-[var(--text-muted)]"
+            >
+              Review / notes
+            </label>
+            <ToolbarButton
+              label="🙈 Spoiler"
+              title="Mark selection as a spoiler (wrap with ||)"
+              onAction={() => applyReviewWrap('||', '||', 'spoiler text')}
+            />
+          </div>
           <textarea
+            ref={reviewRef}
             id={`${id}-review`}
             value={review}
             onChange={(e) => setReview(e.target.value)}
@@ -522,6 +540,19 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
             data-testid="book-review-input"
             className="w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
           />
+          {review && (
+            <div className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--chip-bg)] px-3 py-2">
+              <p className="mb-1 text-xs font-semibold text-[var(--text-muted)]">
+                Preview
+              </p>
+              <p
+                data-testid="book-review-preview"
+                className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--text)]"
+              >
+                <ReviewText text={review} />
+              </p>
+            </div>
+          )}
         </div>
 
         {error && (
