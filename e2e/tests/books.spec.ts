@@ -243,8 +243,19 @@ test.describe('admin: book management', () => {
     await authExpect(page.getByTestId('book-editor')).toBeVisible({ timeout: 20_000 })
     await authExpect(page.getByTestId('book-title-input')).toHaveValue(title)
     await authExpect(page.getByTestId('book-author-input')).toHaveValue('E2E Author')
+    // Editing is a real route, not just a modal toggle — bookmarkable and
+    // back-button-able, with the view-transitioned detail page still
+    // underneath it.
+    await authExpect(page).toHaveURL(/\/books\/[^/]+\/edit$/, { timeout: 20_000 })
+    await authExpect(bookPage).toBeVisible()
+
+    await page.getByTestId('close-book-editor').click()
+    await authExpect(page.getByTestId('book-editor')).toHaveCount(0, { timeout: 20_000 })
+    await authExpect(page).toHaveURL(/\/books\/[^/]+$/, { timeout: 20_000 })
 
     // Clean up via delete so it doesn't leak into other tests
+    await bookPage.getByTestId('book-edit').click()
+    await authExpect(page.getByTestId('book-editor')).toBeVisible({ timeout: 20_000 })
     page.once('dialog', (dialog) => dialog.accept())
     await page.getByTestId('book-editor').getByRole('button', { name: 'Delete' }).click()
     await authExpect(page.getByTestId('books-heading')).toBeVisible({ timeout: 20_000 })

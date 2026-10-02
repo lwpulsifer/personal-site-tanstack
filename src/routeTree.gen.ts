@@ -22,6 +22,7 @@ import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as BooksIndexRouteImport } from './routes/books.index'
 import { Route as BooksBookIdRouteImport } from './routes/books.$bookId'
 import { Route as PeopleIndexRouteImport } from './routes/people.index'
+import { Route as BooksBookIdEditRouteImport } from './routes/books.$bookId.edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -88,6 +89,11 @@ const PeopleIndexRoute = PeopleIndexRouteImport.update({
   path: '/people/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BooksBookIdEditRoute = BooksBookIdEditRouteImport.update({
+  id: '/edit',
+  path: '/edit',
+  getParentRoute: () => BooksBookIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -99,10 +105,11 @@ export interface FileRoutesByFullPath {
   '/spotifycallback': typeof SpotifycallbackRoute
   '/spotifysync': typeof SpotifysyncRoute
   '/blog/$slug': typeof BlogSlugRoute
-  '/books/$bookId': typeof BooksBookIdRoute
+  '/books/$bookId': typeof BooksBookIdRouteWithChildren
   '/blog/': typeof BlogIndexRoute
   '/books/': typeof BooksIndexRoute
   '/people/': typeof PeopleIndexRoute
+  '/books/$bookId/edit': typeof BooksBookIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -114,10 +121,11 @@ export interface FileRoutesByTo {
   '/spotifycallback': typeof SpotifycallbackRoute
   '/spotifysync': typeof SpotifysyncRoute
   '/blog/$slug': typeof BlogSlugRoute
-  '/books/$bookId': typeof BooksBookIdRoute
+  '/books/$bookId': typeof BooksBookIdRouteWithChildren
   '/blog': typeof BlogIndexRoute
   '/books': typeof BooksIndexRoute
   '/people': typeof PeopleIndexRoute
+  '/books/$bookId/edit': typeof BooksBookIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -130,10 +138,11 @@ export interface FileRoutesById {
   '/spotifycallback': typeof SpotifycallbackRoute
   '/spotifysync': typeof SpotifysyncRoute
   '/blog/$slug': typeof BlogSlugRoute
-  '/books/$bookId': typeof BooksBookIdRoute
+  '/books/$bookId': typeof BooksBookIdRouteWithChildren
   '/blog/': typeof BlogIndexRoute
   '/books/': typeof BooksIndexRoute
   '/people/': typeof PeopleIndexRoute
+  '/books/$bookId/edit': typeof BooksBookIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/blog/'
     | '/books/'
     | '/people/'
+    | '/books/$bookId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/books'
     | '/people'
+    | '/books/$bookId/edit'
   id:
     | '__root__'
     | '/'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/blog/'
     | '/books/'
     | '/people/'
+    | '/books/$bookId/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -193,7 +205,7 @@ export interface RootRouteChildren {
   SpotifycallbackRoute: typeof SpotifycallbackRoute
   SpotifysyncRoute: typeof SpotifysyncRoute
   BlogSlugRoute: typeof BlogSlugRoute
-  BooksBookIdRoute: typeof BooksBookIdRoute
+  BooksBookIdRoute: typeof BooksBookIdRouteWithChildren
   BlogIndexRoute: typeof BlogIndexRoute
   BooksIndexRoute: typeof BooksIndexRoute
   PeopleIndexRoute: typeof PeopleIndexRoute
@@ -292,8 +304,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PeopleIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/books/$bookId/edit': {
+      id: '/books/$bookId/edit'
+      path: '/edit'
+      fullPath: '/books/$bookId/edit'
+      preLoaderRoute: typeof BooksBookIdEditRouteImport
+      parentRoute: typeof BooksBookIdRoute
+    }
   }
 }
+
+interface BooksBookIdRouteChildren {
+  BooksBookIdEditRoute: typeof BooksBookIdEditRoute
+}
+
+const BooksBookIdRouteChildren: BooksBookIdRouteChildren = {
+  BooksBookIdEditRoute: BooksBookIdEditRoute,
+}
+
+const BooksBookIdRouteWithChildren = BooksBookIdRoute._addFileChildren(
+  BooksBookIdRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -305,7 +336,7 @@ const rootRouteChildren: RootRouteChildren = {
   SpotifycallbackRoute: SpotifycallbackRoute,
   SpotifysyncRoute: SpotifysyncRoute,
   BlogSlugRoute: BlogSlugRoute,
-  BooksBookIdRoute: BooksBookIdRoute,
+  BooksBookIdRoute: BooksBookIdRouteWithChildren,
   BlogIndexRoute: BlogIndexRoute,
   BooksIndexRoute: BooksIndexRoute,
   PeopleIndexRoute: PeopleIndexRoute,

@@ -1,24 +1,24 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
   createFileRoute,
   Link,
   notFound,
+  Outlet,
   useNavigate,
 } from '@tanstack/react-router'
 import { useState } from 'react'
 import { AdminActions } from '#/components/books/AdminActions'
-import { BookEditor, bookToEditorInitial } from '#/components/books/BookEditor'
 import { STATUS_LABEL, STATUS_STYLES } from '#/components/books/bookStatus'
 import { CoverImage } from '#/components/books/CoverImage'
+import { ReviewText, redactSpoilers } from '#/components/books/SpoilerText'
 import { StarRating } from '#/components/books/StarRating'
-import { ErrorBoundary } from '#/components/ErrorBoundary'
 import { useAuth } from '#/lib/auth'
 import {
   getOpenLibraryCoverUrl,
   isLookupableIsbn,
   normalizeIsbn,
 } from '#/lib/openLibrary'
-import { bookQueryOptions, booksQueryOptions } from '#/lib/queries'
+import { bookQueryOptions } from '#/lib/queries'
 import { SITE_TITLE, SITE_URL } from '#/lib/site'
 import { type DbBook, getBook } from '#/server/books'
 
@@ -51,7 +51,7 @@ export const Route = createFileRoute('/books/$bookId')({
     if (!loaderData) return {}
     const book = loaderData
     const description = book.review
-      ? book.review.slice(0, 200)
+      ? redactSpoilers(book.review).slice(0, 200)
       : `${book.title} by ${book.author}, on Liam's reading list.`
     const image = resolveCoverUrl(book)
     return {
@@ -73,9 +73,7 @@ function BookPage() {
     initialData: initialBook,
   })
   const { isAuthenticated } = useAuth()
-  const [isEditing, setIsEditing] = useState(false)
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle')
-  const queryClient = useQueryClient()
   const navigate = useNavigate()
 
   // The book can disappear out from under this page (deleted from another
@@ -91,13 +89,6 @@ function BookPage() {
 
   const bookId = book.id
 
-  function invalidate() {
-    queryClient.invalidateQueries({
-      queryKey: bookQueryOptions(bookId).queryKey,
-    })
-    queryClient.invalidateQueries({ queryKey: booksQueryOptions.queryKey })
-  }
-
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(`${SITE_URL}/books/${bookId}`)
@@ -111,19 +102,11 @@ function BookPage() {
 
   return (
     <>
-      {isEditing && (
-        <ErrorBoundary>
-          <BookEditor
-            initial={bookToEditorInitial(book)}
-            onClose={() => setIsEditing(false)}
-            onSaved={() => {
-              invalidate()
-              setIsEditing(false)
-            }}
-            onDeleted={() => navigate({ to: '/books' })}
-          />
-        </ErrorBoundary>
-      )}
+      {/* Renders the edit overlay when /books/$bookId/edit is matched; empty
+          otherwise. The book-detail content below stays mounted across that
+          navigation (same CoverImage instance, no refetch), so only the
+          overlay itself view-transitions in and out. */}
+      <Outlet />
 
       <main className="page-wrap flex justify-center px-4 pb-12 pt-16">
         <article
@@ -210,7 +193,7 @@ function BookPage() {
                 data-testid="book-page-review"
                 className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--text)]"
               >
-                {book.review}
+                <ReviewText text={book.review} />
               </p>
             ) : (
               <p className="text-sm italic text-[var(--text-muted)]">
@@ -222,7 +205,13 @@ function BookPage() {
           {isAuthenticated && (
             <AdminActions
               book={book}
-              onEdit={() => setIsEditing(true)}
+              onEdit={() =>
+                navigate({
+                  to: '/books/$bookId/edit',
+                  params: { bookId },
+                  viewTransition: true,
+                })
+              }
               onDeleted={() => navigate({ to: '/books' })}
             />
           )}
