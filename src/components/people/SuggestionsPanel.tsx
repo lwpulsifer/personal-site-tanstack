@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { memo, useMemo, useState } from 'react'
 import { usePatchPeopleGraph } from '#/lib/hooks/usePatchPeopleGraph'
 import { usePeopleById } from '#/lib/hooks/usePeopleById'
+import { getErrorMessage } from '#/lib/strings'
 import {
   type ConnectionKind,
   type DbConnection,
@@ -362,9 +363,7 @@ export const SuggestionsPanel = memo(function SuggestionsPanel({
 
             {addMutation.error && (
               <p className="mt-2 text-xs text-red-600 dark:text-red-400">
-                {addMutation.error instanceof Error
-                  ? addMutation.error.message
-                  : 'Could not add connections'}
+                {getErrorMessage(addMutation.error, 'Could not add connections')}
               </p>
             )}
 
@@ -474,9 +473,10 @@ export const SuggestionsPanel = memo(function SuggestionsPanel({
 
                 {addParentFixMutation.error && (
                   <p className="mb-3 text-xs text-red-600 dark:text-red-400">
-                    {addParentFixMutation.error instanceof Error
-                      ? addParentFixMutation.error.message
-                      : 'Could not add connections'}
+                    {getErrorMessage(
+                      addParentFixMutation.error,
+                      'Could not add connections',
+                    )}
                   </p>
                 )}
 

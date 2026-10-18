@@ -5,6 +5,7 @@ import { selectClassName } from '#/components/people/styles'
 import { CONNECTION_KIND_OPTIONS } from '#/lib/connectionKind'
 import { usePatchPeopleGraph } from '#/lib/hooks/usePatchPeopleGraph'
 import { usePeopleById } from '#/lib/hooks/usePeopleById'
+import { getErrorMessage } from '#/lib/strings'
 import {
   type ConnectionKind,
   type DbConnection,
@@ -291,17 +292,13 @@ export const ConnectionPanel = memo(function ConnectionPanel({
 
       {addMutation.error && (
         <p className="mb-3 text-xs text-red-600 dark:text-red-400">
-          {addMutation.error instanceof Error
-            ? addMutation.error.message
-            : 'Could not add connection'}
+          {getErrorMessage(addMutation.error, 'Could not add connection')}
         </p>
       )}
 
       {updateMutation.error && (
         <p className="mb-3 text-xs text-red-600 dark:text-red-400">
-          {updateMutation.error instanceof Error
-            ? updateMutation.error.message
-            : 'Could not update connection'}
+          {getErrorMessage(updateMutation.error, 'Could not update connection')}
         </p>
       )}
 

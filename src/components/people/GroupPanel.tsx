@@ -6,6 +6,7 @@ import { CONNECTION_KIND_OPTIONS } from '#/lib/connectionKind'
 import { useComboboxNav } from '#/lib/hooks/useComboboxNav'
 import { usePatchPeopleGraph } from '#/lib/hooks/usePatchPeopleGraph'
 import { usePeopleById } from '#/lib/hooks/usePeopleById'
+import { getErrorMessage } from '#/lib/strings'
 import {
   type ConnectionKind,
   type DbPerson,
@@ -356,9 +357,7 @@ export const GroupPanel = memo(function GroupPanel({
 
       {groupMutation.error && (
         <p className="mt-2 text-xs text-red-600 dark:text-red-400">
-          {groupMutation.error instanceof Error
-            ? groupMutation.error.message
-            : 'Could not create connections'}
+          {getErrorMessage(groupMutation.error, 'Could not create connections')}
         </p>
       )}
 

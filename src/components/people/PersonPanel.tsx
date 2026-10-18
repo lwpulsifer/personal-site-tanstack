@@ -3,6 +3,7 @@ import { memo, useCallback, useId, useState } from 'react'
 import { useDebouncedValue } from '#/lib/hooks/useDebouncedValue'
 import { usePatchPeopleGraph } from '#/lib/hooks/usePatchPeopleGraph'
 import { searchPeopleQueryOptions } from '#/lib/queries'
+import { getErrorMessage } from '#/lib/strings'
 import {
   type DbPerson,
   deletePerson,
@@ -174,17 +175,13 @@ export const PersonPanel = memo(function PersonPanel({
 
       {addMutation.error && (
         <p className="mb-3 text-xs text-red-600 dark:text-red-400">
-          {addMutation.error instanceof Error
-            ? addMutation.error.message
-            : 'Could not add person'}
+          {getErrorMessage(addMutation.error, 'Could not add person')}
         </p>
       )}
 
       {updateMutation.error && (
         <p className="mb-3 text-xs text-red-600 dark:text-red-400">
-          {updateMutation.error instanceof Error
-            ? updateMutation.error.message
-            : 'Could not update person'}
+          {getErrorMessage(updateMutation.error, 'Could not update person')}
         </p>
       )}
 
