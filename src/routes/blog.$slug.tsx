@@ -7,6 +7,7 @@ import { PostEditor } from '#/components/PostEditor'
 import { useAuth } from '#/lib/auth'
 import { sanitize } from '#/lib/sanitize'
 import { SITE_URL } from '#/lib/site'
+import { formatDate } from '#/lib/strings'
 import { getPublishedPost } from '#/server/posts'
 
 export const Route = createFileRoute('/blog/$slug')({
@@ -53,9 +54,7 @@ function BlogPost() {
     [post.content],
   )
 
-  const formattedDate = new Date(
-    post.published_at ?? post.created_at,
-  ).toLocaleDateString('en-US', {
+  const formattedDate = formatDate(post.published_at ?? post.created_at, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

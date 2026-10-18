@@ -1,3 +1,17 @@
+const DEFAULT_DATE_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+}
+
+/** Format an ISO date string as e.g. "Jan 1, 2024". */
+export function formatDate(
+  iso: string,
+  options: Intl.DateTimeFormatOptions = DEFAULT_DATE_FORMAT_OPTIONS,
+) {
+  return new Date(iso).toLocaleDateString('en-US', options)
+}
+
 /** Convert a string to a kebab-case test ID segment. */
 export function toTestIdPart(value: string) {
   return value
