@@ -43,7 +43,7 @@ function sortKey(
 export const getBooks = createServerFn({ method: 'GET' }).handler(async () => {
   const supabase = getSupabaseServiceClient()
   const { data, error } = await supabase.from('books').select('*')
-  if (error) throw new Error(error.message)
+  if (error) throw error
   const books = (data ?? []) as DbBook[]
   return books.sort(
     (a, b) => new Date(sortKey(b)).valueOf() - new Date(sortKey(a)).valueOf(),
@@ -59,7 +59,7 @@ export const getBook = createServerFn({ method: 'GET' })
       .select('*')
       .eq('id', data.bookId)
       .maybeSingle()
-    if (error) throw new Error(error.message)
+    if (error) throw error
     return book as DbBook | null
   })
 
@@ -86,7 +86,7 @@ export const upsertBook = createServerFn({ method: 'POST' })
       })
       .select()
       .single()
-    if (error) throw new Error(error.message)
+    if (error) throw error
     return book as DbBook
   })
 
@@ -126,7 +126,7 @@ export const setBookStatus = createServerFn({ method: 'POST' })
       .eq('id', data.bookId)
       .select()
       .single()
-    if (error) throw new Error(error.message)
+    if (error) throw error
     return book as DbBook
   })
 
@@ -139,6 +139,6 @@ export const deleteBook = createServerFn({ method: 'POST' })
       .from('books')
       .delete()
       .eq('id', data.bookId)
-    if (error) throw new Error(error.message)
+    if (error) throw error
     return { ok: true }
   })

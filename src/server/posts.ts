@@ -34,7 +34,7 @@ export const getPublishedPosts = createServerFn({ method: 'GET' }).handler(
         .select('post_id')
         .eq('status', 'PUBLISHED'),
     ])
-    if (error) throw new Error(error.message)
+    if (error) throw error
     const publishedIds = new Set(
       (statuses ?? []).map((s) => (s as Tables<'post_current_status'>).post_id),
     )
@@ -71,7 +71,7 @@ export const getAllTags = createServerFn({ method: 'GET' }).handler(
   async () => {
     const supabase = getSupabaseServiceClient()
     const { data, error } = await supabase.from('posts').select('tags')
-    if (error) throw new Error(error.message)
+    if (error) throw error
     const tags = [...new Set((data ?? []).flatMap((p) => p.tags as string[]))]
     return tags.sort()
   },
@@ -90,7 +90,7 @@ export const getAdminPosts = createServerFn({ method: 'GET' }).handler(
         .order('created_at', { ascending: false }),
       supabase.from('post_current_status').select('*'),
     ])
-    if (error) throw new Error(error.message)
+    if (error) throw error
     const statusRows = (statuses ?? []) as Tables<'post_current_status'>[]
     const statusById = new Map(statusRows.map((s) => [s.post_id, s.status]))
     const rows = (posts ?? []) as Tables<'posts'>[]
@@ -146,7 +146,7 @@ export const upsertPost = createServerFn({ method: 'POST' })
       )
       .select()
       .single()
-    if (error) throw new Error(error.message)
+    if (error) throw error
     return post
   })
 
@@ -164,7 +164,7 @@ export const setPostStatus = createServerFn({ method: 'POST' })
     const { error } = await supabase
       .from('post_status_update')
       .insert({ post_id: data.postId, status: data.status })
-    if (error) throw new Error(error.message)
+    if (error) throw error
 
     // Set published_at the first time a post is published
     if (data.status === 'PUBLISHED') {
