@@ -9,6 +9,7 @@ import { getPageViews } from '#/server/pageViews'
 import type { DbConnection, DbPerson } from '#/server/people'
 import { getPeopleGraph, searchPeople } from '#/server/people'
 import { getAdminPosts, getAllTags } from '#/server/posts'
+import { getAdminQuiz, getAdminQuizzes } from '#/server/quizzes'
 import { getNowPlaying } from '#/server/spotify'
 
 export type PeopleGraphData = {
@@ -85,4 +86,16 @@ export const pendingMapSubmissionsQueryOptions = (mapSlug?: string) =>
   queryOptions({
     queryKey: ['pendingMapSubmissions', mapSlug],
     queryFn: () => getPendingSubmissions({ data: { mapSlug } }),
+  })
+
+export const adminQuizzesQueryOptions = queryOptions({
+  queryKey: ['adminQuizzes'],
+  queryFn: () => getAdminQuizzes(),
+})
+
+// Nested under 'adminQuizzes' so invalidating the list also refreshes detail.
+export const adminQuizQueryOptions = (quizId: string) =>
+  queryOptions({
+    queryKey: ['adminQuizzes', quizId],
+    queryFn: () => getAdminQuiz({ data: { quizId } }),
   })

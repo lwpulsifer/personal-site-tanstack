@@ -3,10 +3,13 @@ const MAX_REQUESTS = 5
 
 const store = new Map<string, number[]>()
 
-export function checkRateLimit(key: string): { allowed: boolean } {
+export function checkRateLimit(
+  key: string,
+  maxRequests = MAX_REQUESTS,
+): { allowed: boolean } {
   const now = Date.now()
   const timestamps = (store.get(key) ?? []).filter((t) => t > now - WINDOW_MS)
-  if (timestamps.length >= MAX_REQUESTS) {
+  if (timestamps.length >= maxRequests) {
     store.set(key, timestamps)
     return { allowed: false }
   }

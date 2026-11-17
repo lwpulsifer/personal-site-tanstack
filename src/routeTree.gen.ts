@@ -22,7 +22,11 @@ import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as BooksIndexRouteImport } from './routes/books.index'
 import { Route as BooksBookIdRouteImport } from './routes/books.$bookId'
 import { Route as PeopleIndexRouteImport } from './routes/people.index'
+import { Route as QuizzesIndexRouteImport } from './routes/quizzes.index'
+import { Route as QuizzesKeywordRouteImport } from './routes/quizzes.$keyword'
 import { Route as BooksBookIdEditRouteImport } from './routes/books.$bookId.edit'
+import { Route as QuizzesAdminQuizIdRouteImport } from './routes/quizzes.admin.$quizId'
+import { Route as QuizzesAdminNewRouteImport } from './routes/quizzes.admin.new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -89,10 +93,30 @@ const PeopleIndexRoute = PeopleIndexRouteImport.update({
   path: '/people/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QuizzesIndexRoute = QuizzesIndexRouteImport.update({
+  id: '/quizzes/',
+  path: '/quizzes/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QuizzesKeywordRoute = QuizzesKeywordRouteImport.update({
+  id: '/quizzes/$keyword',
+  path: '/quizzes/$keyword',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BooksBookIdEditRoute = BooksBookIdEditRouteImport.update({
   id: '/edit',
   path: '/edit',
   getParentRoute: () => BooksBookIdRoute,
+} as any)
+const QuizzesAdminQuizIdRoute = QuizzesAdminQuizIdRouteImport.update({
+  id: '/quizzes/admin/$quizId',
+  path: '/quizzes/admin/$quizId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QuizzesAdminNewRoute = QuizzesAdminNewRouteImport.update({
+  id: '/quizzes/admin/new',
+  path: '/quizzes/admin/new',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -106,10 +130,14 @@ export interface FileRoutesByFullPath {
   '/spotifysync': typeof SpotifysyncRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/books/$bookId': typeof BooksBookIdRouteWithChildren
+  '/quizzes/$keyword': typeof QuizzesKeywordRoute
   '/blog/': typeof BlogIndexRoute
   '/books/': typeof BooksIndexRoute
   '/people/': typeof PeopleIndexRoute
+  '/quizzes/': typeof QuizzesIndexRoute
   '/books/$bookId/edit': typeof BooksBookIdEditRoute
+  '/quizzes/admin/$quizId': typeof QuizzesAdminQuizIdRoute
+  '/quizzes/admin/new': typeof QuizzesAdminNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -122,10 +150,14 @@ export interface FileRoutesByTo {
   '/spotifysync': typeof SpotifysyncRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/books/$bookId': typeof BooksBookIdRouteWithChildren
+  '/quizzes/$keyword': typeof QuizzesKeywordRoute
   '/blog': typeof BlogIndexRoute
   '/books': typeof BooksIndexRoute
   '/people': typeof PeopleIndexRoute
+  '/quizzes': typeof QuizzesIndexRoute
   '/books/$bookId/edit': typeof BooksBookIdEditRoute
+  '/quizzes/admin/$quizId': typeof QuizzesAdminQuizIdRoute
+  '/quizzes/admin/new': typeof QuizzesAdminNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -139,10 +171,14 @@ export interface FileRoutesById {
   '/spotifysync': typeof SpotifysyncRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/books/$bookId': typeof BooksBookIdRouteWithChildren
+  '/quizzes/$keyword': typeof QuizzesKeywordRoute
   '/blog/': typeof BlogIndexRoute
   '/books/': typeof BooksIndexRoute
   '/people/': typeof PeopleIndexRoute
+  '/quizzes/': typeof QuizzesIndexRoute
   '/books/$bookId/edit': typeof BooksBookIdEditRoute
+  '/quizzes/admin/$quizId': typeof QuizzesAdminQuizIdRoute
+  '/quizzes/admin/new': typeof QuizzesAdminNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -157,10 +193,14 @@ export interface FileRouteTypes {
     | '/spotifysync'
     | '/blog/$slug'
     | '/books/$bookId'
+    | '/quizzes/$keyword'
     | '/blog/'
     | '/books/'
     | '/people/'
+    | '/quizzes/'
     | '/books/$bookId/edit'
+    | '/quizzes/admin/$quizId'
+    | '/quizzes/admin/new'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -173,10 +213,14 @@ export interface FileRouteTypes {
     | '/spotifysync'
     | '/blog/$slug'
     | '/books/$bookId'
+    | '/quizzes/$keyword'
     | '/blog'
     | '/books'
     | '/people'
+    | '/quizzes'
     | '/books/$bookId/edit'
+    | '/quizzes/admin/$quizId'
+    | '/quizzes/admin/new'
   id:
     | '__root__'
     | '/'
@@ -189,10 +233,14 @@ export interface FileRouteTypes {
     | '/spotifysync'
     | '/blog/$slug'
     | '/books/$bookId'
+    | '/quizzes/$keyword'
     | '/blog/'
     | '/books/'
     | '/people/'
+    | '/quizzes/'
     | '/books/$bookId/edit'
+    | '/quizzes/admin/$quizId'
+    | '/quizzes/admin/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -206,9 +254,13 @@ export interface RootRouteChildren {
   SpotifysyncRoute: typeof SpotifysyncRoute
   BlogSlugRoute: typeof BlogSlugRoute
   BooksBookIdRoute: typeof BooksBookIdRouteWithChildren
+  QuizzesKeywordRoute: typeof QuizzesKeywordRoute
   BlogIndexRoute: typeof BlogIndexRoute
   BooksIndexRoute: typeof BooksIndexRoute
   PeopleIndexRoute: typeof PeopleIndexRoute
+  QuizzesIndexRoute: typeof QuizzesIndexRoute
+  QuizzesAdminQuizIdRoute: typeof QuizzesAdminQuizIdRoute
+  QuizzesAdminNewRoute: typeof QuizzesAdminNewRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -304,12 +356,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PeopleIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/quizzes/': {
+      id: '/quizzes/'
+      path: '/quizzes'
+      fullPath: '/quizzes/'
+      preLoaderRoute: typeof QuizzesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quizzes/$keyword': {
+      id: '/quizzes/$keyword'
+      path: '/quizzes/$keyword'
+      fullPath: '/quizzes/$keyword'
+      preLoaderRoute: typeof QuizzesKeywordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/books/$bookId/edit': {
       id: '/books/$bookId/edit'
       path: '/edit'
       fullPath: '/books/$bookId/edit'
       preLoaderRoute: typeof BooksBookIdEditRouteImport
       parentRoute: typeof BooksBookIdRoute
+    }
+    '/quizzes/admin/$quizId': {
+      id: '/quizzes/admin/$quizId'
+      path: '/quizzes/admin/$quizId'
+      fullPath: '/quizzes/admin/$quizId'
+      preLoaderRoute: typeof QuizzesAdminQuizIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quizzes/admin/new': {
+      id: '/quizzes/admin/new'
+      path: '/quizzes/admin/new'
+      fullPath: '/quizzes/admin/new'
+      preLoaderRoute: typeof QuizzesAdminNewRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -337,9 +417,13 @@ const rootRouteChildren: RootRouteChildren = {
   SpotifysyncRoute: SpotifysyncRoute,
   BlogSlugRoute: BlogSlugRoute,
   BooksBookIdRoute: BooksBookIdRouteWithChildren,
+  QuizzesKeywordRoute: QuizzesKeywordRoute,
   BlogIndexRoute: BlogIndexRoute,
   BooksIndexRoute: BooksIndexRoute,
   PeopleIndexRoute: PeopleIndexRoute,
+  QuizzesIndexRoute: QuizzesIndexRoute,
+  QuizzesAdminQuizIdRoute: QuizzesAdminQuizIdRoute,
+  QuizzesAdminNewRoute: QuizzesAdminNewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
