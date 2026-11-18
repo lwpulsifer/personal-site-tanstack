@@ -20,3 +20,4 @@ __unconfig*
 todos.json
 memory/
 .claude/
+.vercel

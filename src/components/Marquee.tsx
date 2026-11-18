@@ -1,38 +1,27 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import type { JSX } from '@solidjs/web'
+import { createSignal, onSettled, Show } from 'solid-js'
 
-type MarqueeProps = {
-  children: React.ReactNode
-  className?: string
-}
+export default function Marquee(props: { children: JSX.Element; class?: string }) {
+  let track!: HTMLSpanElement
+  let mask!: HTMLDivElement
+  const [overflows, setOverflows] = createSignal(false)
 
-export default function Marquee({ children, className = '' }: MarqueeProps) {
-  const trackRef = useRef<HTMLSpanElement>(null)
-  const maskRef = useRef<HTMLDivElement>(null)
-  const [overflows, setOverflows] = useState(false)
-
-  useLayoutEffect(() => {
-    const mask = maskRef.current
-    const track = trackRef.current
-    if (!mask || !track) return
-
+  onSettled(() => {
     const check = () => setOverflows(track.scrollWidth > mask.clientWidth)
     check()
-
     const observer = new ResizeObserver(check)
     observer.observe(mask)
     return () => observer.disconnect()
-  }, [])
+  })
 
   return (
-    <div ref={maskRef} className={`overflow-hidden ${className}`}>
-      <span ref={trackRef} className={overflows ? 'marquee' : 'block truncate'}>
-        {children}
-        {overflows && (
-          <>
-            <span className="mx-4 opacity-20">·</span>
-            {children}
-          </>
-        )}
+    <div ref={mask} class={`overflow-hidden ${props.class ?? ''}`}>
+      <span ref={track} class={overflows() ? 'marquee' : 'block truncate'}>
+        {props.children}
+        <Show when={overflows()}>
+          <span class="mx-4 opacity-20">·</span>
+          {props.children}
+        </Show>
       </span>
     </div>
   )

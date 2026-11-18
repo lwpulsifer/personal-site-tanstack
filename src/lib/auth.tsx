@@ -1,79 +1,46 @@
 import type { User } from '@supabase/supabase-js'
-import { createContext, useContext, useSyncExternalStore } from 'react'
+import {
+  type Accessor,
+  createContext,
+  createMemo,
+  createSignal,
+  onSettled,
+  type ParentProps,
+  useContext,
+} from 'solid-js'
+import { getServerUser } from '../server/auth'
 import { getSupabaseBrowserClient } from './supabase'
 
-interface AuthState {
-  user: User | null
-  isAuthenticated: boolean
-}
+type AuthState = { user: Accessor<User | null>; isAuthenticated: Accessor<boolean> }
 
-const AuthContext = createContext<AuthState>({
-  user: null,
-  isAuthenticated: false,
-})
+const AuthContext = createContext<AuthState>()
 
-// Module-level store for auth state, driven by Supabase's auth listener.
-let currentState: AuthState = { user: null, isAuthenticated: false }
-const listeners = new Set<() => void>()
-let subscribed = false
+// `undefined` until the browser client reports; before that we fall back to the
+// server-provided user (cookie), so SSR and first paint already know who's here.
+const [clientUser, setClientUser] = createSignal<User | null | undefined>(undefined)
 
-function ensureSubscription() {
-  if (subscribed || typeof window === 'undefined') return
-  subscribed = true
+export function AuthProvider(props: ParentProps) {
+  const serverUser = createMemo(() => getServerUser())
 
-  const supabase = getSupabaseBrowserClient()
-
-  // Hydrate from cached session (no network request)
-  supabase.auth.getSession().then(({ data }) => {
-    currentState = {
-      user: data.session?.user ?? null,
-      isAuthenticated: !!data.session,
-    }
-    for (const fn of listeners) fn()
+  onSettled(() => {
+    const supabase = getSupabaseBrowserClient()
+    supabase.auth.getSession().then(({ data }) => setClientUser(data.session?.user ?? null))
+    const { data } = supabase.auth.onAuthStateChange((_event, session) =>
+      setClientUser(session?.user ?? null),
+    )
+    return () => data.subscription.unsubscribe()
   })
 
-  // Keep in sync as the user signs in or out
-  supabase.auth.onAuthStateChange((_event, session) => {
-    currentState = {
-      user: session?.user ?? null,
-      isAuthenticated: !!session,
-    }
-    for (const fn of listeners) fn()
-  })
-}
-
-function subscribe(onStoreChange: () => void) {
-  listeners.add(onStoreChange)
-  ensureSubscription()
-  return () => listeners.delete(onStoreChange)
-}
-
-function getSnapshot() {
-  return currentState
-}
-
-const serverSnapshot: AuthState = { user: null, isAuthenticated: false }
-function getServerSnapshot() {
-  return serverSnapshot
-}
-
-export function AuthProvider({
-  initialUser = null,
-  children,
-}: {
-  initialUser?: User | null
-  children: React.ReactNode
-}) {
-  // Seed the store with server-provided user before the first subscribe
-  if (initialUser && !currentState.user) {
-    currentState = { user: initialUser, isAuthenticated: true }
+  const user = () => {
+    const c = clientUser()
+    return c !== undefined ? c : (serverUser() ?? null)
   }
-
-  const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
-
-  return <AuthContext.Provider value={state}>{children}</AuthContext.Provider>
+  const state: AuthState = { user, isAuthenticated: () => !!user() }
+  return <AuthContext value={state}>{props.children}</AuthContext>
 }
 
-export function useAuth() {
-  return useContext(AuthContext)
+export function useAuth(): AuthState {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
+  return ctx
 }

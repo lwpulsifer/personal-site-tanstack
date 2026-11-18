@@ -1,9 +1,9 @@
-import { memo, useMemo, useState } from 'react'
-import { PersonCombobox } from '#/components/people/PersonCombobox'
-import { selectClassName } from '#/components/people/styles'
-import { CONNECTION_KIND_LABELS } from '#/lib/connectionKind'
-import { usePeopleById } from '#/lib/hooks/usePeopleById'
-import type { ConnectionKind, DbConnection, DbPerson } from '#/server/people'
+import { createMemo, createSignal, For, Show } from 'solid-js'
+import { CONNECTION_KIND_LABELS } from '../../lib/connectionKind'
+import { createPeopleById } from '../../lib/peopleById'
+import type { ConnectionKind, DbConnection, DbPerson } from '../../server/people'
+import { PersonCombobox } from './PersonCombobox'
+import { selectClassName } from './styles'
 
 // A "step" walks from the current set of people to everyone reachable via one
 // relation. 'parent'/'child' use the directional parent_child convention
@@ -80,88 +80,79 @@ function applyStep(
   return result
 }
 
-export const SearchPanel = memo(function SearchPanel({
-  people,
-  connections,
-}: {
-  people: DbPerson[]
-  connections: DbConnection[]
-}) {
-  const [startId, setStartId] = useState('')
-  const [steps, setSteps] = useState<RelationStep[]>([])
-  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle')
+export function SearchPanel(props: { people: DbPerson[]; connections: DbConnection[] }) {
+  const [startId, setStartId] = createSignal('')
+  const [steps, setSteps] = createSignal<RelationStep[]>([])
+  const [copyStatus, setCopyStatus] = createSignal<'idle' | 'copied'>('idle')
 
-  const peopleById = usePeopleById(people)
+  const peopleById = createPeopleById(() => props.people)
+  const graph = createMemo(() => buildGraph(props.connections))
 
-  const graph = useMemo(() => buildGraph(connections), [connections])
-
-  const stages = useMemo(() => {
-    if (!startId) return []
-    let current = new Set([startId])
+  const stages = createMemo(() => {
+    if (!startId()) return []
+    let current = new Set([startId()])
     const result: Set<string>[] = []
-    for (const step of steps) {
-      current = applyStep(step, current, graph)
-      current.delete(startId)
+    for (const step of steps()) {
+      current = applyStep(step, current, graph())
+      current.delete(startId())
       result.push(current)
     }
     return result
-  }, [startId, steps, graph])
+  })
 
-  const finalResult = stages.at(-1) ?? null
+  const finalResult = () => stages().at(-1) ?? null
+
+  const resultPeople = createMemo(() => {
+    const final = finalResult()
+    if (!final) return []
+    return [...final]
+      .map((id) => peopleById().get(id))
+      .filter((p): p is DbPerson => p != null)
+      .sort((a, b) => a.name.localeCompare(b.name))
+  })
 
   function applyPreset(preset: (typeof PRESETS)[number]) {
     setSteps(preset.steps)
     setCopyStatus('idle')
   }
-
   function addStep() {
     setSteps((prev) => [...prev, 'parent'])
     setCopyStatus('idle')
   }
-
   function updateStep(index: number, step: RelationStep) {
     setSteps((prev) => prev.map((s, i) => (i === index ? step : s)))
     setCopyStatus('idle')
   }
-
   function removeStep(index: number) {
     setSteps((prev) => prev.filter((_, i) => i !== index))
     setCopyStatus('idle')
   }
 
   async function copyResultNames() {
-    if (!finalResult) return
-    const names = [...finalResult]
-      .map((id) => peopleById.get(id)?.name)
-      .filter((name): name is string => !!name)
-      .sort((a, b) => a.localeCompare(b))
-      .join('\n')
+    if (!finalResult()) return
+    const names = resultPeople().map((p) => p.name).join('\n')
     try {
       await navigator.clipboard.writeText(names)
       setCopyStatus('copied')
     } catch {
-      // Clipboard access can be denied by the browser; the list is still
-      // visible on screen, so this is a nice-to-have, not worth surfacing
-      // as an error.
+      // Clipboard access can be denied; the list is still visible on screen.
     }
   }
 
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
-      <h2 className="m-0 mb-3 text-sm font-semibold text-[var(--text)]">
-        Search
-      </h2>
-      <p className="mb-3 text-xs text-[var(--text-muted)]">
-        Pick a person, then build a chain of relations to walk from them — e.g.
-        Parent → Sibling → Child finds their cousins. Requires parent/child
-        connections (and sibling tags on parents, for cousins) to be entered.
+    <div class="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <h2 class="m-0 mb-3 text-sm font-semibold text-[var(--text)]">Search</h2>
+      <p class="mb-3 text-xs text-[var(--text-muted)]">
+        Pick a person, then build a chain of relations to walk from them — e.g. Parent → Sibling →
+        Child finds their cousins. Requires parent/child connections (and sibling tags on parents,
+        for cousins) to be entered.
       </p>
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div class="mb-3 flex flex-wrap items-center gap-2">
         <PersonCombobox
-          people={people}
-          peopleById={peopleById}
-          value={startId}
+          people={props.people}
+          peopleById={peopleById()}
+          value={startId()}
           onChange={(id) => {
             setStartId(id)
             setCopyStatus('idle')
@@ -169,133 +160,121 @@ export const SearchPanel = memo(function SearchPanel({
           placeholder="Start person…"
           ariaLabel="Start person"
           testId="search-start-select"
-          className={`w-36 ${selectClassName}`}
+          class={`w-36 ${selectClassName}`}
         />
 
-        {PRESETS.map((preset) => (
-          <button
-            key={preset.label}
-            type="button"
-            onClick={() => applyPreset(preset)}
-            data-testid="search-preset-btn"
-            className="rounded-full border border-[var(--border)] px-3 py-1 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--hover-bg)]"
-          >
-            {preset.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="mb-3 flex flex-col gap-2">
-        {steps.map((step, index) => (
-          // Steps are an ordered, position-addressed list with no stable
-          // identity of their own — index is the correct key here.
-          // biome-ignore lint/suspicious/noArrayIndexKey: steps have no other identity
-          <div key={index} className="flex items-center gap-2">
-            <span className="text-xs text-[var(--text-muted)]">
-              {index + 1}.
-            </span>
-            <select
-              aria-label={`Step ${index + 1} relation`}
-              value={step}
-              onChange={(e) =>
-                updateStep(index, e.target.value as RelationStep)
-              }
-              data-testid="search-step-select"
-              className={selectClassName}
-            >
-              {STEP_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+        <For each={PRESETS}>
+          {(preset) => (
             <button
               type="button"
-              onClick={() => removeStep(index)}
-              aria-label={`Remove step ${index + 1}`}
-              data-testid="search-remove-step-btn"
-              className="rounded-full px-2 py-0.5 text-xs font-semibold text-[var(--text-muted)] transition hover:bg-[var(--hover-bg)] hover:text-[var(--text)]"
+              onClick={() => applyPreset(preset)}
+              data-testid="search-preset-btn"
+              class="rounded-full border border-[var(--border)] px-3 py-1 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--hover-bg)]"
             >
-              ×
+              {preset.label}
             </button>
-            {startId && (
-              <span
-                data-testid="search-stage-count"
-                className="text-xs text-[var(--text-muted)]"
+          )}
+        </For>
+      </div>
+
+      <div class="mb-3 flex flex-col gap-2">
+        {/* Steps are an ordered, position-addressed list with no stable identity
+            of their own, so rows are keyed by index (keyed={false}). */}
+        <For each={steps()} keyed={false}>
+          {(step, index) => (
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-[var(--text-muted)]">{index + 1}.</span>
+              <select
+                aria-label={`Step ${index + 1} relation`}
+                onChange={(e) => updateStep(index, e.currentTarget.value as RelationStep)}
+                data-testid="search-step-select"
+                class={selectClassName}
               >
-                → {stages[index]?.size ?? 0}{' '}
-                {stages[index]?.size === 1 ? 'person' : 'people'}
-              </span>
-            )}
-          </div>
-        ))}
+                <For each={STEP_OPTIONS}>
+                  {(opt) => (
+                    <option value={opt.value} selected={opt.value === step()}>
+                      {opt.label}
+                    </option>
+                  )}
+                </For>
+              </select>
+              <button
+                type="button"
+                onClick={() => removeStep(index)}
+                aria-label={`Remove step ${index + 1}`}
+                data-testid="search-remove-step-btn"
+                class="rounded-full px-2 py-0.5 text-xs font-semibold text-[var(--text-muted)] transition hover:bg-[var(--hover-bg)] hover:text-[var(--text)]"
+              >
+                ×
+              </button>
+              <Show when={startId()}>
+                <span data-testid="search-stage-count" class="text-xs text-[var(--text-muted)]">
+                  → {stages()[index]?.size ?? 0} {stages()[index]?.size === 1 ? 'person' : 'people'}
+                </span>
+              </Show>
+            </div>
+          )}
+        </For>
 
         <button
           type="button"
           onClick={addStep}
           data-testid="search-add-step-btn"
-          className="self-start rounded-full border border-[var(--border)] px-3 py-1 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--hover-bg)]"
+          class="self-start rounded-full border border-[var(--border)] px-3 py-1 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--hover-bg)]"
         >
           + Add step
         </button>
       </div>
 
-      {!startId && (
-        <p className="text-xs text-[var(--text-muted)]">
-          Pick a start person to run the query.
-        </p>
-      )}
+      <Show when={!startId()}>
+        <p class="text-xs text-[var(--text-muted)]">Pick a start person to run the query.</p>
+      </Show>
+      <Show when={startId() && steps().length === 0}>
+        <p class="text-xs text-[var(--text-muted)]">Add a step, or pick a preset, to build a query.</p>
+      </Show>
 
-      {startId && steps.length === 0 && (
-        <p className="text-xs text-[var(--text-muted)]">
-          Add a step, or pick a preset, to build a query.
-        </p>
-      )}
-
-      {startId && finalResult && (
-        <div>
-          <div className="mb-1.5 flex items-center justify-between">
-            <p className="m-0 text-xs font-semibold text-[var(--text)]">
-              Result — {finalResult.size}{' '}
-              {finalResult.size === 1 ? 'person' : 'people'}
-            </p>
-            {finalResult.size > 0 && (
-              <button
-                type="button"
-                onClick={copyResultNames}
-                data-testid="search-copy-btn"
-                className="rounded-full border border-[var(--border)] px-2 py-0.5 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--hover-bg)]"
-              >
-                {copyStatus === 'copied' ? 'Copied!' : 'Copy names'}
-              </button>
-            )}
-          </div>
-          {finalResult.size === 0 ? (
-            <p className="text-xs text-[var(--text-muted)]">
-              No one matched — check that the relevant connections are entered.
-            </p>
-          ) : (
-            <ul
-              data-testid="search-result-list"
-              className="flex flex-wrap gap-1.5"
+      <Show when={startId() !== '' ? finalResult() : null}>
+        {(final) => (
+          <div>
+            <div class="mb-1.5 flex items-center justify-between">
+              <p class="m-0 text-xs font-semibold text-[var(--text)]">
+                Result — {final().size} {final().size === 1 ? 'person' : 'people'}
+              </p>
+              <Show when={final().size > 0}>
+                <button
+                  type="button"
+                  onClick={copyResultNames}
+                  data-testid="search-copy-btn"
+                  class="rounded-full border border-[var(--border)] px-2 py-0.5 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--hover-bg)]"
+                >
+                  {copyStatus() === 'copied' ? 'Copied!' : 'Copy names'}
+                </button>
+              </Show>
+            </div>
+            <Show
+              when={final().size > 0}
+              fallback={
+                <p class="text-xs text-[var(--text-muted)]">
+                  No one matched — check that the relevant connections are entered.
+                </p>
+              }
             >
-              {[...finalResult]
-                .map((id) => peopleById.get(id))
-                .filter((p): p is DbPerson => p != null)
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((p) => (
-                  <li
-                    key={p.id}
-                    data-testid="search-result-item"
-                    className="rounded-full border border-[var(--chip-border)] bg-[var(--chip-bg)] px-2 py-0.5 text-xs font-medium text-[var(--text)]"
-                  >
-                    {p.name}
-                  </li>
-                ))}
-            </ul>
-          )}
-        </div>
-      )}
+              <ul data-testid="search-result-list" class="flex flex-wrap gap-1.5">
+                <For each={resultPeople()}>
+                  {(p) => (
+                    <li
+                      data-testid="search-result-item"
+                      class="rounded-full border border-[var(--chip-border)] bg-[var(--chip-bg)] px-2 py-0.5 text-xs font-medium text-[var(--text)]"
+                    >
+                      {p.name}
+                    </li>
+                  )}
+                </For>
+              </ul>
+            </Show>
+          </div>
+        )}
+      </Show>
     </div>
   )
-})
+}

@@ -316,3 +316,14 @@ a {
     transform: translateY(0);
   }
 }
+
+/* Solid router marks the current route's links with these attributes (no
+   <Link activeProps>). Mirrors .nav-link.is-active above. */
+.nav-link[data-active],
+.nav-link[aria-current="page"] {
+  color: var(--text);
+}
+.nav-link[data-active]::after,
+.nav-link[aria-current="page"]::after {
+  transform: scaleX(1);
+}

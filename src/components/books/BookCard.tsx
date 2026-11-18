@@ -1,45 +1,39 @@
-import { Link } from '@tanstack/react-router'
-import { CoverImage } from '#/components/books/CoverImage'
-import { StarRating } from '#/components/books/StarRating'
-import type { DbBook } from '#/server/books'
-
-type BookCardProps = {
-  book: DbBook
-  className?: string
-  style?: React.CSSProperties
-}
+import type { JSX } from '@solidjs/web'
+import { useViewTransitionNavigate, viewTransitionClick } from '../../lib/viewTransition'
+import { paths } from '../../router'
+import type { DbBook } from '../../server/books'
+import { CoverImage } from './CoverImage'
+import { StarRating } from './StarRating'
 
 // A compact "book cover" tile: image, title, author, rating — nothing else.
-// Everything else (status, dates, review, admin actions) lives on the
-// book's own page, linked to from here.
-export function BookCard({ book, className = '', style }: BookCardProps) {
+// Everything else lives on the book's own page, linked from here.
+export function BookCard(props: { book: DbBook; class?: string; style?: JSX.CSSProperties }) {
+  const navigateWithTransition = useViewTransitionNavigate()
+  const href = () => String(paths.books(props.book.id))
   return (
-    <Link
-      to="/books/$bookId"
-      params={{ bookId: book.id }}
-      viewTransition
-      data-testid={`book-card-${book.id}`}
-      className={`group flex flex-col text-left no-underline transition hover:-translate-y-1 ${className}`}
-      style={style}
+    <a
+      href={href()}
+      onClick={viewTransitionClick(navigateWithTransition, href)}
+      data-testid={`book-card-${props.book.id}`}
+      class={`group flex flex-col text-left no-underline transition hover:-translate-y-1 ${props.class ?? ''}`}
+      style={props.style}
     >
       <CoverImage
-        book={book}
-        style={{ viewTransitionName: `book-cover-${book.id}` }}
-        className="aspect-[2/3] w-full rounded-lg bg-[var(--chip-bg)] shadow-md transition group-hover:shadow-xl"
+        book={props.book}
+        style={{ 'view-transition-name': `book-cover-${props.book.id}` }}
+        class="aspect-[2/3] w-full rounded-lg bg-[var(--chip-bg)] shadow-md transition group-hover:shadow-xl"
       />
 
       <h2
-        data-testid={`book-title-${book.id}`}
-        className="m-0 mt-2 line-clamp-2 text-sm font-semibold leading-snug text-[var(--text)]"
+        data-testid={`book-title-${props.book.id}`}
+        class="m-0 mt-2 line-clamp-2 text-sm font-semibold leading-snug text-[var(--text)]"
       >
-        {book.title}
+        {props.book.title}
       </h2>
-      <p className="m-0 line-clamp-1 text-xs text-[var(--text-muted)]">
-        {book.author}
-      </p>
-      <div className="mt-1">
-        <StarRating rating={book.rating} />
+      <p class="m-0 line-clamp-1 text-xs text-[var(--text-muted)]">{props.book.author}</p>
+      <div class="mt-1">
+        <StarRating rating={props.book.rating} />
       </div>
-    </Link>
+    </a>
   )
 }

@@ -1,36 +1,30 @@
-import { createServerFn } from '@tanstack/react-start'
+import { query } from '@solidjs/router'
 import { z } from 'zod'
-import { SITE_URL } from '#/lib/site'
-import {
-  exchangeSpotifyAuthCode,
-  fetchNowPlaying,
-  fetchTopTracks,
-  getSpotifyAuthorizeUrl,
-} from '#/lib/spotify'
-import { requireAuth } from '#/server/auth.server'
-
-export const getNowPlaying = createServerFn({ method: 'GET' }).handler(
-  fetchNowPlaying,
-)
-
-export const getTopTracks = createServerFn({ method: 'GET' }).handler(() =>
-  fetchTopTracks(10),
-)
-
-// ── Admin: re-authorization ──────────────────────────────────────────────────
+import { SITE_URL } from '../lib/site'
+import type { NowPlayingData, SpotifyTokenExchangeResult } from '../lib/spotify'
+import { parse } from './validate'
 
 export const SPOTIFY_CALLBACK_REDIRECT_URI = `${SITE_URL}/spotifycallback`
 
-export const getAuthorizeUrl = createServerFn({ method: 'GET' }).handler(
-  async () => {
-    await requireAuth()
-    return getSpotifyAuthorizeUrl(SPOTIFY_CALLBACK_REDIRECT_URI)
-  },
-)
+export const getNowPlaying = query(async (): Promise<NowPlayingData> => {
+  'use server'
+  const { fetchNowPlaying } = await import('../lib/spotify')
+  return fetchNowPlaying()
+}, 'now-playing')
 
-export const exchangeCode = createServerFn({ method: 'POST' })
-  .inputValidator(z.object({ code: z.string() }))
-  .handler(async ({ data }) => {
-    await requireAuth()
-    return exchangeSpotifyAuthCode(data.code, SPOTIFY_CALLBACK_REDIRECT_URI)
-  })
+export const getAuthorizeUrl = query(async () => {
+  'use server'
+  const { requireAuth } = await import('./supabase')
+  const { getSpotifyAuthorizeUrl } = await import('../lib/spotify')
+  await requireAuth()
+  return getSpotifyAuthorizeUrl(SPOTIFY_CALLBACK_REDIRECT_URI)
+}, 'spotify-authorize-url')
+
+export async function exchangeCode(code: string): Promise<SpotifyTokenExchangeResult> {
+  'use server'
+  code = parse(z.string(), code)
+  const { requireAuth } = await import('./supabase')
+  const { exchangeSpotifyAuthCode } = await import('../lib/spotify')
+  await requireAuth()
+  return exchangeSpotifyAuthCode(code, SPOTIFY_CALLBACK_REDIRECT_URI)
+}

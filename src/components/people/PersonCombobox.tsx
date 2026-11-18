@@ -1,6 +1,6 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
-import { useComboboxNav } from '#/lib/hooks/useComboboxNav'
-import type { DbPerson } from '#/server/people'
+import { createEffect, createMemo, createSignal, For, Show, untrack } from 'solid-js'
+import { createComboboxNav } from '../../lib/hooks/createComboboxNav'
+import type { DbPerson } from '../../server/people'
 
 interface SearchablePerson {
   person: DbPerson
@@ -9,10 +9,7 @@ interface SearchablePerson {
 
 // Contains-match on the name, with names that start with the query ranked
 // ahead of names that merely contain it elsewhere; ties break alphabetically.
-function searchPeople(
-  searchable: SearchablePerson[],
-  query: string,
-): DbPerson[] {
+function searchPeople(searchable: SearchablePerson[], query: string): DbPerson[] {
   const q = query.trim().toLowerCase()
   if (!q) return searchable.map((s) => s.person)
   return searchable
@@ -27,19 +24,9 @@ function searchPeople(
 }
 
 // A single-person picker styled and behaving like a search-as-you-type
-// combobox rather than a native <select>: it supports contains-based
-// filtering (with prefix matches ranked first) instead of requiring an
-// exact-prefix jump-to-option like a real <select> does.
-export const PersonCombobox = memo(function PersonCombobox({
-  people,
-  peopleById,
-  value,
-  onChange,
-  placeholder,
-  ariaLabel,
-  testId,
-  className,
-}: {
+// combobox rather than a native <select>: contains-based filtering (prefix
+// matches ranked first) instead of an exact-prefix jump-to-option.
+export function PersonCombobox(props: {
   people: DbPerson[]
   peopleById: Map<string, DbPerson>
   value: string
@@ -47,49 +34,36 @@ export const PersonCombobox = memo(function PersonCombobox({
   placeholder: string
   ariaLabel: string
   testId: string
-  className: string
+  class: string
 }) {
-  const selectedPerson = useMemo(
-    () => peopleById.get(value) ?? null,
-    [peopleById, value],
+  const selectedPerson = createMemo(() => props.peopleById.get(props.value) ?? null)
+  // Seeded once from the initial selection; the sync effect below handles later changes.
+  const [query, setQuery] = createSignal(untrack(() => selectedPerson()?.name ?? ''))
+
+  // Tracks the id we last told the parent about, so the sync effect below can
+  // tell "the parent changed `value` out from under us" (swap button, entering
+  // edit mode, a reset) apart from "we just emitted this ourselves" (which
+  // must NOT stomp on text the user is actively typing).
+  let lastEmitted = untrack(() => props.value)
+
+  createEffect(
+    () => props.value,
+    (value) => {
+      if (value !== lastEmitted) {
+        lastEmitted = value
+        setQuery(props.peopleById.get(value)?.name ?? '')
+      }
+    },
   )
-  const [query, setQuery] = useState(selectedPerson?.name ?? '')
 
-  // Tracks the id we last told the parent about, so the sync effect below
-  // can tell "the parent changed `value` out from under us" (swap button,
-  // entering edit mode, a reset) apart from "we just emitted this ourselves"
-  // (which must NOT stomp on text the user is actively typing).
-  const lastEmittedRef = useRef(value)
-
-  // Read via a ref rather than a dependency so a data refetch (which gives
-  // `peopleById` a new reference without actually changing `value`) doesn't
-  // re-run this effect.
-  const peopleByIdRef = useRef(peopleById)
-  peopleByIdRef.current = peopleById
-
-  useEffect(() => {
-    if (value !== lastEmittedRef.current) {
-      lastEmittedRef.current = value
-      setQuery(peopleByIdRef.current.get(value)?.name ?? '')
-    }
-  }, [value])
-
-  const searchable = useMemo(
-    () =>
-      people.map((person) => ({
-        person,
-        lowerName: person.name.toLowerCase(),
-      })),
-    [people],
+  const searchable = createMemo(() =>
+    props.people.map((person) => ({ person, lowerName: person.name.toLowerCase() })),
   )
-  const results = useMemo(
-    () => searchPeople(searchable, query),
-    [searchable, query],
-  )
+  const results = createMemo(() => searchPeople(searchable(), query()))
 
   function emit(id: string) {
-    lastEmittedRef.current = id
-    onChange(id)
+    lastEmitted = id
+    props.onChange(id)
   }
 
   function commit(person: DbPerson) {
@@ -98,79 +72,78 @@ export const PersonCombobox = memo(function PersonCombobox({
     nav.setIsOpen(false)
   }
 
-  const nav = useComboboxNav({
-    resultCount: results.length,
-    onCommit: (index) => commit(results[index]),
-    onEscape: () => setQuery(selectedPerson?.name ?? ''),
+  const nav = createComboboxNav({
+    resultCount: () => results().length,
+    onCommit: (index) => commit(results()[index]),
+    onEscape: () => setQuery(selectedPerson()?.name ?? ''),
     // Clicking away without picking anything abandons unsaved typing.
     onOutsideClose: () => {
-      if (!value) setQuery('')
+      if (!props.value) setQuery('')
     },
   })
 
-  // Auto-highlight the top match once the user has typed something, so
-  // Enter commits it directly without requiring an arrow-key press first.
-  // Leave nothing highlighted while the query is empty (just browsing the
-  // full list) so a stray Enter can't commit an arbitrary person.
-  useEffect(() => {
-    nav.setActiveIndex(query.trim() && results.length > 0 ? 0 : -1)
-  }, [query, results, nav.setActiveIndex])
-
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setQuery(e.target.value)
-    nav.setIsOpen(true)
-    if (value) emit('')
-  }
+  // Auto-highlight the top match once the user has typed something, so Enter
+  // commits it directly. Nothing is highlighted while the query is empty so a
+  // stray Enter can't commit an arbitrary person.
+  createEffect(
+    () => (query().trim() && results().length > 0 ? 0 : -1),
+    (index) => {
+      nav.setActiveIndex(index)
+    },
+  )
 
   return (
-    <div ref={nav.containerRef} className="relative min-w-0">
+    <div ref={nav.setContainer} class="relative min-w-0">
       <input
         type="text"
-        value={query}
-        onChange={handleChange}
+        value={query()}
+        onInput={(e) => {
+          setQuery(e.currentTarget.value)
+          nav.setIsOpen(true)
+          if (props.value) emit('')
+        }}
         onFocus={(e) => {
           nav.setIsOpen(true)
-          e.target.select()
+          e.currentTarget.select()
         }}
         onKeyDown={nav.handleKeyDown}
-        placeholder={placeholder}
-        aria-label={ariaLabel}
+        placeholder={props.placeholder}
+        aria-label={props.ariaLabel}
         role="combobox"
-        aria-expanded={nav.isOpen}
+        aria-expanded={nav.isOpen() ? 'true' : 'false'}
         aria-controls={nav.listboxId}
         aria-autocomplete="list"
-        autoComplete="off"
-        data-testid={testId}
-        className={className}
+        autocomplete="off"
+        data-testid={props.testId}
+        class={props.class}
       />
-      {nav.isOpen && results.length > 0 && (
+      <Show when={nav.isOpen() && results().length > 0}>
         <div
           id={nav.listboxId}
           role="listbox"
-          data-testid={`${testId}-listbox`}
-          className="absolute left-0 top-full z-10 mt-1 max-h-56 w-max min-w-full overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--bg)] shadow-lg"
+          data-testid={`${props.testId}-listbox`}
+          class="absolute left-0 top-full z-10 mt-1 max-h-56 w-max min-w-full overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--bg)] shadow-lg"
         >
-          {results.map((person, i) => (
-            <div
-              key={person.id}
-              role="option"
-              tabIndex={-1}
-              aria-selected={i === nav.activeIndex}
-              onMouseDown={(e) => {
-                e.preventDefault()
-                commit(person)
-              }}
-              className={`cursor-pointer whitespace-nowrap px-3 py-1.5 text-sm text-[var(--text)] ${
-                i === nav.activeIndex
-                  ? 'bg-[var(--hover-bg)]'
-                  : 'hover:bg-[var(--hover-bg)]'
-              }`}
-            >
-              {person.name}
-            </div>
-          ))}
+          <For each={results()}>
+            {(person, i) => (
+              <div
+                role="option"
+                tabindex={-1}
+                aria-selected={i() === nav.activeIndex() ? 'true' : 'false'}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  commit(person)
+                }}
+                class={`cursor-pointer whitespace-nowrap px-3 py-1.5 text-sm text-[var(--text)] ${
+                  i() === nav.activeIndex() ? 'bg-[var(--hover-bg)]' : 'hover:bg-[var(--hover-bg)]'
+                }`}
+              >
+                {person.name}
+              </div>
+            )}
+          </For>
         </div>
-      )}
+      </Show>
     </div>
   )
-})
+}

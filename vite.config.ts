@@ -1,23 +1,26 @@
+import solid from '@solidjs/vite-plugin'
 import tailwindcss from '@tailwindcss/vite'
-import { devtools } from '@tanstack/devtools-vite'
+import { fileRoutes } from 'filesystem-routing/vite'
+import { defineConfig } from 'vitest/config'
 
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
-
-import viteReact from '@vitejs/plugin-react'
-import { nitro } from 'nitro/vite'
-import { defineConfig } from 'vite'
-
-const config = defineConfig({
+// Solid 2.0 app. The previous TanStack Start (React) version lives in ./react
+// with its own Vite config: both frameworks want to own the JSX transform.
+export default defineConfig({
   plugins: [
-    devtools(),
-    nitro({ rollupConfig: { external: [/^@sentry\//] } }),
     tailwindcss(),
-    tanstackStart(),
-    viteReact(),
+    solid({
+      // Turnkey streaming SSR: entries are generated around src/App.tsx,
+      // wrapped in src/Document.tsx.
+      start: { middleware: './src/middleware.ts', nodeServer: true },
+      ssr: true,
+      serverFunctions: { serverSetup: './src/server-config.ts' },
+      // Also compile the `?pick=` route modules fileRoutes emits.
+      extensions: ['.jsx', '.tsx'],
+    }),
+    // httpMethods: also scan route modules for GET/POST exports (API routes).
+    fileRoutes({ httpMethods: true, types: true }),
   ],
-  resolve: {
-    tsconfigPaths: true,
-  },
+  server: { port: 3000 },
+  build: { target: 'esnext', assetsInlineLimit: 0 },
+  test: { environment: 'node', include: ['src/**/*.test.ts'] },
 })
-
-export default config

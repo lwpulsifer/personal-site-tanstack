@@ -1,88 +1,60 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react'
+import type { JSX } from '@solidjs/web'
+import { Errored } from 'solid-js'
 
-interface ErrorBoundaryProps {
-  fallback?: ReactNode | ((error: Error) => ReactNode)
-  children: ReactNode
-}
-
-interface ErrorBoundaryState {
-  error: Error | null
-}
-
-export class ErrorBoundary extends Component<
-  ErrorBoundaryProps,
-  ErrorBoundaryState
-> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props)
-    this.state = { error: null }
-  }
-
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { error }
-  }
-
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('ErrorBoundary caught:', error, info)
-  }
-
-  reset = () => {
-    this.setState({ error: null })
-  }
-
-  render() {
-    if (this.state.error) {
-      if (this.props.fallback) {
-        return typeof this.props.fallback === 'function'
-          ? this.props.fallback(this.state.error)
-          : this.props.fallback
-      }
-
-      return (
-        <div
-          role="alert"
-          style={{
-            border: '1px solid var(--border)',
-            borderRadius: '12px',
-            backgroundColor: 'var(--surface)',
-            padding: '24px',
-            textAlign: 'center',
-          }}
-        >
-          <p
-            style={{ color: 'var(--text)', fontWeight: 600, margin: '0 0 8px' }}
-          >
-            Something went wrong
-          </p>
-          <p
+// Solid port of the React class boundary. <Errored> heals on its own when its
+// inputs change, and `reset` re-runs the failed subtree ("Try again").
+export function ErrorBoundary(props: {
+  fallback?: JSX.Element | ((error: Error) => JSX.Element)
+  children: JSX.Element
+}) {
+  return (
+    <Errored
+      fallback={(err: unknown, reset: () => void) => {
+        const error = err instanceof Error ? err : new Error(String(err))
+        console.error('ErrorBoundary caught:', error)
+        if (props.fallback) {
+          return typeof props.fallback === 'function'
+            ? (props.fallback as (e: Error) => JSX.Element)(error)
+            : props.fallback
+        }
+        return (
+          <div
+            role="alert"
             style={{
-              color: 'var(--text-muted)',
-              fontSize: '14px',
-              margin: '0 0 16px',
+              border: '1px solid var(--border)',
+              'border-radius': '12px',
+              'background-color': 'var(--surface)',
+              padding: '24px',
+              'text-align': 'center',
             }}
           >
-            {this.state.error.message}
-          </p>
-          <button
-            type="button"
-            onClick={this.reset}
-            style={{
-              backgroundColor: 'var(--blue-deep)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '9999px',
-              padding: '6px 16px',
-              fontSize: '14px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            Try again
-          </button>
-        </div>
-      )
-    }
-
-    return this.props.children
-  }
+            <p style={{ color: 'var(--text)', 'font-weight': 600, margin: '0 0 8px' }}>
+              Something went wrong
+            </p>
+            <p style={{ color: 'var(--text-muted)', 'font-size': '14px', margin: '0 0 16px' }}>
+              {error.message}
+            </p>
+            <button
+              type="button"
+              onClick={reset}
+              style={{
+                'background-color': 'var(--blue-deep)',
+                color: 'white',
+                border: 'none',
+                'border-radius': '9999px',
+                padding: '6px 16px',
+                'font-size': '14px',
+                'font-weight': 600,
+                cursor: 'pointer',
+              }}
+            >
+              Try again
+            </button>
+          </div>
+        )
+      }}
+    >
+      {props.children}
+    </Errored>
+  )
 }

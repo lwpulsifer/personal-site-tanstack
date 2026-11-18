@@ -26,6 +26,12 @@ export async function pickPerson(page: Page, testId: string, name: string) {
   await input.press('Enter')
 }
 
+// Clicks `clickTarget` until `expectedVisible` shows up, tolerating clicks that
+// land before hydration. Frameworks apply the resulting UI update at different
+// times (React flushes click handlers synchronously; Solid batches to the next
+// microtask/frame), so after each click we give the update a short window to
+// land instead of re-clicking immediately — a second click can otherwise hit a
+// target that the first click already replaced.
 export async function clickUntilVisible(
   clickTarget: Locator,
   expectedVisible: Locator,
@@ -33,11 +39,16 @@ export async function clickUntilVisible(
 ) {
   const start = Date.now()
   while (Date.now() - start < timeoutMs) {
-    await clickTarget.click()
     if (await expectedVisible.isVisible().catch(() => false)) return
-    await clickTarget.page().waitForTimeout(100)
+    // The target may have vanished because the UI already updated; that's fine.
+    await clickTarget.click({ timeout: 2_000 }).catch(() => {})
+    try {
+      await expectedVisible.waitFor({ state: 'visible', timeout: 500 })
+      return
+    } catch {
+      // Not there yet (e.g. clicked before hydration) — loop and click again.
+    }
   }
   // This produces a better error message than a generic timeout loop.
   await expect(expectedVisible).toBeVisible({ timeout: 1000 })
 }
-

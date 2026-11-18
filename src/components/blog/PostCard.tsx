@@ -1,22 +1,9 @@
-import { Link } from '@tanstack/react-router'
-import type { DbPost } from '#/server/posts'
+import type { JSX } from '@solidjs/web'
+import { Show } from 'solid-js'
+import { paths } from '../../router'
+import type { DbPost } from '../../server/posts'
 import { AdminActions } from './AdminActions'
 import { StatusBadge } from './StatusBadge'
-
-function PostDate({ post }: { post: DbPost }) {
-  return (
-    <p className="m-0 text-xs text-[var(--text-muted)]">
-      {new Date(post.published_at ?? post.created_at).toLocaleDateString(
-        'en-US',
-        {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-        },
-      )}
-    </p>
-  )
-}
 
 type PostCardProps = {
   post: DbPost
@@ -26,72 +13,68 @@ type PostCardProps = {
   compact?: boolean
   showAdmin: boolean
   onEdit: (post: DbPost) => void
-  className?: string
-  style?: React.CSSProperties
+  class?: string
+  style?: JSX.CSSProperties
 }
 
-export function PostCard({
-  post,
-  featured = false,
-  compact = false,
-  showAdmin,
-  onEdit,
-  className = '',
-  style,
-}: PostCardProps) {
-  const title =
-    post.status === 'PUBLISHED' ? (
-      <Link
-        to="/blog/$slug"
-        params={{ slug: post.slug }}
-        data-testid={`post-link-${post.slug}`}
-        className="no-underline"
-      >
-        {post.title}
-      </Link>
-    ) : (
-      post.title
-    )
-
+export function PostCard(props: PostCardProps) {
   return (
     <article
-      data-testid={`post-card-${post.slug}`}
-      className={`island-shell rounded-2xl p-5 ${featured ? 'sm:p-6' : ''} ${className}`}
-      style={style}
+      data-testid={`post-card-${props.post.slug}`}
+      class={`island-shell rounded-2xl p-5 ${props.featured ? 'sm:p-6' : ''} ${props.class ?? ''}`}
+      style={props.style}
     >
-      {!compact && post.hero_image && (
+      <Show when={!props.compact && props.post.hero_image}>
         <img
-          src={post.hero_image}
+          src={props.post.hero_image!}
           alt=""
-          className={`mb-4 h-44 w-full rounded-xl object-cover ${featured ? 'xl:h-60' : ''}`}
+          class={`mb-4 h-44 w-full rounded-xl object-cover ${props.featured ? 'xl:h-60' : ''}`}
         />
-      )}
+      </Show>
 
-      <div className="mb-2 flex items-center gap-2">
-        {showAdmin && <StatusBadge status={post.status} />}
-        {post.tags.length > 0 && (
-          <p className="island-kicker m-0">{post.tags[0]}</p>
-        )}
+      <div class="mb-2 flex items-center gap-2">
+        <Show when={props.showAdmin}>
+          <StatusBadge status={props.post.status} />
+        </Show>
+        <Show when={props.post.tags.length > 0}>
+          <p class="island-kicker m-0">{props.post.tags[0]}</p>
+        </Show>
       </div>
 
       <h2
-        data-testid={`post-title-${post.slug}`}
-        className={`m-0 font-semibold text-[var(--text)] ${compact ? 'text-xl' : 'text-2xl'}`}
+        data-testid={`post-title-${props.post.slug}`}
+        class={`m-0 font-semibold text-[var(--text)] ${props.compact ? 'text-xl' : 'text-2xl'}`}
       >
-        {title}
+        <Show when={props.post.status === 'PUBLISHED'} fallback={props.post.title}>
+          <a
+            href={paths.blog(props.post.slug)}
+            data-testid={`post-link-${props.post.slug}`}
+            class="no-underline"
+          >
+            {props.post.title}
+          </a>
+        </Show>
       </h2>
 
-      {post.description && (
+      <Show when={props.post.description}>
         <p
-          className={`mb-2 text-[var(--text-muted)] ${featured ? 'mt-3 text-base' : 'mt-2 text-sm'}`}
+          class={`mb-2 text-[var(--text-muted)] ${props.featured ? 'mt-3 text-base' : 'mt-2 text-sm'}`}
         >
-          {post.description}
+          {props.post.description}
         </p>
-      )}
+      </Show>
 
-      <PostDate post={post} />
+      <p class="m-0 text-xs text-[var(--text-muted)]">
+        {new Date(props.post.published_at ?? props.post.created_at).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        })}
+      </p>
 
-      {showAdmin && <AdminActions post={post} onEdit={onEdit} />}
+      <Show when={props.showAdmin}>
+        <AdminActions post={props.post} onEdit={props.onEdit} />
+      </Show>
     </article>
   )
 }

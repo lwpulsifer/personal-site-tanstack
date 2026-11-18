@@ -313,6 +313,53 @@ test.describe('admin: book management', () => {
     await authExpect(page.getByTestId('books-heading')).toBeVisible({ timeout: 20_000 })
   })
 
+  test('navigating between the shelf and a book page runs view transitions', async ({ page }) => {
+    const title = uniqueTitle('ViewTransition')
+
+    // Record every document.startViewTransition call and whether it finished.
+    await page.addInitScript(() => {
+      const w = window as unknown as { __vt: { started: number; finished: number } }
+      w.__vt = { started: 0, finished: 0 }
+      const original = document.startViewTransition?.bind(document)
+      if (!original) return
+      document.startViewTransition = ((callback?: ViewTransitionUpdateCallback) => {
+        w.__vt.started++
+        const transition = original(callback)
+        transition.finished.then(
+          () => {
+            w.__vt.finished++
+          },
+          () => {},
+        )
+        return transition
+      }) as typeof document.startViewTransition
+    })
+    const counts = () =>
+      page.evaluate(() => (window as unknown as { __vt: { started: number; finished: number } }).__vt)
+
+    await page.goto('/books')
+    await ensureHydrated(page)
+    const card = await addBook(page, title)
+
+    // Shelf -> book page.
+    const bookPage = await openBookPage(page, card)
+    await expect.poll(async () => (await counts()).finished, { timeout: 10_000 }).toBeGreaterThanOrEqual(1)
+    expect((await counts()).started).toBeGreaterThanOrEqual(1)
+
+    // Book page -> shelf.
+    const finishedBefore = (await counts()).finished
+    await page.getByTestId('book-back-link').click()
+    await authExpect(page.getByTestId('books-heading')).toBeVisible({ timeout: 20_000 })
+    await expect
+      .poll(async () => (await counts()).finished, { timeout: 10_000 })
+      .toBeGreaterThan(finishedBefore)
+
+    // Clean up
+    await ensureShelfOpen(page, 'want_to_read')
+    await deleteBookFromShelf(page, 'want_to_read', title)
+    await authExpect(bookPage).toHaveCount(0)
+  })
+
   test('can delete a book from its own page', async ({ page }) => {
     const title = uniqueTitle('Delete')
 
