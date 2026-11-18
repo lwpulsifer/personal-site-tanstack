@@ -13,9 +13,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Pinned: the latest Supabase CLI rejects `[inbucket]` in supabase/config.toml
+      # ("no longer supported. Use local_smtp instead"), which fails `supabase start`.
+      # 2.119.0 is what the repo is developed against. Rename the config section
+      # (and drop this pin) once the config is migrated.
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.119.0
 
       - name: Start local Supabase
         run: supabase start
