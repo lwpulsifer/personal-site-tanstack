@@ -1,4 +1,5 @@
 import { Link, Meta, Title } from '@solidjs/meta'
+import type { RouteDefinition } from '@solidjs/router'
 import { createMemo, createSignal, createUniqueId, For, Show } from 'solid-js'
 import { BuyMeACoffee } from '../../components/BuyMeACoffee'
 import { PostCard } from '../../components/blog/PostCard'
@@ -7,6 +8,14 @@ import { PostEditor } from '../../components/PostEditor'
 import { useAuth } from '../../lib/auth'
 import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from '../../lib/site'
 import { type DbPost, getAdminPosts, getAllTags, getPublishedPosts } from '../../server/posts'
+
+// Hover/focus on a link to /blog starts this fetch, so the data is usually
+// warm by the time the click lands.
+export const route = {
+  preload: () => {
+    void getPublishedPosts()
+  },
+} satisfies RouteDefinition
 
 export default function BlogIndex() {
   const { isAuthenticated } = useAuth()

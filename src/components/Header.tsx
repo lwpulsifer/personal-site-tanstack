@@ -1,10 +1,36 @@
-import { Show } from 'solid-js'
+import { For, Show } from 'solid-js'
 import { useAuth } from '../lib/auth'
+import { isActivePath, useNavigationState } from '../lib/navigation'
 import { paths } from '../router'
 import NowPlaying from './NowPlaying'
 
+const NAV_LINKS = [
+  { label: 'Home', testId: 'nav-home', href: () => String(paths()) },
+  { label: 'Blog', testId: 'nav-blog', href: () => String(paths.blog()) },
+  { label: 'Books', testId: 'nav-books', href: () => String(paths.books()) },
+  { label: 'Fun', testId: 'nav-fun', href: () => String(paths.fun()) },
+]
+
+function NavLink(props: { href: string; testId: string; active: boolean; children: string }) {
+  return (
+    <a
+      href={props.href}
+      data-testid={props.testId}
+      class={`nav-link ${props.active ? 'is-active' : ''}`}
+      aria-current={props.active ? 'page' : undefined}
+    >
+      {props.children}
+    </a>
+  )
+}
+
 export default function Header() {
   const { isAuthenticated } = useAuth()
+  const nav = useNavigationState()
+
+  // Active state follows the destination *during* a navigation, so the clicked
+  // link responds on the click itself instead of after the next route's data arrives.
+  const isActive = (href: string) => isActivePath(nav.activePath(), href)
 
   return (
     <header class="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--header-bg)] px-4 backdrop-blur-lg">
@@ -27,15 +53,29 @@ export default function Header() {
         </div>
 
         <div class="order-3 flex w-full flex-wrap items-center gap-x-4 gap-y-1 pb-1 text-sm font-semibold sm:order-2 sm:w-auto sm:flex-nowrap sm:pb-0">
-          <a href={paths()} class="nav-link">Home</a>
-          <a href={paths.blog()} class="nav-link">Blog</a>
-          <a href={paths.books()} class="nav-link">Books</a>
-          <a href={paths.fun()} class="nav-link">Fun</a>
+          <For each={NAV_LINKS}>
+            {(link) => (
+              <NavLink href={link.href()} testId={link.testId} active={isActive(link.href())}>
+                {link.label}
+              </NavLink>
+            )}
+          </For>
           <Show when={isAuthenticated()}>
-            <a href={paths.people()} class="nav-link">People</a>
+            <NavLink
+              href={String(paths.people())}
+              testId="nav-people"
+              active={isActive(String(paths.people()))}
+            >
+              People
+            </NavLink>
           </Show>
         </div>
       </nav>
+
+      {/* Indeterminate bar while a navigation is in flight (see .route-progress). */}
+      <Show when={nav.isRouting()}>
+        <div role="progressbar" aria-label="Loading page" data-testid="nav-progress" class="route-progress" />
+      </Show>
     </header>
   )
 }

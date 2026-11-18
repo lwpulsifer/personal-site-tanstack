@@ -1,4 +1,5 @@
 import { Link, Meta, Title } from '@solidjs/meta'
+import type { RouteDefinition } from '@solidjs/router'
 import { createMemo, createSignal, Show } from 'solid-js'
 import { BookEditor } from '../../components/books/BookEditor'
 import { BookShelf } from '../../components/books/BookShelf'
@@ -7,6 +8,14 @@ import { useAuth } from '../../lib/auth'
 import { groupBooks } from '../../lib/books'
 import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from '../../lib/site'
 import { getBooks } from '../../server/books'
+
+// Hover/focus on a link to /books starts this fetch, so the data is usually
+// warm by the time the click lands.
+export const route = {
+  preload: () => {
+    void getBooks()
+  },
+} satisfies RouteDefinition
 
 export default function BooksIndex() {
   const { isAuthenticated } = useAuth()

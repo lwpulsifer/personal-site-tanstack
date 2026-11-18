@@ -43,7 +43,11 @@ export default function PageViewsTracker() {
   return (
     <span class="text-xs text-(--sea-ink-soft) opacity-60">
       <Errored fallback={' '}>
-        <Loading fallback={' '}>
+        {/* `on` re-arms the boundary whenever the path changes, so the count shows its
+            placeholder immediately. Without it Solid *holds* the whole route transition
+            until this footer fetch settles, so every navigation waited on an analytics
+            query. */}
+        <Loading on={key()} fallback={' '}>
           <ViewCount urlKey={key()} />
         </Loading>
       </Errored>

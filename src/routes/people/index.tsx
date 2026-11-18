@@ -21,6 +21,7 @@ import { type DbConnection, type DbPerson, getPeopleGraph } from '../../server/p
 export const route = {
   preload: async () => {
     if (!(await getServerUser())) httpStatus(404)
+    else void getPeopleGraph()
   },
 } satisfies RouteDefinition
 

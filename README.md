@@ -57,6 +57,7 @@ Environment variables, as for the React app: `VITE_SUPABASE_URL` and `VITE_SUPAB
 - **Response headers** (e.g. `cache-control` on posts) live in `src/middleware.ts`; they can't be written from a route once the streamed response head has flushed.
 - **Supabase session cookies** written during a streamed render are dropped (the browser client owns its own cookies); mutating server functions still write them.
 - **Layout routes need an index child** (`src/routes/books/[bookId]/index.tsx`) or they fall through to the 404.
+- **Optimistic navigation** (`src/lib/navigation.ts`): Solid's router holds the old page until the next route's data settles, so the navbar follows the in-flight destination (`isPending` + `latest` on the router location) and shows a progress bar and a dimmed page. Routes `preload` their data on hover/focus, and the footer's page-view count sits in a `<Loading on={path}>` boundary, because otherwise a held transition waits for *every* async read it triggers, including analytics.
 - **View transitions** between the book shelf and book page use `src/lib/viewTransition.ts` (Solid's router has no such option).
 - **Maps** (`react/src/server/maps.ts`) have no routes in the React app either and were not ported.
 - `SOLID_FIXTURES=1 npm run dev` serves fake Spotify tracks for `/fun` (handy when the local refresh token is revoked).
