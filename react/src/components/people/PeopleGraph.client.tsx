@@ -1,0 +1,790 @@
+import { forceCollide, forceRadial } from 'd3-force-3d'
+import forceClustering from 'd3-force-clustering'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import ForceGraph2D, {
+  type ForceGraphMethods,
+  type NodeObject,
+} from 'react-force-graph-2d'
+import { connectionDisplayText } from '#/lib/connectionKind'
+import { useElementSize } from '#/lib/hooks/useElementSize'
+import { usePeopleById } from '#/lib/hooks/usePeopleById'
+import { useThemeMode } from '#/lib/hooks/useThemeMode'
+import type { ConnectionKind, DbConnection, DbPerson } from '#/server/people'
+import type { GraphFocusRequest } from './graphFocus'
+
+type GraphNode = NodeObject<{ id: string; name: string }>
+type GraphLink = {
+  id: string
+  source: string
+  target: string
+  displayText: string
+  tooltipText: string
+  kind: ConnectionKind
+}
+
+// Builds an undirected adjacency map from connections, optionally skipping
+// edges `includeEdge` rejects (e.g. by kind, or touching a given person).
+function buildSymmetricAdjacency(
+  connections: DbConnection[],
+  includeEdge: (c: DbConnection) => boolean = () => true,
+): Map<string, Set<string>> {
+  const adjacency = new Map<string, Set<string>>()
+  for (const c of connections) {
+    if (!includeEdge(c)) continue
+    if (!adjacency.has(c.person_a_id)) adjacency.set(c.person_a_id, new Set())
+    if (!adjacency.has(c.person_b_id)) adjacency.set(c.person_b_id, new Set())
+    adjacency.get(c.person_a_id)?.add(c.person_b_id)
+    adjacency.get(c.person_b_id)?.add(c.person_a_id)
+  }
+  return adjacency
+}
+
+// Hop-distance from `start` to every node reachable from it, via BFS.
+function bfsDistances(
+  adjacency: Map<string, Set<string>>,
+  start: string,
+): Map<string, number> {
+  const distances = new Map<string, number>([[start, 0]])
+  const queue = [start]
+  while (queue.length > 0) {
+    const current = queue.shift()
+    if (!current) break
+    const currentDistance = distances.get(current) ?? 0
+    for (const neighbor of adjacency.get(current) ?? []) {
+      if (!distances.has(neighbor)) {
+        distances.set(neighbor, currentDistance + 1)
+        queue.push(neighbor)
+      }
+    }
+  }
+  return distances
+}
+
+// Assigns every id in `ids` (other than `exclude`) a connected-component id
+// — the id of whichever member of that component comes first in `ids`.
+function connectedComponents(
+  ids: string[],
+  adjacency: Map<string, Set<string>>,
+  exclude?: string | null,
+): Map<string, string> {
+  const componentId = new Map<string, string>()
+  for (const id of ids) {
+    if (id === exclude || componentId.has(id)) continue
+    const queue = [id]
+    componentId.set(id, id)
+    while (queue.length > 0) {
+      const current = queue.shift()
+      if (!current) break
+      for (const neighbor of adjacency.get(current) ?? []) {
+        if (!componentId.has(neighbor)) {
+          componentId.set(neighbor, id)
+          queue.push(neighbor)
+        }
+      }
+    }
+  }
+  return componentId
+}
+
+// The looser relationship kinds used to sit at a flat 480px, which spread
+// everyone out equally regardless of which sub-group they belonged to. Now
+// that the cluster force (below) pulls each connected sub-group together,
+// these can be much shorter — the cluster force does the "keep families and
+// friend groups apart from each other" job instead.
+const LINK_DISTANCE: Record<ConnectionKind, number> = {
+  partner: 10,
+  parent_child: 130,
+  family: 90,
+  sibling: 90,
+  friend: 100,
+  coworker: 100,
+  other: 100,
+}
+
+// Strength of the pull of each node toward its cluster's centroid (see
+// CLUSTER_ID below). d3-force-clustering applies this as a spring: the
+// per-tick pull is `strength * distanceFromCentroid`, not a constant nudge —
+// so it scales up with how spread out the cluster already is. A high value
+// here fights the radial force below (which wants to spread a multi-
+// generation family across several rings by hop-distance from "me") and the
+// link forces (which want a legible tree shape): the further those forces
+// pull a family member from the shared centroid, the harder this yanks them
+// back, which is what made larger clusters visibly fold in on themselves
+// instead of spreading into a readable shape. Keep this low — just enough
+// to read as "these people belong together" via loose whitespace, not
+// enough to override the layout the other forces are trying to produce.
+const CLUSTER_STRENGTH = 0.1
+
+const NODE_COLLISION_RADIUS = 45
+
+// Partners get a much smaller collision radius than everyone else, so the
+// short partner link distance above can actually pull couples in close
+// instead of being fought back apart by the general collision spacing.
+//
+// A partner who has no other connections of their own (e.g. an in-law with
+// no other family entered) has nothing else pulling them toward either
+// side's cluster, so the partner link is the only thing keeping them close
+// against the strong global charge repulsion below — hence how short both
+// of these are.
+const PARTNER_COLLISION_RADIUS = 8
+
+// Ring spacing for the radial layout: each additional hop away from "me" in
+// the connection graph gets pushed out to a bigger radius, so relationships
+// that are further from me are also physically further away on screen.
+const RADIAL_STEP = 280
+
+// Below this zoom level name/relationship labels are hidden so the fully
+// zoomed-out graph reads as clean dots and lines.
+const LABEL_ZOOM_THRESHOLD = 0.2
+
+const SELF_PERSON_NAME = 'Liam (me)'
+const LINK_STRENGTH: Record<ConnectionKind, number> = {
+  partner: 1,
+  parent_child: 0.3,
+  family: 0.15,
+  sibling: 0.15,
+  friend: 0.15,
+  coworker: 0.15,
+  other: 0.15,
+}
+
+// Uniform repulsion between every node pair. The cluster force below pulls
+// each group's own members together against it, so a strong charge mostly
+// shows up as bigger gaps *between* clusters rather than looser packing
+// within one.
+const CHARGE_STRENGTH = -1200
+const CHARGE_DISTANCE_MAX = 2200
+
+// ── GraphSearchOverlay ────────────────────────────────────────────────────────
+// Owns the search-input state so that typing never causes the parent (and
+// therefore ForceGraph2D) to re-render.
+const GraphSearchOverlay = memo(function GraphSearchOverlay({
+  people,
+  fgRef,
+  graphNodes,
+  onSelectPerson,
+  onHighlight,
+}: {
+  people: DbPerson[]
+  fgRef: React.RefObject<ForceGraphMethods<GraphNode, GraphLink> | undefined>
+  graphNodes: GraphNode[]
+  onSelectPerson?: (person: DbPerson) => void
+  onHighlight: (id: string | null) => void
+}) {
+  const [query, setQuery] = useState('')
+
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return []
+    return people.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 8)
+  }, [people, query])
+
+  function jumpToPerson(person: DbPerson) {
+    const node = graphNodes.find((n) => n.id === person.id)
+    if (node?.x != null && node.y != null) {
+      fgRef.current?.centerAt(node.x, node.y, 800)
+      fgRef.current?.zoom(4, 800)
+    }
+    onHighlight(person.id)
+    setQuery('')
+    onSelectPerson?.(person)
+  }
+
+  return (
+    <div className="absolute left-3 top-3 z-10 w-56">
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && matches[0]) jumpToPerson(matches[0])
+        }}
+        placeholder="Jump to person..."
+        aria-label="Jump to person"
+        data-testid="people-search-input"
+        className="w-full rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text)] shadow-sm outline-none focus:border-[var(--blue)]"
+      />
+      {matches.length > 0 && (
+        <ul
+          data-testid="people-search-results"
+          className="mt-1 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg"
+        >
+          {matches.map((p) => (
+            <li key={p.id}>
+              <button
+                type="button"
+                data-testid="people-search-result"
+                onClick={() => jumpToPerson(p)}
+                className="block w-full px-3 py-1.5 text-left text-sm text-[var(--text)] hover:bg-[var(--hover-bg)]"
+              >
+                {p.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+})
+
+// ── PeopleGraph ───────────────────────────────────────────────────────────────
+export function PeopleGraph({
+  people,
+  connections,
+  onSelectPerson,
+  focusRequest,
+}: {
+  people: DbPerson[]
+  connections: DbConnection[]
+  onSelectPerson?: (person: DbPerson) => void
+  focusRequest?: GraphFocusRequest | null
+}) {
+  const { ref, width, height } = useElementSize<HTMLDivElement>()
+  const fgRef = useRef<ForceGraphMethods<GraphNode, GraphLink> | undefined>(
+    undefined,
+  )
+  const hasCenteredOnSelfRef = useRef(false)
+
+  const pendingFocusRef = useRef<GraphFocusRequest | null>(null)
+  const lastFocusRequestId = useRef<number | null>(null)
+
+  const peopleById = usePeopleById(people)
+
+  // Nodes with a "partner" connection get pulled tighter together (see the
+  // collide force below) so couples visually read as a single unit.
+  const partnerNodeIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const c of connections) {
+      if (c.kind !== 'partner') continue
+      ids.add(c.person_a_id)
+      ids.add(c.person_b_id)
+    }
+    return ids
+  }, [connections])
+
+  const selfId = useMemo(
+    () => people.find((p) => p.name === SELF_PERSON_NAME)?.id ?? null,
+    [people],
+  )
+
+  // Hop-distance from "me" through the connections, via BFS. Used to
+  // lay the graph out in rings around me: further relationships (more hops
+  // away) sit physically further out. Nodes not reachable from me (or when
+  // there's no "me" node) fall back to Infinity, so the radial force below
+  // leaves them alone and the existing charge/link forces place them.
+  const distanceFromSelf = useMemo(() => {
+    if (!selfId) return new Map<string, number>()
+    return bfsDistances(buildSymmetricAdjacency(connections), selfId)
+  }, [selfId, connections])
+
+  // Cluster id per person, used to pull family units / friend circles / coworker
+  // groups together (see the cluster force below). There's no explicit
+  // "family"/"group" field in the data model, so this is derived from graph
+  // structure: connected components of the relationship graph with "me"
+  // removed. Everyone connects back to me directly or transitively, so "me"
+  // is the hub that would otherwise merge every sub-group into one giant
+  // component; people who are still connected to each other without going
+  // through me are, in practice, a real group (a nuclear family, a friend
+  // circle, coworkers at the same job).
+  //
+  // 'partner' edges are also excluded here, even though they're not "my"
+  // edges: two blood families are otherwise-independent components that
+  // happen to be bridged by a single marriage/partnership. Leaving that edge
+  // in would merge both families into one component. The couple still sits
+  // visually close via the separate short partner link force below — each
+  // partner is just pulled toward their own side's cluster centroid instead
+  // of one shared one, so the couple becomes the seam between two distinct
+  // family clusters rather than the two families blurring into one.
+  const clusterIdByPersonId = useMemo(() => {
+    const adjacency = buildSymmetricAdjacency(
+      connections,
+      (c) =>
+        c.person_a_id !== selfId &&
+        c.person_b_id !== selfId &&
+        c.kind !== 'partner',
+    )
+    return connectedComponents(
+      people.map((p) => p.id),
+      adjacency,
+      selfId,
+    )
+  }, [people, connections, selfId])
+
+  // A display name per cluster, so the graph can show one label for a whole
+  // group instead of every member's name. Picks the most common free-text
+  // comment among that cluster's internal connections (e.g. "college
+  // roommates"); if none of them have a comment, falls back to the name of
+  // whichever cluster member is directly connected to me — the actual person
+  // I know, rather than a generic relationship kind.
+  const clusterMeta = useMemo(() => {
+    const memberIdsByCluster = new Map<string, string[]>()
+    for (const [personId, clusterId] of clusterIdByPersonId) {
+      if (!memberIdsByCluster.has(clusterId))
+        memberIdsByCluster.set(clusterId, [])
+      memberIdsByCluster.get(clusterId)?.push(personId)
+    }
+
+    // Who's directly connected to me — used as the naming fallback below:
+    // whichever cluster member I actually know personally is a much more
+    // meaningful "who is this" label than a generic relationship kind.
+    const directlyConnectedToSelf = new Set<string>()
+    if (selfId) {
+      for (const c of connections) {
+        if (c.person_a_id === selfId) directlyConnectedToSelf.add(c.person_b_id)
+        else if (c.person_b_id === selfId)
+          directlyConnectedToSelf.add(c.person_a_id)
+      }
+    }
+
+    const meta = new Map<string, { memberIds: string[]; name: string }>()
+    for (const [clusterId, memberIds] of memberIdsByCluster) {
+      if (memberIds.length < 2) continue
+      const memberSet = new Set(memberIds)
+      const labelCounts = new Map<string, number>()
+      for (const c of connections) {
+        if (!memberSet.has(c.person_a_id) || !memberSet.has(c.person_b_id))
+          continue
+        const tag = c.label?.trim()
+        if (tag) labelCounts.set(tag, (labelCounts.get(tag) ?? 0) + 1)
+      }
+      const topLabel = [...labelCounts.entries()].sort(
+        (a, b) => b[1] - a[1],
+      )[0]?.[0]
+      // "First" here just means memberIds' own order (BFS assignment order),
+      // not anything the user picks — it's a stable, deterministic tiebreak
+      // when more than one member happens to connect directly to me.
+      const firstConnectedName = memberIds
+        .filter((id) => directlyConnectedToSelf.has(id))
+        .map((id) => peopleById.get(id)?.name)
+        .find((name): name is string => !!name)
+      const name = topLabel ?? firstConnectedName ?? null
+      if (name) meta.set(clusterId, { memberIds, name })
+    }
+    return meta
+  }, [clusterIdByPersonId, connections, selfId, peopleById])
+
+  // react-force-graph mutates node objects in place with their simulated
+  // x/y/vx/vy every tick. If we handed it a brand-new node literal per
+  // person on every data refresh (e.g. a background refetch on tab focus
+  // that returns unchanged content), it would lose all those positions and
+  // pay for a full from-scratch re-simulation each time — the graph "bogs
+  // down" more, and more often, the longer the tab stays open. Keeping one
+  // cached object per person id and reusing/mutating it instead lets the
+  // simulation pick up near where it left off. Entries for people no longer
+  // present are pruned so this cache doesn't grow without bound.
+  const nodeCacheRef = useRef<Map<string, GraphNode>>(new Map())
+
+  // react-force-graph reheats the ENTIRE simulation from alpha 1 whenever it
+  // sees a new `graphData` object reference, no matter what's inside it —
+  // so a `useMemo` keyed on `[people, connections, ...]` alone
+  // still rebuilds (and reheats) on every refetch that returns
+  // content-identical data (e.g. React Query's default refetch-on-focus).
+  // Guarding with a content signature and returning the previous result
+  // object when nothing actually changed means idle tab-switches cause zero
+  // reheats — only edits that actually change a name/connection do.
+  const graphDataCacheRef = useRef<{
+    signature: string
+    result: { nodes: GraphNode[]; links: GraphLink[] }
+  } | null>(null)
+
+  const graphData = useMemo(() => {
+    const signature = `${people
+      .map((p) => `${p.id}:${p.name}`)
+      .join('|')}::${connections
+      .map(
+        (c) =>
+          `${c.id}:${c.kind}:${c.label ?? ''}:${c.person_a_id}:${c.person_b_id}`,
+      )
+      .join('|')}`
+
+    const cached = graphDataCacheRef.current
+    if (cached && cached.signature === signature) return cached.result
+
+    const cache = nodeCacheRef.current
+    const seenIds = new Set<string>()
+    const nodes = people.map((p) => {
+      seenIds.add(p.id)
+      const existing = cache.get(p.id)
+      if (existing) {
+        existing.name = p.name
+        return existing
+      }
+      const node = { id: p.id, name: p.name } as GraphNode
+      cache.set(p.id, node)
+      return node
+    })
+    for (const id of cache.keys()) {
+      if (!seenIds.has(id)) cache.delete(id)
+    }
+    const result = {
+      nodes,
+      links: connections.map((c) => {
+        const displayText = connectionDisplayText(c.kind, c.label)
+        const nameA = peopleById.get(c.person_a_id)?.name ?? 'Unknown'
+        const nameB = peopleById.get(c.person_b_id)?.name ?? 'Unknown'
+        return {
+          id: c.id,
+          source: c.person_a_id,
+          target: c.person_b_id,
+          displayText,
+          tooltipText: `${nameA} — ${nameB}: ${displayText}`,
+          kind: c.kind,
+        }
+      }) as GraphLink[],
+    }
+    graphDataCacheRef.current = { signature, result }
+    return result
+  }, [people, connections, peopleById])
+
+  // Keeps references to each cluster's live node objects (react-force-graph
+  // mutates these in place with x/y every simulation tick), so the cluster
+  // label can be drawn at the current centroid each frame without
+  // recomputing cluster membership on every render.
+  const nodesByClusterId = useMemo(() => {
+    const map = new Map<string, GraphNode[]>()
+    for (const node of graphData.nodes) {
+      const clusterId = clusterIdByPersonId.get(node.id)
+      if (!clusterId) continue
+      if (!map.has(clusterId)) map.set(clusterId, [])
+      map.get(clusterId)?.push(node)
+    }
+    return map
+  }, [graphData.nodes, clusterIdByPersonId])
+
+  // Apply focus requests immediately when target nodes are already placed,
+  // otherwise queue for onEngineStop (new nodes have no position yet).
+  useEffect(() => {
+    if (!focusRequest) return
+    if (focusRequest.requestId === lastFocusRequestId.current) return
+    lastFocusRequestId.current = focusRequest.requestId
+
+    if (focusRequest.kind === 'person') {
+      const node = graphData.nodes.find((n) => n.id === focusRequest.personId)
+      if (node?.x != null && node.y != null) {
+        fgRef.current?.centerAt(node.x, node.y, 800)
+        fgRef.current?.zoom(4, 800)
+        setHighlightedId(focusRequest.personId)
+      } else {
+        pendingFocusRef.current = focusRequest
+      }
+    } else {
+      const nodeA = graphData.nodes.find((n) => n.id === focusRequest.personAId)
+      const nodeB = graphData.nodes.find((n) => n.id === focusRequest.personBId)
+      if (nodeA?.x != null && nodeB?.x != null) {
+        fgRef.current?.zoomToFit(
+          800,
+          80,
+          (n) =>
+            n.id === focusRequest.personAId || n.id === focusRequest.personBId,
+        )
+      } else {
+        pendingFocusRef.current = focusRequest
+      }
+    }
+  }, [focusRequest, graphData])
+
+  const isGraphMounted = width > 0 && height > 0
+  useEffect(() => {
+    if (!isGraphMounted) return
+    const linkForce = fgRef.current?.d3Force('link')
+    linkForce
+      ?.distance((link: GraphLink) => LINK_DISTANCE[link.kind])
+      .strength((link: GraphLink) => LINK_STRENGTH[link.kind])
+    fgRef.current
+      ?.d3Force('charge')
+      ?.strength(CHARGE_STRENGTH)
+      .distanceMax(CHARGE_DISTANCE_MAX)
+    fgRef.current?.d3Force(
+      'collide',
+      forceCollide((node: unknown) =>
+        partnerNodeIds.has((node as GraphNode).id)
+          ? PARTNER_COLLISION_RADIUS
+          : NODE_COLLISION_RADIUS,
+      ),
+    )
+    fgRef.current?.d3Force(
+      'cluster',
+      forceClustering()
+        .clusterId(
+          (node: unknown) =>
+            clusterIdByPersonId.get((node as GraphNode).id) ??
+            (node as GraphNode).id,
+        )
+        .strength(CLUSTER_STRENGTH),
+    )
+
+    // Orient the graph around "me": pin my node at the origin, and pull
+    // every other node toward a ring whose radius grows with hop-distance
+    // from me, so relationships further away (in the connection graph) end
+    // up physically further away on screen. Nodes with no path to me (or
+    // when there's no "me" node) get no radial pull and are placed by the
+    // link/charge forces alone.
+    for (const node of graphData.nodes as (GraphNode & {
+      fx?: number
+      fy?: number
+    })[]) {
+      if (node.id === selfId) {
+        node.fx = 0
+        node.fy = 0
+      } else {
+        node.fx = undefined
+        node.fy = undefined
+      }
+    }
+    fgRef.current?.d3Force(
+      'radial',
+      selfId
+        ? forceRadial(
+            (node: unknown) => {
+              const distance = distanceFromSelf.get((node as GraphNode).id)
+              return distance == null ? 0 : distance * RADIAL_STEP
+            },
+            0,
+            0,
+          ).strength((node: unknown) => {
+            const id = (node as GraphNode).id
+            return distanceFromSelf.has(id) && id !== selfId ? 0.3 : 0
+          })
+        : null,
+    )
+  }, [
+    isGraphMounted,
+    graphData.nodes,
+    selfId,
+    distanceFromSelf,
+    partnerNodeIds,
+    clusterIdByPersonId,
+  ])
+
+  const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const [hoveredLinkId, setHoveredLinkId] = useState<string | null>(null)
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null)
+
+  // Hovering any node in a cluster reveals every member's name in that
+  // cluster — otherwise only the cluster's own label (drawn in
+  // onRenderFramePost below) identifies the group, keeping a busy graph
+  // readable at a glance.
+  const hoveredClusterId = hoveredNodeId
+    ? (clusterIdByPersonId.get(hoveredNodeId) ?? null)
+    : null
+
+  const { mode } = useThemeMode()
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `mode` change is the signal to re-resolve the CSS color
+  const textColor = useMemo(
+    () =>
+      getComputedStyle(document.documentElement)
+        .getPropertyValue('--text')
+        .trim(),
+    [mode],
+  )
+
+  // ── Stable ForceGraph2D callbacks ──────────────────────────────────────────
+  // All are wrapped in useCallback so that ForceGraph2D only sees new references
+  // when its own dependencies actually changed, preventing unnecessary internal
+  // re-processing on unrelated state changes (e.g. search input keystrokes).
+
+  const linkColor = useCallback(
+    (link: object) =>
+      (link as GraphLink).kind === 'partner'
+        ? 'rgba(244,63,94,0.7)'
+        : 'rgba(148,163,184,0.6)',
+    [],
+  )
+
+  const linkWidth = useCallback(
+    (link: object) => ((link as GraphLink).kind === 'partner' ? 2 : 1),
+    [],
+  )
+
+  const nodeCanvasObject = useCallback(
+    (node: object, ctx: CanvasRenderingContext2D, globalScale: number) => {
+      const n = node as GraphNode
+      const label = n.name
+      const fontSize = 12 / globalScale
+      ctx.beginPath()
+      ctx.arc(n.x ?? 0, n.y ?? 0, 4, 0, 2 * Math.PI)
+      ctx.fillStyle = '#2563eb'
+      ctx.fill()
+
+      if (n.id === highlightedId) {
+        ctx.beginPath()
+        ctx.arc(n.x ?? 0, n.y ?? 0, 8, 0, 2 * Math.PI)
+        ctx.strokeStyle = '#f59e0b'
+        ctx.lineWidth = 2 / globalScale
+        ctx.stroke()
+      }
+
+      // Individual names are only drawn for "me", the highlighted/searched
+      // person, or every member of the currently hovered cluster — otherwise
+      // a large graph is just names stacked on names. Ungrouped nodes (no
+      // cluster, e.g. someone only connected to me) always show their name,
+      // since there's no cluster label standing in for them.
+      const nodeClusterId = clusterIdByPersonId.get(n.id)
+      const showLabel =
+        n.id === selfId ||
+        n.id === highlightedId ||
+        n.id === hoveredNodeId ||
+        !nodeClusterId ||
+        (hoveredClusterId != null && nodeClusterId === hoveredClusterId)
+
+      if (globalScale >= LABEL_ZOOM_THRESHOLD && showLabel) {
+        ctx.font = `${fontSize}px sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'top'
+        ctx.fillStyle = textColor
+        ctx.fillText(label, n.x ?? 0, (n.y ?? 0) + 6)
+      }
+    },
+    [
+      highlightedId,
+      textColor,
+      selfId,
+      hoveredNodeId,
+      hoveredClusterId,
+      clusterIdByPersonId,
+    ],
+  )
+
+  // Relationship text is only drawn for the hovered link — with hundreds of
+  // connections, labeling every link at once was more clutter than signal.
+  const linkCanvasObject = useCallback(
+    (link: object, ctx: CanvasRenderingContext2D, globalScale: number) => {
+      const l = link as GraphLink
+      if (l.id !== hoveredLinkId) return
+      const source = l.source as unknown as GraphNode
+      const target = l.target as unknown as GraphNode
+      if (typeof source !== 'object' || typeof target !== 'object') return
+      const midX = ((source.x ?? 0) + (target.x ?? 0)) / 2
+      const midY = ((source.y ?? 0) + (target.y ?? 0)) / 2
+      const fontSize = 10 / globalScale
+      ctx.font = `${fontSize}px sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = 'rgba(100,116,139,0.9)'
+      ctx.fillText(l.displayText, midX, midY)
+    },
+    [hoveredLinkId],
+  )
+
+  const onLinkHover = useCallback((link: object | null) => {
+    setHoveredLinkId(link ? (link as GraphLink).id : null)
+  }, [])
+
+  const onNodeHover = useCallback((node: object | null) => {
+    setHoveredNodeId(node ? (node as GraphNode).id : null)
+  }, [])
+
+  // Draws each cluster's derived name above its current bounding box. There's
+  // no "meta node"/compound-node concept in d3-force or react-force-graph —
+  // clusters are just a shared clusterId pulling ordinary nodes toward a
+  // shared centroid (see the cluster force above) — so the label position is
+  // recomputed from the live node positions every frame here instead of
+  // being attached to some container node in the simulation.
+  const onRenderFramePost = useCallback(
+    (ctx: CanvasRenderingContext2D, globalScale: number) => {
+      for (const [clusterId, meta] of clusterMeta) {
+        const nodes = nodesByClusterId.get(clusterId)
+        if (!nodes) continue
+        let sumX = 0
+        let minY = Number.POSITIVE_INFINITY
+        let count = 0
+        for (const node of nodes) {
+          if (node.x == null || node.y == null) continue
+          sumX += node.x
+          minY = Math.min(minY, node.y)
+          count++
+        }
+        if (count === 0) continue
+        const cx = sumX / count
+        const fontSize = Math.max(11 / globalScale, 6)
+        ctx.font = `600 ${fontSize}px sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'bottom'
+        ctx.fillStyle = 'rgba(100,116,139,0.75)'
+        ctx.fillText(meta.name, cx, minY - 12 / globalScale)
+      }
+    },
+    [clusterMeta, nodesByClusterId],
+  )
+
+  const onNodeClick = useCallback(
+    (node: object) => {
+      const person = peopleById.get(String((node as GraphNode).id))
+      if (person) onSelectPerson?.(person)
+    },
+    [peopleById, onSelectPerson],
+  )
+
+  const onEngineStop = useCallback(() => {
+    if (!hasCenteredOnSelfRef.current) {
+      hasCenteredOnSelfRef.current = true
+      // selfId is pinned at the origin by the radial layout, so centering on
+      // me is just moving the camera to (0, 0).
+      if (selfId) fgRef.current?.centerAt(0, 0, 0)
+    }
+
+    const focus = pendingFocusRef.current
+    if (!focus) return
+    pendingFocusRef.current = null
+    if (focus.kind === 'person') {
+      const node = graphData.nodes.find((n) => n.id === focus.personId)
+      if (node?.x != null && node.y != null) {
+        fgRef.current?.centerAt(node.x, node.y, 800)
+        fgRef.current?.zoom(4, 800)
+        setHighlightedId(focus.personId)
+      }
+    } else {
+      fgRef.current?.zoomToFit(
+        800,
+        80,
+        (node) => node.id === focus.personAId || node.id === focus.personBId,
+      )
+    }
+  }, [selfId, graphData])
+
+  return (
+    <div
+      ref={ref}
+      data-testid="people-graph"
+      className="relative h-full w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
+    >
+      <GraphSearchOverlay
+        people={people}
+        fgRef={fgRef}
+        graphNodes={graphData.nodes}
+        onSelectPerson={onSelectPerson}
+        onHighlight={setHighlightedId}
+      />
+
+      {width > 0 && height > 0 && (
+        <ForceGraph2D
+          ref={fgRef}
+          graphData={graphData}
+          width={width}
+          height={height}
+          nodeLabel="name"
+          linkLabel="tooltipText"
+          nodeRelSize={5}
+          // Default is 15s. With node positions preserved across refreshes
+          // (see the node cache above), a reheat from an actual edit only
+          // has to settle a small local perturbation, not lay the whole
+          // graph out again — a few seconds is plenty, and cutting the
+          // cooldown short means the animation loop (and its per-frame
+          // canvas redraw cost) stops running much sooner after each edit.
+          cooldownTime={3000}
+          linkColor={linkColor}
+          linkWidth={linkWidth}
+          linkDirectionalParticles={0}
+          onNodeClick={onNodeClick}
+          onNodeHover={onNodeHover}
+          onLinkHover={onLinkHover}
+          onEngineStop={onEngineStop}
+          nodeCanvasObject={nodeCanvasObject}
+          linkCanvasObjectMode={() => 'after'}
+          linkCanvasObject={linkCanvasObject}
+          onRenderFramePost={onRenderFramePost}
+        />
+      )}
+    </div>
+  )
+}

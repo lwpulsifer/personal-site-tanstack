@@ -1,22 +1,14 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { memo, useCallback, useId, useState } from 'react'
-import { useDebouncedValue } from '#/lib/hooks/useDebouncedValue'
-import { usePatchPeopleGraph } from '#/lib/hooks/usePatchPeopleGraph'
-import { searchPeopleQueryOptions } from '#/lib/queries'
+import { createMemo, createSignal, createUniqueId, For, isPending, Show } from 'solid-js'
+import { createDebounced } from '../../lib/hooks/createDebounced'
 import {
   type DbPerson,
   deletePerson,
   insertPerson,
+  searchPeople,
   updatePerson,
-} from '#/server/people'
+} from '../../server/people'
 
-const PersonListItem = memo(function PersonListItem({
-  person,
-  onEdit,
-  onDelete,
-  onSelect,
-  disabled,
-}: {
+function PersonListItem(props: {
   person: DbPerson
   onEdit: (person: DbPerson) => void
   onDelete: (id: string) => void
@@ -26,21 +18,21 @@ const PersonListItem = memo(function PersonListItem({
   return (
     <li
       data-testid="person-list-item"
-      className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-[var(--hover-bg)]"
+      class="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-[var(--hover-bg)]"
     >
       <button
         type="button"
-        onClick={() => onSelect?.(person)}
-        className="min-w-0 flex-1 truncate text-left text-[var(--text)]"
+        onClick={() => props.onSelect?.(props.person)}
+        class="min-w-0 flex-1 truncate text-left text-[var(--text)]"
       >
-        {person.name}
+        {props.person.name}
       </button>
-      <span className="flex gap-1.5">
+      <span class="flex gap-1.5">
         <button
           type="button"
           data-testid="edit-person-btn"
-          onClick={() => onEdit(person)}
-          className="rounded-full px-2 py-0.5 text-xs font-semibold text-[var(--text-muted)] transition hover:bg-[var(--hover-bg)] hover:text-[var(--text)]"
+          onClick={() => props.onEdit(props.person)}
+          class="rounded-full px-2 py-0.5 text-xs font-semibold text-[var(--text-muted)] transition hover:bg-[var(--hover-bg)] hover:text-[var(--text)]"
         >
           Edit
         </button>
@@ -48,219 +40,204 @@ const PersonListItem = memo(function PersonListItem({
           type="button"
           data-testid="delete-person-btn"
           onClick={() => {
-            if (confirm(`Delete "${person.name}"? Their connections go too.`)) {
-              onDelete(person.id)
+            if (confirm(`Delete "${props.person.name}"? Their connections go too.`)) {
+              props.onDelete(props.person.id)
             }
           }}
-          disabled={disabled}
-          className="rounded-full px-2 py-0.5 text-xs font-semibold text-red-500 transition hover:bg-red-500 hover:text-white disabled:opacity-50"
+          disabled={props.disabled}
+          class="rounded-full px-2 py-0.5 text-xs font-semibold text-red-500 transition hover:bg-red-500 hover:text-white disabled:opacity-50"
         >
           Delete
         </button>
       </span>
     </li>
   )
-})
+}
 
-export const PersonPanel = memo(function PersonPanel({
-  onChanged,
-  onSelect,
-}: {
+const errorText = (e: unknown, fallback: string) => (e instanceof Error ? e.message : fallback)
+
+export function PersonPanel(props: {
   onChanged: (createdPerson?: DbPerson) => void
   onSelect?: (person: DbPerson) => void
 }) {
-  const [name, setName] = useState('')
-  const formId = useId()
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editingName, setEditingName] = useState('')
-  const [rawQuery, setRawQuery] = useState('')
-  const [debouncedQuery, setDebouncedQuery] = useDebouncedValue(300, '')
+  const [name, setName] = createSignal('')
+  const formId = createUniqueId()
+  const [editingId, setEditingId] = createSignal<string | null>(null)
+  const [editingName, setEditingName] = createSignal('')
+  const [rawQuery, setRawQuery] = createSignal('')
+  const [debouncedQuery, setDebouncedQuery] = createDebounced(300, '')
+  const [adding, setAdding] = createSignal(false)
+  const [updating, setUpdating] = createSignal(false)
+  const [deleting, setDeleting] = createSignal(false)
+  const [addError, setAddError] = createSignal<unknown>(null)
+  const [updateError, setUpdateError] = createSignal<unknown>(null)
 
-  const queryClient = useQueryClient()
-  const { data, isFetching } = useQuery(
-    searchPeopleQueryOptions(debouncedQuery),
-  )
-  const people = data?.people ?? []
+  // Mutations are server functions naming the keys they touch, so this search
+  // result (and the page's graph data) revalidate on their own afterwards.
+  const result = createMemo(() => searchPeople(debouncedQuery(), 100, 0))
+  const people = () => result().people
+  // Dims the list while a new search (or a revalidation) is in flight.
+  const isFetching = () => isPending(() => result())
 
-  function invalidateSearch() {
-    queryClient.invalidateQueries({ queryKey: ['searchPeople'] })
+  async function add() {
+    setAdding(true)
+    setAddError(null)
+    try {
+      const person = (await insertPerson(name())) as DbPerson
+      setName('')
+      props.onChanged(person)
+    } catch (e) {
+      setAddError(e)
+    } finally {
+      setAdding(false)
+    }
   }
 
-  const patchPeopleGraph = usePatchPeopleGraph()
-
-  const addMutation = useMutation({
-    mutationFn: () => insertPerson({ data: { name } }),
-    onSuccess: (person) => {
-      setName('')
-      invalidateSearch()
-      patchPeopleGraph((old) => ({ ...old, people: [person, ...old.people] }))
-      onChanged(person)
-    },
-  })
-
-  const updateMutation = useMutation({
-    mutationFn: (vars: { personId: string; name: string }) =>
-      updatePerson({ data: vars }),
-    onSuccess: (person) => {
+  async function save(personId: string) {
+    setUpdating(true)
+    setUpdateError(null)
+    try {
+      await updatePerson(personId, editingName())
       setEditingId(null)
-      invalidateSearch()
-      patchPeopleGraph((old) => ({
-        ...old,
-        people: old.people.map((p) => (p.id === person.id ? person : p)),
-      }))
-      onChanged()
-    },
-  })
+      props.onChanged()
+    } catch (e) {
+      setUpdateError(e)
+    } finally {
+      setUpdating(false)
+    }
+  }
 
-  const deleteMutation = useMutation({
-    mutationFn: (personId: string) => deletePerson({ data: { personId } }),
-    onSuccess: (_result, personId) => {
-      invalidateSearch()
-      patchPeopleGraph((old) => ({
-        people: old.people.filter((p) => p.id !== personId),
-        connections: old.connections.filter(
-          (c) => c.person_a_id !== personId && c.person_b_id !== personId,
-        ),
-      }))
-      onChanged()
-    },
-  })
-  const { mutate: deletePersonMutate } = deleteMutation
+  async function remove(personId: string) {
+    setDeleting(true)
+    try {
+      await deletePerson(personId)
+      props.onChanged()
+    } finally {
+      setDeleting(false)
+    }
+  }
 
-  const startEditing = useCallback((person: DbPerson) => {
+  function startEditing(person: DbPerson) {
     setEditingId(person.id)
     setEditingName(person.name)
-  }, [])
-
-  const handleDelete = useCallback(
-    (personId: string) => deletePersonMutate(personId),
-    [deletePersonMutate],
-  )
+  }
 
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
-      <h2 className="m-0 mb-3 text-sm font-semibold text-[var(--text)]">
-        People
-      </h2>
+    <div class="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <h2 class="m-0 mb-3 text-sm font-semibold text-[var(--text)]">People</h2>
 
       <form
         onSubmit={(e) => {
           e.preventDefault()
-          if (name.trim()) addMutation.mutate()
+          if (name().trim()) add()
         }}
-        className="mb-3 flex gap-2"
+        class="mb-3 flex gap-2"
       >
-        <label htmlFor={formId} className="sr-only">
-          Name
-        </label>
+        <label for={formId} class="sr-only">Name</label>
         <input
           id={formId}
           type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          value={name()}
+          onInput={(e) => setName(e.currentTarget.value)}
           placeholder="Add a person..."
           data-testid="person-name-input"
-          className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
+          class="flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
         />
         <button
           type="submit"
           data-testid="add-person-btn"
-          disabled={!name.trim() || addMutation.isPending}
-          className="rounded-full bg-[var(--blue-deep)] px-3 py-1.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
+          disabled={!name().trim() || adding()}
+          class="rounded-full bg-[var(--blue-deep)] px-3 py-1.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
         >
           Add
         </button>
       </form>
 
-      {addMutation.error && (
-        <p className="mb-3 text-xs text-red-600 dark:text-red-400">
-          {addMutation.error instanceof Error
-            ? addMutation.error.message
-            : 'Could not add person'}
+      <Show when={addError()}>
+        <p class="mb-3 text-xs text-red-600 dark:text-red-400">
+          {errorText(addError(), 'Could not add person')}
         </p>
-      )}
-
-      {updateMutation.error && (
-        <p className="mb-3 text-xs text-red-600 dark:text-red-400">
-          {updateMutation.error instanceof Error
-            ? updateMutation.error.message
-            : 'Could not update person'}
+      </Show>
+      <Show when={updateError()}>
+        <p class="mb-3 text-xs text-red-600 dark:text-red-400">
+          {errorText(updateError(), 'Could not update person')}
         </p>
-      )}
+      </Show>
 
       <input
         type="search"
-        value={rawQuery}
-        onChange={(e) => {
-          setRawQuery(e.target.value)
-          setDebouncedQuery(e.target.value)
+        value={rawQuery()}
+        onInput={(e) => {
+          setRawQuery(e.currentTarget.value)
+          setDebouncedQuery(e.currentTarget.value)
         }}
         placeholder="Search people…"
         aria-label="Search people"
-        className="mb-2 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-xs text-[var(--text)] outline-none focus:border-[var(--blue)]"
+        class="mb-2 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-xs text-[var(--text)] outline-none focus:border-[var(--blue)]"
       />
 
-      {people.length === 0 ? (
-        <p className="text-sm text-[var(--text-muted)]">
-          {debouncedQuery ? 'No matches.' : 'No people yet.'}
-        </p>
-      ) : (
+      <Show
+        when={people().length > 0}
+        fallback={
+          <p class="text-sm text-[var(--text-muted)]">
+            {debouncedQuery() ? 'No matches.' : 'No people yet.'}
+          </p>
+        }
+      >
         <div
-          className={`max-h-80 overflow-y-auto transition-opacity duration-150 ${isFetching ? 'opacity-50' : 'opacity-100'}`}
+          class={`max-h-80 overflow-y-auto transition-opacity duration-150 ${isFetching() ? 'opacity-50' : 'opacity-100'}`}
         >
-          <ul data-testid="person-list" className="flex flex-col gap-1.5">
-            {people.map((person) =>
-              editingId === person.id ? (
-                <li
-                  key={person.id}
-                  data-testid="person-list-item-editing"
-                  className="flex items-center gap-2 rounded-lg px-2 py-1.5"
+          <ul data-testid="person-list" class="flex flex-col gap-1.5">
+            <For each={people()}>
+              {(person) => (
+                <Show
+                  when={editingId() === person.id}
+                  fallback={
+                    <PersonListItem
+                      person={person}
+                      onEdit={startEditing}
+                      onDelete={remove}
+                      onSelect={props.onSelect}
+                      disabled={deleting()}
+                    />
+                  }
                 >
-                  <input
-                    type="text"
-                    aria-label="Edit name"
-                    value={editingName}
-                    onChange={(e) => setEditingName(e.target.value)}
-                    data-testid="person-edit-name-input"
-                    className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
-                  />
-                  <button
-                    type="button"
-                    data-testid="save-person-btn"
-                    disabled={!editingName.trim() || updateMutation.isPending}
-                    onClick={() =>
-                      updateMutation.mutate({
-                        personId: person.id,
-                        name: editingName,
-                      })
-                    }
-                    className="rounded-full bg-[var(--blue-deep)] px-2 py-0.5 text-xs font-semibold text-white transition hover:bg-[var(--blue-darker)] disabled:opacity-50"
+                  <li
+                    data-testid="person-list-item-editing"
+                    class="flex items-center gap-2 rounded-lg px-2 py-1.5"
                   >
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    data-testid="cancel-edit-person-btn"
-                    onClick={() => setEditingId(null)}
-                    className="rounded-full border border-[var(--border)] px-2 py-0.5 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--hover-bg)]"
-                  >
-                    Cancel
-                  </button>
-                </li>
-              ) : (
-                <PersonListItem
-                  key={person.id}
-                  person={person}
-                  onEdit={startEditing}
-                  onDelete={handleDelete}
-                  onSelect={onSelect}
-                  disabled={deleteMutation.isPending}
-                />
-              ),
-            )}
+                    <input
+                      type="text"
+                      aria-label="Edit name"
+                      value={editingName()}
+                      onInput={(e) => setEditingName(e.currentTarget.value)}
+                      data-testid="person-edit-name-input"
+                      class="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
+                    />
+                    <button
+                      type="button"
+                      data-testid="save-person-btn"
+                      disabled={!editingName().trim() || updating()}
+                      onClick={() => save(person.id)}
+                      class="rounded-full bg-[var(--blue-deep)] px-2 py-0.5 text-xs font-semibold text-white transition hover:bg-[var(--blue-darker)] disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="cancel-edit-person-btn"
+                      onClick={() => setEditingId(null)}
+                      class="rounded-full border border-[var(--border)] px-2 py-0.5 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--hover-bg)]"
+                    >
+                      Cancel
+                    </button>
+                  </li>
+                </Show>
+              )}
+            </For>
           </ul>
         </div>
-      )}
+      </Show>
     </div>
   )
-})
+}

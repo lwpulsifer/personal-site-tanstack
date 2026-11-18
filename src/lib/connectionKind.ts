@@ -1,4 +1,4 @@
-import type { ConnectionKind } from '#/server/people'
+import type { ConnectionKind } from '../server/people'
 
 // people_connections has no direction column — connections are stored as an
 // unordered (person_a_id, person_b_id) pair for every kind except

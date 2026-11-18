@@ -1,27 +1,14 @@
 import { createBrowserClient } from '@supabase/ssr'
-import { createClient } from '@supabase/supabase-js'
-import type { Database } from '#/lib/database.types'
+import type { Database } from './database.types'
 
-// Server-side client (service-role key — bypasses RLS, never sent to browser).
-export function getSupabaseServiceClient() {
-  const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_KEY
-  if (!url || !key) {
-    throw new Error('SUPABASE_URL and SUPABASE_KEY must be set')
-  }
-  return createClient<Database>(url, key)
-}
-
-// Browser-side client — stores session in cookies for SSR compatibility.
-// Requires VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.
+// Browser-side client — stores the session in cookies so server functions can
+// read it. Same cookie name as server/supabase.ts.
 export function getSupabaseBrowserClient() {
   const url = import.meta.env.VITE_SUPABASE_URL as string
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string
   if (!url || !key) {
     throw new Error('VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set')
   }
-  // Use an explicit storage/cookie key so browser + server always agree, even if
-  // the Supabase URL differs slightly between build/runtime (localhost vs 127.0.0.1).
   return createBrowserClient<Database>(url, key, {
     cookieOptions: { name: 'sb-personal-site-auth' },
   })

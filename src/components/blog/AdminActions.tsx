@@ -1,68 +1,64 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { adminPostsQueryOptions } from '#/lib/queries'
-import { type DbPost, type PostStatus, setPostStatus } from '#/server/posts'
+import { createSignal, Show } from 'solid-js'
+import { type DbPost, type PostStatus, setPostStatus } from '../../server/posts'
 
-export function AdminActions({
-  post,
-  onEdit,
-}: {
-  post: DbPost
-  onEdit: (post: DbPost) => void
-}) {
-  const queryClient = useQueryClient()
-  const { mutate, isPending } = useMutation({
-    mutationFn: (status: PostStatus) =>
-      setPostStatus({ data: { postId: post.id, status } }),
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: adminPostsQueryOptions.queryKey,
-      }),
-  })
+export function AdminActions(props: { post: DbPost; onEdit: (post: DbPost) => void }) {
+  const [pending, setPending] = createSignal(false)
+
+  // setPostStatus is a POST server function, so on-screen queries (the admin
+  // post list) revalidate afterwards — no manual invalidateQueries needed.
+  async function mutate(status: PostStatus) {
+    setPending(true)
+    try {
+      await setPostStatus(props.post.id, status)
+    } finally {
+      setPending(false)
+    }
+  }
 
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-dashed border-[var(--border)] pt-3">
+    <div class="mt-3 flex flex-wrap items-center gap-1.5 border-t border-dashed border-[var(--border)] pt-3">
       <button
         type="button"
         data-testid="post-edit"
-        onClick={() => onEdit(post)}
-        className="rounded-full border border-[var(--blue-deep)] px-2.5 py-0.5 text-xs font-semibold text-[var(--blue-deep)] transition hover:bg-[var(--blue-deep)] hover:text-white"
+        onClick={() => props.onEdit(props.post)}
+        class="rounded-full border border-[var(--blue-deep)] px-2.5 py-0.5 text-xs font-semibold text-[var(--blue-deep)] transition hover:bg-[var(--blue-deep)] hover:text-white"
       >
         Edit
       </button>
 
-      {post.status !== 'PUBLISHED' && (
+      <Show when={props.post.status !== 'PUBLISHED'}>
         <button
           type="button"
           data-testid="post-publish"
           onClick={() => mutate('PUBLISHED')}
-          disabled={isPending}
-          className="rounded-full bg-emerald-600 px-2.5 py-0.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+          disabled={pending()}
+          class="rounded-full bg-emerald-600 px-2.5 py-0.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
         >
           Publish
         </button>
-      )}
-      {post.status === 'PUBLISHED' && (
+      </Show>
+      <Show when={props.post.status === 'PUBLISHED'}>
         <button
           type="button"
           data-testid="post-archive"
           onClick={() => mutate('ARCHIVED')}
-          disabled={isPending}
-          className="rounded-full bg-gray-500 px-2.5 py-0.5 text-xs font-semibold text-white transition hover:bg-gray-600 disabled:opacity-50"
+          disabled={pending()}
+          class="rounded-full bg-gray-500 px-2.5 py-0.5 text-xs font-semibold text-white transition hover:bg-gray-600 disabled:opacity-50"
         >
           Archive
         </button>
-      )}
-      {post.status === 'ARCHIVED' && (
+      </Show>
+      <Show when={props.post.status === 'ARCHIVED'}>
         <button
           type="button"
           data-testid="post-restore"
           onClick={() => mutate('PENDING')}
-          disabled={isPending}
-          className="rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-semibold text-white transition hover:bg-amber-600 disabled:opacity-50"
+          disabled={pending()}
+          class="rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-semibold text-white transition hover:bg-amber-600 disabled:opacity-50"
         >
           Restore
         </button>
-      )}
+      </Show>
     </div>
   )
 }

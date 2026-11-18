@@ -1,13 +1,8 @@
+import { For, Show } from 'solid-js'
+
 const STARS = [1, 2, 3, 4, 5] as const
 
-type StarRatingProps = {
-  rating: number | null
-  onChange?: (rating: number) => void
-  size?: 'sm' | 'md'
-}
-
-// Fraction of a single star that should render filled, given the overall
-// rating — 0, 0.5, or 1 since ratings are constrained to half-star steps.
+// Fraction of a single star that renders filled — 0, 0.5 or 1 (half-star steps).
 function starFill(star: number, rating: number | null) {
   if (rating == null) return 0
   const fill = rating - (star - 1)
@@ -16,60 +11,65 @@ function starFill(star: number, rating: number | null) {
   return 0
 }
 
-function StarIcon({ fill }: { fill: 0 | 0.5 | 1 }) {
+function StarIcon(props: { fill: 0 | 0.5 | 1 }) {
   return (
-    <span aria-hidden="true" className="relative inline-block leading-none">
-      <span className="text-[var(--text-muted)] opacity-40">★</span>
-      {fill > 0 && (
+    <span aria-hidden="true" class="relative inline-block leading-none">
+      <span class="text-[var(--text-muted)] opacity-40">★</span>
+      <Show when={props.fill > 0}>
         <span
-          className="absolute inset-0 overflow-hidden text-amber-400"
-          style={{ width: fill === 1 ? '100%' : '50%' }}
+          class="absolute inset-0 overflow-hidden text-amber-400"
+          style={{ width: props.fill === 1 ? '100%' : '50%' }}
         >
           ★
         </span>
-      )}
+      </Show>
     </span>
   )
 }
 
-export function StarRating({ rating, onChange, size = 'sm' }: StarRatingProps) {
-  const interactive = !!onChange
-  const textSize = size === 'sm' ? 'text-sm' : 'text-xl'
-
-  if (!interactive && !rating) return null
+export function StarRating(props: {
+  rating: number | null
+  onChange?: (rating: number) => void
+  size?: 'sm' | 'md'
+}) {
+  const textSize = () => (props.size === 'md' ? 'text-xl' : 'text-sm')
 
   return (
-    <div
-      className={`flex items-center gap-0.5 ${textSize}`}
-      {...(interactive
-        ? { role: 'group', 'aria-label': 'Rating' }
-        : { role: 'img', 'aria-label': `Rated ${rating} out of 5` })}
-    >
-      {STARS.map((star) =>
-        interactive ? (
-          <span key={star} className="relative inline-block leading-none">
-            <StarIcon fill={starFill(star, rating)} />
-            <button
-              type="button"
-              aria-pressed={rating === star - 0.5}
-              aria-label={`${star - 0.5} stars`}
-              data-testid={`star-${star}-half`}
-              onClick={() => onChange(star - 0.5)}
-              className="absolute inset-y-0 left-0 w-1/2"
-            />
-            <button
-              type="button"
-              aria-pressed={rating === star}
-              aria-label={`${star} star${star === 1 ? '' : 's'}`}
-              data-testid={`star-${star}`}
-              onClick={() => onChange(star)}
-              className="absolute inset-y-0 right-0 w-1/2"
-            />
-          </span>
-        ) : (
-          <StarIcon key={star} fill={starFill(star, rating)} />
-        ),
-      )}
-    </div>
+    <Show when={!!props.onChange || props.rating}>
+      <div
+        class={`flex items-center gap-0.5 ${textSize()}`}
+        role={props.onChange ? 'group' : 'img'}
+        aria-label={props.onChange ? 'Rating' : `Rated ${props.rating} out of 5`}
+      >
+        <For each={STARS}>
+          {(star) => (
+            <Show
+              when={props.onChange}
+              fallback={<StarIcon fill={starFill(star, props.rating)} />}
+            >
+              <span class="relative inline-block leading-none">
+                <StarIcon fill={starFill(star, props.rating)} />
+                <button
+                  type="button"
+                  aria-pressed={props.rating === star - 0.5 ? 'true' : 'false'}
+                  aria-label={`${star - 0.5} stars`}
+                  data-testid={`star-${star}-half`}
+                  onClick={() => props.onChange?.(star - 0.5)}
+                  class="absolute inset-y-0 left-0 w-1/2"
+                />
+                <button
+                  type="button"
+                  aria-pressed={props.rating === star ? 'true' : 'false'}
+                  aria-label={`${star} star${star === 1 ? '' : 's'}`}
+                  data-testid={`star-${star}`}
+                  onClick={() => props.onChange?.(star)}
+                  class="absolute inset-y-0 right-0 w-1/2"
+                />
+              </span>
+            </Show>
+          )}
+        </For>
+      </div>
+    </Show>
   )
 }

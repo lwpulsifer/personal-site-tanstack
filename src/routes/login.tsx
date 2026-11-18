@@ -1,105 +1,91 @@
-import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { useId, useState } from 'react'
-import { getSupabaseBrowserClient } from '#/lib/supabase'
+import { Title } from '@solidjs/meta'
+import { useNavigate } from '@solidjs/router'
+import { createSignal, createUniqueId, Show } from 'solid-js'
+import { getSupabaseBrowserClient } from '../lib/supabase'
+import { paths } from '../router'
 
-export const Route = createFileRoute('/login')({
-  head: () => ({ meta: [{ title: 'Login' }] }),
-  component: LoginPage,
-})
+export default function LoginPage() {
+  const navigate = useNavigate()
+  const emailId = createUniqueId()
+  const passwordId = createUniqueId()
+  const [email, setEmail] = createSignal('')
+  const [password, setPassword] = createSignal('')
+  const [error, setError] = createSignal<string | null>(null)
+  const [loading, setLoading] = createSignal(false)
 
-function LoginPage() {
-  const router = useRouter()
-  const emailId = useId()
-  const passwordId = useId()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: SubmitEvent) {
     e.preventDefault()
     setError(null)
     setLoading(true)
 
-    const supabase = getSupabaseBrowserClient()
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const { error: authError } = await getSupabaseBrowserClient().auth.signInWithPassword({
+      email: email(),
+      password: password(),
     })
 
     setLoading(false)
-
     if (authError) {
       setError(authError.message)
       return
     }
-
-    router.navigate({ to: '/' })
+    navigate(paths())
   }
 
-  return (
-    <main className="page-wrap flex min-h-[calc(100dvh-8rem)] items-center justify-center px-4 py-16">
-      <div className="island-shell rise-in w-full max-w-sm rounded-[2rem] px-8 py-10">
-        <p className="island-kicker mb-3">Admin</p>
-        <h1 className="display-title mb-8 text-2xl font-bold text-[var(--text)]">
-          Sign in
-        </h1>
+  const inputClass =
+    'rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--text)] outline-none transition focus:border-[var(--blue)] focus:ring-2 focus:ring-[rgba(59,130,246,0.2)]'
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor={emailId}
-              className="text-sm font-semibold text-[var(--text-muted)]"
-            >
-              Email
-            </label>
+  return (
+    <main class="page-wrap flex min-h-[calc(100dvh-8rem)] items-center justify-center px-4 py-16">
+      <Title>Login</Title>
+      <div class="island-shell rise-in w-full max-w-sm rounded-[2rem] px-8 py-10">
+        <p class="island-kicker mb-3">Admin</p>
+        <h1 class="display-title mb-8 text-2xl font-bold text-[var(--text)]">Sign in</h1>
+
+        <form onSubmit={handleSubmit} class="flex flex-col gap-4">
+          <div class="flex flex-col gap-1.5">
+            <label for={emailId} class="text-sm font-semibold text-[var(--text-muted)]">Email</label>
             <input
               id={emailId}
               data-testid="login-email"
               type="email"
-              autoComplete="email"
+              autocomplete="email"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--text)] outline-none transition focus:border-[var(--blue)] focus:ring-2 focus:ring-[rgba(59,130,246,0.2)]"
+              value={email()}
+              onInput={(e) => setEmail(e.currentTarget.value)}
+              class={inputClass}
             />
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor={passwordId}
-              className="text-sm font-semibold text-[var(--text-muted)]"
-            >
-              Password
-            </label>
+          <div class="flex flex-col gap-1.5">
+            <label for={passwordId} class="text-sm font-semibold text-[var(--text-muted)]">Password</label>
             <input
               id={passwordId}
               data-testid="login-password"
               type="password"
-              autoComplete="current-password"
+              autocomplete="current-password"
               required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--text)] outline-none transition focus:border-[var(--blue)] focus:ring-2 focus:ring-[rgba(59,130,246,0.2)]"
+              value={password()}
+              onInput={(e) => setPassword(e.currentTarget.value)}
+              class={inputClass}
             />
           </div>
 
-          {error && (
+          <Show when={error()}>
             <p
               data-testid="login-error"
-              className="rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400"
+              class="rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400"
             >
-              {error}
+              {error()}
             </p>
-          )}
+          </Show>
 
           <button
             type="submit"
             data-testid="login-submit"
-            disabled={loading}
-            className="mt-2 rounded-full bg-[var(--blue-deep)] px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50 disabled:hover:translate-y-0"
+            disabled={loading()}
+            class="mt-2 rounded-full bg-[var(--blue-deep)] px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50 disabled:hover:translate-y-0"
           >
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading() ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
       </div>

@@ -1,13 +1,11 @@
-import { useMutation } from '@tanstack/react-query'
-import { memo, useMemo, useState } from 'react'
-import { usePatchPeopleGraph } from '#/lib/hooks/usePatchPeopleGraph'
-import { usePeopleById } from '#/lib/hooks/usePeopleById'
+import { createMemo, createSignal, For, Show } from 'solid-js'
+import { createPeopleById } from '../../lib/peopleById'
 import {
   type ConnectionKind,
   type DbConnection,
   type DbPerson,
   insertConnectionBatch,
-} from '#/server/people'
+} from '../../server/people'
 
 type Suggestion = {
   personAId: string
@@ -175,364 +173,293 @@ function analyzeSiblingParentGaps(connections: DbConnection[]): {
   return { parentFixSuggestions: [...fixByKey.values()], noParentPairs }
 }
 
-export const SuggestionsPanel = memo(function SuggestionsPanel({
-  people,
-  connections,
-  onChanged,
-}: {
+type BatchResult = { connections: DbConnection[]; skipped: number }
+
+const checkRowClass =
+  'flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-[var(--hover-bg)]'
+const primaryBtnClass =
+  'rounded-full bg-[var(--blue-deep)] px-3 py-1.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50'
+const secondaryBtnClass =
+  'rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--hover-bg)] disabled:opacity-50'
+const amberBadge =
+  'rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400'
+
+const plural = (n: number) => (n === 1 ? '' : 's')
+
+// A set of unchecked keys with toggle / reset helpers; everything is checked by default.
+function createUncheckedSet() {
+  const [unchecked, setUnchecked] = createSignal<Set<string>>(new Set<string>())
+  return {
+    unchecked,
+    toggle(key: string) {
+      setUnchecked((prev) => {
+        const next = new Set(prev)
+        if (next.has(key)) next.delete(key)
+        else next.add(key)
+        return next
+      })
+    },
+    set: (keys: Iterable<string>) => setUnchecked(new Set<string>(keys)),
+    clear: () => setUnchecked(new Set<string>()),
+  }
+}
+
+// Runs a batch insert of the checked suggestions, tracking pending/error/result.
+function createBatchAdd(
+  items: () => { personAId: string; personBId: string; kind: ConnectionKind }[],
+  onDone: () => void,
+) {
+  const [pending, setPending] = createSignal(false)
+  const [error, setError] = createSignal<unknown>(null)
+  const [result, setResult] = createSignal<BatchResult | null>(null)
+  async function run() {
+    setPending(true)
+    setError(null)
+    setResult(null)
+    try {
+      const res = (await insertConnectionBatch({
+        connections: items().map((s) => ({
+          personAId: s.personAId,
+          personBId: s.personBId,
+          kind: s.kind,
+        })),
+      })) as BatchResult
+      setResult(res)
+      onDone()
+    } catch (e) {
+      setError(e)
+    } finally {
+      setPending(false)
+    }
+  }
+  return { pending, error, result, run }
+}
+
+export function SuggestionsPanel(props: {
   people: DbPerson[]
   connections: DbConnection[]
   onChanged: () => void
 }) {
-  const peopleById = usePeopleById(people)
-  const patchPeopleGraph = usePatchPeopleGraph()
+  const peopleById = createPeopleById(() => props.people)
+  const nameOf = (id: string) => peopleById().get(id)?.name ?? 'Unknown'
+  const namesOf = (ids: string[]) =>
+    ids.map((id) => peopleById().get(id)?.name).filter((name): name is string => !!name)
 
-  const suggestions = useMemo(
-    () => findSiblingSuggestions(connections),
-    [connections],
-  )
+  // ── Siblings sharing a parent ────────────────────────────────────────────
+  const suggestions = createMemo(() => findSiblingSuggestions(props.connections))
   const suggestionKey = (s: Suggestion) => pairKey(s.personAId, s.personBId)
-  const [uncheckedKeys, setUncheckedKeys] = useState<Set<string>>(new Set())
-  function toggle(key: string) {
-    setUncheckedKeys((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
-  }
-  const selected = suggestions.filter(
-    (s) => !uncheckedKeys.has(suggestionKey(s)),
+  const siblingChecks = createUncheckedSet()
+  const selected = createMemo(() =>
+    suggestions().filter((s) => !siblingChecks.unchecked().has(suggestionKey(s))),
   )
-  const addMutation = useMutation({
-    mutationFn: () =>
-      insertConnectionBatch({
-        data: {
-          connections: selected.map((s) => ({
-            personAId: s.personAId,
-            personBId: s.personBId,
-            kind: s.kind,
-          })),
-        },
-      }),
-    onSuccess: (result) => {
-      setUncheckedKeys(new Set())
-      // Patch the created connections straight into the cache so the graph
-      // updates immediately instead of waiting on onChanged()'s refetch.
-      if (result.connections.length > 0) {
-        patchPeopleGraph((old) => ({
-          ...old,
-          connections: [...result.connections, ...old.connections],
-        }))
-      }
-      onChanged()
-    },
+  const siblingAdd = createBatchAdd(selected, () => {
+    siblingChecks.clear()
+    props.onChanged()
   })
 
-  const { parentFixSuggestions, noParentPairs } = useMemo(
-    () => analyzeSiblingParentGaps(connections),
-    [connections],
+  // ── Siblings without a shared parent ─────────────────────────────────────
+  const gaps = createMemo(() => analyzeSiblingParentGaps(props.connections))
+  const parentFixSuggestions = () => gaps().parentFixSuggestions
+  const noParentPairs = () => gaps().noParentPairs
+  const parentFixKey = (s: ParentDuplicationSuggestion) => directedKey(s.personAId, s.personBId)
+  const parentFixChecks = createUncheckedSet()
+  const selectedParentFixes = createMemo(() =>
+    parentFixSuggestions().filter((s) => !parentFixChecks.unchecked().has(parentFixKey(s))),
   )
-  const parentFixKey = (s: ParentDuplicationSuggestion) =>
-    directedKey(s.personAId, s.personBId)
-  const [uncheckedParentFixKeys, setUncheckedParentFixKeys] = useState<
-    Set<string>
-  >(new Set())
-  function toggleParentFix(key: string) {
-    setUncheckedParentFixKeys((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
-  }
-  const selectedParentFixes = parentFixSuggestions.filter(
-    (s) => !uncheckedParentFixKeys.has(parentFixKey(s)),
-  )
-  const addParentFixMutation = useMutation({
-    mutationFn: () =>
-      insertConnectionBatch({
-        data: {
-          connections: selectedParentFixes.map((s) => ({
-            personAId: s.personAId,
-            personBId: s.personBId,
-            kind: s.kind,
-          })),
-        },
-      }),
-    onSuccess: (result) => {
-      setUncheckedParentFixKeys(new Set())
-      if (result.connections.length > 0) {
-        patchPeopleGraph((old) => ({
-          ...old,
-          connections: [...result.connections, ...old.connections],
-        }))
-      }
-      onChanged()
-    },
+  const parentFixAdd = createBatchAdd(selectedParentFixes, () => {
+    parentFixChecks.clear()
+    props.onChanged()
   })
+
+  const errorText = (e: unknown) => (e instanceof Error ? e.message : 'Could not add connections')
+  const addedText = (r: BatchResult) =>
+    `Added ${r.connections.length} connection${plural(r.connections.length)}.${
+      r.skipped > 0 ? ` (${r.skipped} already existed.)` : ''
+    }`
 
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
-      <h2 className="m-0 mb-3 text-sm font-semibold text-[var(--text)]">
-        Data quality checks
-      </h2>
+    <div class="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+      <h2 class="m-0 mb-3 text-sm font-semibold text-[var(--text)]">Data quality checks</h2>
 
       <div>
-        <h3 className="m-0 mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+        <h3 class="m-0 mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
           Siblings sharing a parent
         </h3>
 
-        {suggestions.length === 0 ? (
-          <p className="text-xs text-[var(--text-muted)]">
-            No suggestions right now — nothing shares a parent without already
-            having a sibling connection.
-          </p>
-        ) : (
-          <>
-            <p className="mb-3 text-xs text-[var(--text-muted)]">
-              People who share a parent but don't have a sibling connection yet.
-              Uncheck any that aren't right, then add the rest.
+        <Show
+          when={suggestions().length > 0}
+          fallback={
+            <p class="text-xs text-[var(--text-muted)]">
+              No suggestions right now — nothing shares a parent without already having a sibling
+              connection.
             </p>
+          }
+        >
+          <p class="mb-3 text-xs text-[var(--text-muted)]">
+            People who share a parent but don't have a sibling connection yet. Uncheck any that
+            aren't right, then add the rest.
+          </p>
 
-            <ul
-              data-testid="suggestion-list"
-              className="mb-3 flex flex-col gap-1.5"
-            >
-              {suggestions.map((s) => {
+          <ul data-testid="suggestion-list" class="mb-3 flex flex-col gap-1.5">
+            <For each={suggestions()}>
+              {(s) => {
                 const key = suggestionKey(s)
-                const nameA = peopleById.get(s.personAId)?.name ?? 'Unknown'
-                const nameB = peopleById.get(s.personBId)?.name ?? 'Unknown'
-                const viaNames = s.viaParentIds
-                  .map((id) => peopleById.get(id)?.name)
-                  .filter((name): name is string => !!name)
                 return (
-                  <li
-                    key={key}
-                    data-testid="suggestion-item"
-                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-[var(--hover-bg)]"
-                  >
+                  <li data-testid="suggestion-item" class={checkRowClass}>
                     <input
                       type="checkbox"
-                      checked={!uncheckedKeys.has(key)}
-                      onChange={() => toggle(key)}
-                      aria-label={`Accept sibling suggestion: ${nameA} and ${nameB}`}
+                      checked={!siblingChecks.unchecked().has(key)}
+                      onChange={() => siblingChecks.toggle(key)}
+                      aria-label={`Accept sibling suggestion: ${nameOf(s.personAId)} and ${nameOf(s.personBId)}`}
                       data-testid="suggestion-checkbox"
                     />
-                    <span className="text-[var(--text)]">
-                      {nameA}{' '}
-                      <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
-                        sibling
-                      </span>{' '}
-                      {nameB}
-                      {viaNames.length > 0 && (
-                        <span className="ml-1.5 text-xs italic text-[var(--text-muted)]">
-                          via {viaNames.join(', ')}
+                    <span class="text-[var(--text)]">
+                      {nameOf(s.personAId)} <span class={amberBadge}>sibling</span>{' '}
+                      {nameOf(s.personBId)}
+                      <Show when={namesOf(s.viaParentIds).length > 0}>
+                        <span class="ml-1.5 text-xs italic text-[var(--text-muted)]">
+                          via {namesOf(s.viaParentIds).join(', ')}
                         </span>
-                      )}
+                      </Show>
                     </span>
                   </li>
                 )
-              })}
+              }}
+            </For>
+          </ul>
+
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={siblingAdd.run}
+              disabled={selected().length === 0 || siblingAdd.pending()}
+              data-testid="suggestion-add-selected-btn"
+              class={primaryBtnClass}
+            >
+              Add {selected().length} connection{plural(selected().length)}
+            </button>
+            <button
+              type="button"
+              onClick={() => siblingChecks.set(suggestions().map(suggestionKey))}
+              disabled={selected().length === 0}
+              data-testid="suggestion-clear-btn"
+              class={secondaryBtnClass}
+            >
+              Uncheck all
+            </button>
+          </div>
+
+          <Show when={siblingAdd.error()}>
+            <p class="mt-2 text-xs text-red-600 dark:text-red-400">{errorText(siblingAdd.error())}</p>
+          </Show>
+          <Show when={siblingAdd.result()}>
+            {(r) => <p class="mt-2 text-xs text-[var(--text-muted)]">{addedText(r())}</p>}
+          </Show>
+        </Show>
+      </div>
+
+      <div class="mt-4 border-t border-[var(--border)] pt-4">
+        <h3 class="m-0 mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+          Siblings without a shared parent
+        </h3>
+
+        <Show
+          when={parentFixSuggestions().length > 0 || noParentPairs().length > 0}
+          fallback={
+            <p class="text-xs text-[var(--text-muted)]">
+              No issues found — every sibling connection shares at least one parent.
+            </p>
+          }
+        >
+          <Show when={parentFixSuggestions().length > 0}>
+            <p class="mb-2 text-xs text-[var(--text-muted)]">
+              One sibling already has a parent connection the other is missing. Uncheck any that
+              aren't right, then add the rest to duplicate them.
+            </p>
+
+            <ul data-testid="parent-fix-list" class="mb-3 flex flex-col gap-1.5">
+              <For each={parentFixSuggestions()}>
+                {(s) => {
+                  const key = parentFixKey(s)
+                  return (
+                    <li data-testid="parent-fix-item" class={checkRowClass}>
+                      <input
+                        type="checkbox"
+                        checked={!parentFixChecks.unchecked().has(key)}
+                        onChange={() => parentFixChecks.toggle(key)}
+                        aria-label={`Add ${nameOf(s.personAId)} as a parent of ${nameOf(s.personBId)}`}
+                        data-testid="parent-fix-checkbox"
+                      />
+                      <span class="text-[var(--text)]">
+                        {nameOf(s.personAId)} <span class={amberBadge}>parent of</span>{' '}
+                        {nameOf(s.personBId)}
+                        <Show when={namesOf(s.viaSiblingIds).length > 0}>
+                          <span class="ml-1.5 text-xs italic text-[var(--text-muted)]">
+                            via sibling {namesOf(s.viaSiblingIds).join(', ')}
+                          </span>
+                        </Show>
+                      </span>
+                    </li>
+                  )
+                }}
+              </For>
             </ul>
 
-            <div className="flex items-center gap-2">
+            <div class="mb-3 flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => addMutation.mutate()}
-                disabled={selected.length === 0 || addMutation.isPending}
-                data-testid="suggestion-add-selected-btn"
-                className="rounded-full bg-[var(--blue-deep)] px-3 py-1.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
+                onClick={parentFixAdd.run}
+                disabled={selectedParentFixes().length === 0 || parentFixAdd.pending()}
+                data-testid="parent-fix-add-selected-btn"
+                class={primaryBtnClass}
               >
-                Add {selected.length} connection
-                {selected.length === 1 ? '' : 's'}
+                Add {selectedParentFixes().length} connection{plural(selectedParentFixes().length)}
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  setUncheckedKeys(new Set(suggestions.map(suggestionKey)))
-                }
-                disabled={selected.length === 0}
-                data-testid="suggestion-clear-btn"
-                className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--hover-bg)] disabled:opacity-50"
+                onClick={() => parentFixChecks.set(parentFixSuggestions().map(parentFixKey))}
+                disabled={selectedParentFixes().length === 0}
+                data-testid="parent-fix-clear-btn"
+                class={secondaryBtnClass}
               >
                 Uncheck all
               </button>
             </div>
 
-            {addMutation.error && (
-              <p className="mt-2 text-xs text-red-600 dark:text-red-400">
-                {addMutation.error instanceof Error
-                  ? addMutation.error.message
-                  : 'Could not add connections'}
+            <Show when={parentFixAdd.error()}>
+              <p class="mb-3 text-xs text-red-600 dark:text-red-400">
+                {errorText(parentFixAdd.error())}
               </p>
-            )}
+            </Show>
+            <Show when={parentFixAdd.result()}>
+              {(r) => <p class="mb-3 text-xs text-[var(--text-muted)]">{addedText(r())}</p>}
+            </Show>
+          </Show>
 
-            {addMutation.isSuccess && (
-              <p className="mt-2 text-xs text-[var(--text-muted)]">
-                Added {addMutation.data.connections.length} connection
-                {addMutation.data.connections.length === 1 ? '' : 's'}.
-                {addMutation.data.skipped > 0 &&
-                  ` (${addMutation.data.skipped} already existed.)`}
-              </p>
-            )}
-          </>
-        )}
-      </div>
-
-      <div className="mt-4 border-t border-[var(--border)] pt-4">
-        <h3 className="m-0 mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-          Siblings without a shared parent
-        </h3>
-
-        {parentFixSuggestions.length === 0 && noParentPairs.length === 0 ? (
-          <p className="text-xs text-[var(--text-muted)]">
-            No issues found — every sibling connection shares at least one
-            parent.
-          </p>
-        ) : (
-          <>
-            {parentFixSuggestions.length > 0 && (
-              <>
-                <p className="mb-2 text-xs text-[var(--text-muted)]">
-                  One sibling already has a parent connection the other is
-                  missing. Uncheck any that aren't right, then add the rest to
-                  duplicate them.
-                </p>
-
-                <ul
-                  data-testid="parent-fix-list"
-                  className="mb-3 flex flex-col gap-1.5"
-                >
-                  {parentFixSuggestions.map((s) => {
-                    const key = parentFixKey(s)
-                    const parentName =
-                      peopleById.get(s.personAId)?.name ?? 'Unknown'
-                    const childName =
-                      peopleById.get(s.personBId)?.name ?? 'Unknown'
-                    const viaNames = s.viaSiblingIds
-                      .map((id) => peopleById.get(id)?.name)
-                      .filter((name): name is string => !!name)
-                    return (
-                      <li
-                        key={key}
-                        data-testid="parent-fix-item"
-                        className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-[var(--hover-bg)]"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={!uncheckedParentFixKeys.has(key)}
-                          onChange={() => toggleParentFix(key)}
-                          aria-label={`Add ${parentName} as a parent of ${childName}`}
-                          data-testid="parent-fix-checkbox"
-                        />
-                        <span className="text-[var(--text)]">
-                          {parentName}{' '}
-                          <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
-                            parent of
-                          </span>{' '}
-                          {childName}
-                          {viaNames.length > 0 && (
-                            <span className="ml-1.5 text-xs italic text-[var(--text-muted)]">
-                              via sibling {viaNames.join(', ')}
-                            </span>
-                          )}
-                        </span>
-                      </li>
-                    )
-                  })}
-                </ul>
-
-                <div className="mb-3 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => addParentFixMutation.mutate()}
-                    disabled={
-                      selectedParentFixes.length === 0 ||
-                      addParentFixMutation.isPending
-                    }
-                    data-testid="parent-fix-add-selected-btn"
-                    className="rounded-full bg-[var(--blue-deep)] px-3 py-1.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
+          <Show when={noParentPairs().length > 0}>
+            <p class="mb-2 text-xs text-[var(--text-muted)]">
+              Neither person has a parent connection yet, so there's nothing to duplicate here —
+              review manually.
+            </p>
+            <ul data-testid="sibling-without-parent-list" class="flex flex-col gap-1.5">
+              <For each={noParentPairs()}>
+                {(pair) => (
+                  <li
+                    data-testid="sibling-without-parent-item"
+                    class="rounded-lg px-2 py-1.5 text-sm text-[var(--text)]"
                   >
-                    Add {selectedParentFixes.length} connection
-                    {selectedParentFixes.length === 1 ? '' : 's'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setUncheckedParentFixKeys(
-                        new Set(parentFixSuggestions.map(parentFixKey)),
-                      )
-                    }
-                    disabled={selectedParentFixes.length === 0}
-                    data-testid="parent-fix-clear-btn"
-                    className="rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--hover-bg)] disabled:opacity-50"
-                  >
-                    Uncheck all
-                  </button>
-                </div>
-
-                {addParentFixMutation.error && (
-                  <p className="mb-3 text-xs text-red-600 dark:text-red-400">
-                    {addParentFixMutation.error instanceof Error
-                      ? addParentFixMutation.error.message
-                      : 'Could not add connections'}
-                  </p>
+                    {nameOf(pair.personAId)} <span class={amberBadge}>sibling</span>{' '}
+                    {nameOf(pair.personBId)}
+                    <span class="ml-1.5 text-xs italic text-[var(--text-muted)]">
+                      — no shared parent found
+                    </span>
+                  </li>
                 )}
-
-                {addParentFixMutation.isSuccess && (
-                  <p className="mb-3 text-xs text-[var(--text-muted)]">
-                    Added {addParentFixMutation.data.connections.length}{' '}
-                    connection
-                    {addParentFixMutation.data.connections.length === 1
-                      ? ''
-                      : 's'}
-                    .
-                    {addParentFixMutation.data.skipped > 0 &&
-                      ` (${addParentFixMutation.data.skipped} already existed.)`}
-                  </p>
-                )}
-              </>
-            )}
-
-            {noParentPairs.length > 0 && (
-              <>
-                <p className="mb-2 text-xs text-[var(--text-muted)]">
-                  Neither person has a parent connection yet, so there's nothing
-                  to duplicate here — review manually.
-                </p>
-                <ul
-                  data-testid="sibling-without-parent-list"
-                  className="flex flex-col gap-1.5"
-                >
-                  {noParentPairs.map((pair) => {
-                    const nameA =
-                      peopleById.get(pair.personAId)?.name ?? 'Unknown'
-                    const nameB =
-                      peopleById.get(pair.personBId)?.name ?? 'Unknown'
-                    return (
-                      <li
-                        key={pairKey(pair.personAId, pair.personBId)}
-                        data-testid="sibling-without-parent-item"
-                        className="rounded-lg px-2 py-1.5 text-sm text-[var(--text)]"
-                      >
-                        {nameA}{' '}
-                        <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
-                          sibling
-                        </span>{' '}
-                        {nameB}
-                        <span className="ml-1.5 text-xs italic text-[var(--text-muted)]">
-                          — no shared parent found
-                        </span>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </>
-            )}
-          </>
-        )}
+              </For>
+            </ul>
+          </Show>
+        </Show>
       </div>
     </div>
   )
-})
+}

@@ -11,6 +11,12 @@ if (fs.existsSync('.env.supabase')) {
 
 const isCI = !!process.env.CI
 
+// The default target is the Solid app at the repo root (port 3000). The same
+// specs also run against the previous TanStack Start app in ./react with
+// E2E_TARGET=react (port 3001).
+const isReact = process.env.E2E_TARGET === 'react'
+const port = process.env.E2E_PORT ?? (isReact ? '3001' : '3000')
+
 export default defineConfig({
   testDir: './e2e/tests',
   globalSetup: './e2e/global-setup.ts',
@@ -20,18 +26,24 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'html',
   use: {
-    baseURL: `http://localhost:${process.env.E2E_PORT ?? '3000'}`,
+    baseURL: `http://localhost:${port}`,
     trace: 'on-first-retry',
   },
   // Local dev: set reuseExistingServer=true so a running `npm run dev` is used.
   // CI: builds the app first, then this starts the Nitro server.
   webServer: {
-    command: isCI ? 'node .output/server/index.mjs' : `npx vite dev --port ${process.env.E2E_PORT ?? '3000'}`,
-    url: `http://localhost:${process.env.E2E_PORT ?? '3000'}`,
+    command: isReact
+      ? isCI
+        ? 'cd react && node .output/server/index.mjs'
+        : `cd react && npx vite dev --port ${port}`
+      : isCI
+        ? 'node dist/server/node.js'
+        : `npx vite --port ${port}`,
+    url: `http://localhost:${port}`,
     reuseExistingServer: !isCI,
     timeout: 30_000,
     env: {
-      PORT: process.env.E2E_PORT ?? '3000',
+      PORT: port,
       VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321',
       VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? '',
       SUPABASE_URL: process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321',

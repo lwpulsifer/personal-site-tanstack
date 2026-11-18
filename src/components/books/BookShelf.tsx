@@ -1,36 +1,36 @@
-import { useState } from 'react'
-import { BookCard } from '#/components/books/BookCard'
-import { CoverImage } from '#/components/books/CoverImage'
-import type { DbBook } from '#/server/books'
+import { createSignal, For, Show } from 'solid-js'
+import type { DbBook } from '../../server/books'
+import { BookCard } from './BookCard'
+import { CoverImage } from './CoverImage'
 
-const GRID_CLASSES =
-  'grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6'
+const GRID_CLASSES = 'grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6'
 
 // Degrees each successive cover fans out from center, so a 3-cover stack
 // spreads -7/0/+7 degrees and looks like a loosely spread pile of books.
 const FAN_ROTATE_STEP_DEG = 7
 const MAX_STACKED_COVERS = 3
 
-function StackedCovers({ books }: { books: DbBook[] }) {
-  const covers = books.slice(0, MAX_STACKED_COVERS)
+function StackedCovers(props: { books: DbBook[] }) {
+  const covers = () => props.books.slice(0, MAX_STACKED_COVERS)
   return (
-    <div className="relative h-20 w-14 flex-shrink-0">
-      {covers.map((book, i) => (
-        <div
-          key={book.id}
-          className="absolute inset-0"
-          style={{
-            transform: `rotate(${(i - (covers.length - 1) / 2) * FAN_ROTATE_STEP_DEG}deg) translateX(${i * 3}px)`,
-            zIndex: i,
-          }}
-        >
-          <CoverImage
-            book={book}
-            iconClassName="text-lg"
-            className="h-full w-full rounded-md bg-[var(--chip-bg)] shadow-md ring-1 ring-black/10"
-          />
-        </div>
-      ))}
+    <div class="relative h-20 w-14 flex-shrink-0">
+      <For each={covers()}>
+        {(book, i) => (
+          <div
+            class="absolute inset-0"
+            style={{
+              transform: `rotate(${(i() - (covers().length - 1) / 2) * FAN_ROTATE_STEP_DEG}deg) translateX(${i() * 3}px)`,
+              'z-index': i(),
+            }}
+          >
+            <CoverImage
+              book={book}
+              iconClass="text-lg"
+              class="h-full w-full rounded-md bg-[var(--chip-bg)] shadow-md ring-1 ring-black/10"
+            />
+          </div>
+        )}
+      </For>
     </div>
   )
 }
@@ -40,86 +40,77 @@ type BookShelfProps = {
   shelfKey: string
   books: DbBook[]
   defaultOpen: boolean
-  // Caps how many cards render initially when the shelf is expanded, with a
-  // "Show more" button to reveal the rest. Unlimited if omitted.
+  // Caps how many cards render initially when expanded, with a "Show more"
+  // button to reveal the rest. Unlimited if omitted.
   maxVisible?: number
 }
 
-// A collapsible "shelf" of books. Collapsed, it renders as a stack of
-// fanned covers you can click to expand into a full-width grid.
-export function BookShelf({
-  label,
-  shelfKey,
-  books,
-  defaultOpen,
-  maxVisible,
-}: BookShelfProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen)
-  const [showAll, setShowAll] = useState(false)
+// A collapsible "shelf" of books. Collapsed, it renders as a stack of fanned
+// covers you can click to expand into a full-width grid.
+export function BookShelf(props: BookShelfProps) {
+  const [isOpen, setIsOpen] = createSignal(props.defaultOpen)
+  const [showAll, setShowAll] = createSignal(false)
 
-  if (books.length === 0) return null
-
-  const isTruncated = !!maxVisible && !showAll && books.length > maxVisible
-  const visibleBooks = isTruncated ? books.slice(0, maxVisible) : books
+  const isTruncated = () =>
+    !!props.maxVisible && !showAll() && props.books.length > props.maxVisible
+  const visibleBooks = () => (isTruncated() ? props.books.slice(0, props.maxVisible) : props.books)
 
   return (
-    <section className="mb-10">
-      <button
-        type="button"
-        data-testid={`shelf-toggle-${shelfKey}`}
-        aria-expanded={isOpen}
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="mb-3 flex items-center gap-2"
-      >
-        <span className="island-kicker">{label}</span>
-        <span className="text-xs text-[var(--text-muted)]">
-          ({books.length})
-        </span>
-        <span
-          aria-hidden="true"
-          className={`text-xs text-[var(--text-muted)] transition-transform ${isOpen ? 'rotate-90' : ''}`}
-        >
-          ›
-        </span>
-      </button>
-
-      {isOpen ? (
-        <>
-          <div data-testid={`shelf-books-${shelfKey}`} className={GRID_CLASSES}>
-            {visibleBooks.map((book, i) => (
-              <BookCard
-                key={book.id}
-                book={book}
-                className="rise-in"
-                style={{ animationDelay: `${i * 60}ms` }}
-              />
-            ))}
-          </div>
-
-          {isTruncated && (
-            <button
-              type="button"
-              data-testid={`shelf-show-more-${shelfKey}`}
-              onClick={() => setShowAll(true)}
-              className="mt-4 text-sm font-semibold text-[var(--text-muted)] transition hover:text-[var(--text)]"
-            >
-              Show {books.length - maxVisible} more →
-            </button>
-          )}
-        </>
-      ) : (
+    <Show when={props.books.length > 0}>
+      <section class="mb-10">
         <button
           type="button"
-          data-testid={`shelf-stack-${shelfKey}`}
-          onClick={() => setIsOpen(true)}
-          className="flex items-end gap-3 rounded-xl border border-[var(--border)] bg-[var(--chip-bg)] px-4 py-3 text-left transition hover:-translate-y-0.5 hover:shadow-md"
+          data-testid={`shelf-toggle-${props.shelfKey}`}
+          aria-expanded={isOpen() ? 'true' : 'false'}
+          onClick={() => setIsOpen((prev) => !prev)}
+          class="mb-3 flex items-center gap-2"
         >
-          <StackedCovers books={books} />
-          <span className="pb-1 text-sm text-[var(--text-muted)]">
-            {books.length} book{books.length === 1 ? '' : 's'} — tap to expand
+          <span class="island-kicker">{props.label}</span>
+          <span class="text-xs text-[var(--text-muted)]">({props.books.length})</span>
+          <span
+            aria-hidden="true"
+            class={`text-xs text-[var(--text-muted)] transition-transform ${isOpen() ? 'rotate-90' : ''}`}
+          >
+            ›
           </span>
         </button>
-      )}
-    </section>
+
+        <Show
+          when={isOpen()}
+          fallback={
+            <button
+              type="button"
+              data-testid={`shelf-stack-${props.shelfKey}`}
+              onClick={() => setIsOpen(true)}
+              class="flex items-end gap-3 rounded-xl border border-[var(--border)] bg-[var(--chip-bg)] px-4 py-3 text-left transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <StackedCovers books={props.books} />
+              <span class="pb-1 text-sm text-[var(--text-muted)]">
+                {props.books.length} book{props.books.length === 1 ? '' : 's'} — tap to expand
+              </span>
+            </button>
+          }
+        >
+          <div data-testid={`shelf-books-${props.shelfKey}`} class={GRID_CLASSES}>
+            <For each={visibleBooks()}>
+              {(book, i) => (
+                <BookCard book={book} class="rise-in" style={{ 'animation-delay': `${i() * 60}ms` }} />
+              )}
+            </For>
+          </div>
+
+          <Show when={isTruncated()}>
+            <button
+              type="button"
+              data-testid={`shelf-show-more-${props.shelfKey}`}
+              onClick={() => setShowAll(true)}
+              class="mt-4 text-sm font-semibold text-[var(--text-muted)] transition hover:text-[var(--text)]"
+            >
+              Show {props.books.length - (props.maxVisible ?? 0)} more →
+            </button>
+          </Show>
+        </Show>
+      </section>
+    </Show>
   )
 }
