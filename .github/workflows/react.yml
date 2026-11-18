@@ -1,0 +1,34 @@
+# The previous TanStack Start (React) app now lives in ./react. Its unit tests and
+# type check keep running whenever it changes. (The shared Playwright suite runs
+# against the root Solid app; it can target this one locally with E2E_TARGET=react.)
+name: React App (./react)
+
+on:
+  push:
+    branches: [main]
+    paths: ['react/**']
+  pull_request:
+    paths: ['react/**']
+
+jobs:
+  react:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: react
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: react/package-lock.json
+
+      - run: npm ci
+
+      - name: TypeScript type check
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
