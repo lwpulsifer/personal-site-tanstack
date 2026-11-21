@@ -128,7 +128,7 @@ function BlogIndex() {
                 type="button"
                 data-testid="new-post-btn"
                 onClick={() => setEditingPost('new')}
-                className="rounded-full bg-[var(--blue-deep)] px-4 py-1.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)]"
+                className="rounded-full bg-[var(--blue-deep)] px-4 py-1.5 text-sm font-semibold text-[var(--bg)] transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)]"
               >
                 + New Post
               </button>

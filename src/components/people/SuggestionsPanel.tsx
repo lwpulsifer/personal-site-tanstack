@@ -342,7 +342,7 @@ export const SuggestionsPanel = memo(function SuggestionsPanel({
                 onClick={() => addMutation.mutate()}
                 disabled={selected.length === 0 || addMutation.isPending}
                 data-testid="suggestion-add-selected-btn"
-                className="rounded-full bg-[var(--blue-deep)] px-3 py-1.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
+                className="rounded-full bg-[var(--blue-deep)] px-3 py-1.5 text-xs font-semibold text-[var(--bg)] transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
               >
                 Add {selected.length} connection
                 {selected.length === 1 ? '' : 's'}
@@ -452,7 +452,7 @@ export const SuggestionsPanel = memo(function SuggestionsPanel({
                       addParentFixMutation.isPending
                     }
                     data-testid="parent-fix-add-selected-btn"
-                    className="rounded-full bg-[var(--blue-deep)] px-3 py-1.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
+                    className="rounded-full bg-[var(--blue-deep)] px-3 py-1.5 text-xs font-semibold text-[var(--bg)] transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
                   >
                     Add {selectedParentFixes.length} connection
                     {selectedParentFixes.length === 1 ? '' : 's'}

@@ -155,7 +155,7 @@ type GroupMode = 'clique' | 'star'
 const modeToggleClassName = (active: boolean) =>
   `rounded-full px-3 py-1 text-xs font-semibold transition ${
     active
-      ? 'bg-[var(--blue-deep)] text-white'
+      ? 'bg-[var(--blue-deep)] text-[var(--bg)]'
       : 'border border-[var(--border)] text-[var(--text)] hover:bg-[var(--hover-bg)]'
   }`
 
@@ -320,7 +320,7 @@ export const GroupPanel = memo(function GroupPanel({
           type="submit"
           data-testid="create-group-btn"
           disabled={!canCreate}
-          className="rounded-full bg-[var(--blue-deep)] px-3 py-1.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
+          className="rounded-full bg-[var(--blue-deep)] px-3 py-1.5 text-xs font-semibold text-[var(--bg)] transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50"
         >
           {mode === 'clique' ? 'Create group' : 'Connect'}
         </button>

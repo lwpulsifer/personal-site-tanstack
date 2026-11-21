@@ -25,7 +25,7 @@ export function AdminActions({
         type="button"
         data-testid="post-edit"
         onClick={() => onEdit(post)}
-        className="rounded-full border border-[var(--blue-deep)] px-2.5 py-0.5 text-xs font-semibold text-[var(--blue-deep)] transition hover:bg-[var(--blue-deep)] hover:text-white"
+        className="rounded-full border border-[var(--blue-deep)] px-2.5 py-0.5 text-xs font-semibold text-[var(--blue-deep)] transition hover:bg-[var(--blue-deep)] hover:text-[var(--bg)]"
       >
         Edit
       </button>
