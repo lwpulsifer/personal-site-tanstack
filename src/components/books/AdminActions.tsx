@@ -8,12 +8,12 @@ const NEXT_STATUS: Partial<Record<BookStatus, { label: string; status: BookStatu
   WANT_TO_READ: {
     label: 'Start reading',
     status: 'READING',
-    className: 'bg-[var(--blue-deep)] hover:bg-[var(--blue-darker)]',
+    className: 'bg-[var(--blue-deep)] text-[var(--bg)] hover:bg-[var(--blue-darker)]',
   },
   READING: {
     label: 'Mark read',
     status: 'READ',
-    className: 'bg-emerald-600 hover:bg-emerald-700',
+    className: 'bg-emerald-600 text-white hover:bg-emerald-700',
   },
 }
 
@@ -50,7 +50,7 @@ export function AdminActions({
         type="button"
         data-testid="book-edit"
         onClick={() => onEdit(book)}
-        className="rounded-full border border-[var(--blue-deep)] px-2.5 py-0.5 text-xs font-semibold text-[var(--blue-deep)] transition hover:bg-[var(--blue-deep)] hover:text-white"
+        className="rounded-full border border-[var(--blue-deep)] px-2.5 py-0.5 text-xs font-semibold text-[var(--blue-deep)] transition hover:bg-[var(--blue-deep)] hover:text-[var(--bg)]"
       >
         Edit
       </button>
@@ -61,7 +61,7 @@ export function AdminActions({
           data-testid="book-next-status"
           onClick={() => statusMutation.mutate(next.status)}
           disabled={isPending}
-          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold text-white transition disabled:opacity-50 ${next.className}`}
+          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold transition disabled:opacity-50 ${next.className}`}
         >
           {next.label}
         </button>

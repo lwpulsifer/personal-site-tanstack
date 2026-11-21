@@ -177,14 +177,14 @@ export function PostEditor({
                 setTab('write')
                 requestAnimationFrame(() => textareaRef.current?.focus())
               }}
-              className={`rounded-full px-3 py-1 transition ${tab === 'write' ? 'bg-[var(--blue-deep)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text)]'}`}
+              className={`rounded-full px-3 py-1 transition ${tab === 'write' ? 'bg-[var(--blue-deep)] text-[var(--bg)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'}`}
             >
               Write
             </button>
             <button
               type="button"
               onClick={() => setTab('preview')}
-              className={`rounded-full px-3 py-1 transition ${tab === 'preview' ? 'bg-[var(--blue-deep)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text)]'}`}
+              className={`rounded-full px-3 py-1 transition ${tab === 'preview' ? 'bg-[var(--blue-deep)] text-[var(--bg)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'}`}
             >
               Preview
             </button>
@@ -228,7 +228,7 @@ export function PostEditor({
             disabled={
               isSaving || !fields.title || !fields.slug || !fields.content
             }
-            className="rounded-full bg-[var(--blue-deep)] px-4 py-1.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50 disabled:hover:translate-y-0"
+            className="rounded-full bg-[var(--blue-deep)] px-4 py-1.5 text-sm font-semibold text-[var(--bg)] transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50 disabled:hover:translate-y-0"
           >
             {isSaving ? 'Saving…' : 'Save'}
           </button>

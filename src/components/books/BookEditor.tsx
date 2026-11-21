@@ -462,7 +462,7 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
                   onClick={() => setStatus(opt.value)}
                   className={`rounded-full px-2.5 py-1 font-semibold transition ${
                     status === opt.value
-                      ? 'bg-[var(--blue-deep)] text-white'
+                      ? 'bg-[var(--blue-deep)] text-[var(--bg)]'
                       : 'text-[var(--text-muted)] hover:text-[var(--text)]'
                   }`}
                 >
@@ -584,7 +584,7 @@ export function BookEditor({ initial, onClose, onSaved, onDeleted }: Props) {
             onClick={() => saveMutation.mutate()}
             data-testid="book-save"
             disabled={isBusy || !title || !author}
-            className="rounded-full bg-[var(--blue-deep)] px-4 py-1.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50 disabled:hover:translate-y-0"
+            className="rounded-full bg-[var(--blue-deep)] px-4 py-1.5 text-sm font-semibold text-[var(--bg)] transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50 disabled:hover:translate-y-0"
           >
             {saveMutation.isPending ? 'Saving…' : 'Save'}
           </button>

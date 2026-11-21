@@ -97,7 +97,7 @@ function LoginPage() {
             type="submit"
             data-testid="login-submit"
             disabled={loading}
-            className="mt-2 rounded-full bg-[var(--blue-deep)] px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50 disabled:hover:translate-y-0"
+            className="mt-2 rounded-full bg-[var(--blue-deep)] px-5 py-2.5 text-sm font-semibold text-[var(--bg)] transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)] disabled:opacity-50 disabled:hover:translate-y-0"
           >
             {loading ? 'Signing in…' : 'Sign in'}
           </button>

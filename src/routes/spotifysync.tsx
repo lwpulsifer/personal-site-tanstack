@@ -44,7 +44,7 @@ function SpotifySyncPage() {
         <a
           href={authorizeUrl}
           data-testid="spotify-connect-link"
-          className="inline-block rounded-full bg-[var(--blue-deep)] px-5 py-2.5 text-sm font-semibold text-white no-underline transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)]"
+          className="inline-block rounded-full bg-[var(--blue-deep)] px-5 py-2.5 text-sm font-semibold text-[var(--bg)]! no-underline transition hover:-translate-y-0.5 hover:bg-[var(--blue-darker)]"
         >
           Connect Spotify
         </a>

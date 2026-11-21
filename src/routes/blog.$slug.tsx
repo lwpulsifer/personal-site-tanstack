@@ -117,7 +117,7 @@ function BlogPost() {
                 type="button"
                 data-testid="post-edit-btn"
                 onClick={() => setIsEditing(true)}
-                className="mt-1 shrink-0 rounded-full border border-[var(--blue-deep)] px-3 py-1 text-xs font-semibold text-[var(--blue-deep)] transition hover:bg-[var(--blue-deep)] hover:text-white"
+                className="mt-1 shrink-0 rounded-full border border-[var(--blue-deep)] px-3 py-1 text-xs font-semibold text-[var(--blue-deep)] transition hover:bg-[var(--blue-deep)] hover:text-[var(--bg)]"
               >
                 Edit
               </button>
