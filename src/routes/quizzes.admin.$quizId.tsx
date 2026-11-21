@@ -9,6 +9,10 @@ import { useState } from 'react'
 import { ErrorBoundary } from '#/components/ErrorBoundary'
 import { QuizEditor } from '#/components/quizzes/QuizEditor'
 import { QuizResults } from '#/components/quizzes/QuizResults'
+import {
+  primaryButtonSmall,
+  secondaryButton,
+} from '#/components/quizzes/styles'
 import { adminQuizQueryOptions, adminQuizzesQueryOptions } from '#/lib/queries'
 import { SITE_TITLE } from '#/lib/site'
 import { getServerUser } from '#/server/auth'
@@ -72,7 +76,7 @@ function AdminQuizPage() {
           <Link
             to="/quizzes/$keyword"
             params={{ keyword: quiz.keyword }}
-            className="rounded-full border border-[var(--border)] px-4 py-1.5 text-sm font-semibold text-[var(--text)] no-underline"
+            className={secondaryButton}
           >
             Try it
           </Link>
@@ -80,7 +84,7 @@ function AdminQuizPage() {
             type="button"
             onClick={() => setEditing((e) => !e)}
             data-testid="quiz-edit-toggle"
-            className="rounded-full bg-[var(--blue-deep)] px-4 py-1.5 text-sm font-semibold text-white"
+            className={primaryButtonSmall}
           >
             {editing ? 'Close editor' : 'Edit quiz'}
           </button>

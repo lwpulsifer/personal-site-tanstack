@@ -2,6 +2,12 @@ import { useMutation } from '@tanstack/react-query'
 import { useEffect, useId, useMemo, useState } from 'react'
 import { QuizItemCard } from '#/components/quizzes/QuizItemCard'
 import {
+  inputClass,
+  primaryButton,
+  secondaryButton,
+  secondaryButtonSmall,
+} from '#/components/quizzes/styles'
+import {
   answer,
   initRanking,
   isDone,
@@ -185,14 +191,14 @@ export function QuizRunner({
           maxLength={100}
           onChange={(e) => setName(e.target.value)}
           data-testid="quiz-name-input"
-          className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
+          className={inputClass}
         />
         <div className="mt-5 flex flex-wrap gap-2">
           {hasSaved && (
             <button
               type="button"
               onClick={() => start(true)}
-              className="rounded-full bg-[var(--blue-deep)] px-5 py-2 text-sm font-semibold text-white"
+              className={primaryButton}
             >
               Resume where you left off
             </button>
@@ -201,11 +207,7 @@ export function QuizRunner({
             type="button"
             data-testid="quiz-start"
             onClick={() => start(false)}
-            className={
-              hasSaved
-                ? 'rounded-full border border-[var(--border)] px-5 py-2 text-sm font-semibold text-[var(--text)]'
-                : 'rounded-full bg-[var(--blue-deep)] px-5 py-2 text-sm font-semibold text-white'
-            }
+            className={hasSaved ? secondaryButton : primaryButton}
           >
             {hasSaved ? 'Start over' : 'Start'}
           </button>
@@ -225,14 +227,14 @@ export function QuizRunner({
             <button
               type="button"
               onClick={() => submit.mutate(state)}
-              className="rounded-full bg-[var(--blue-deep)] px-5 py-2 text-sm font-semibold text-white"
+              className={primaryButton}
             >
               Try again
             </button>
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="rounded-full border border-[var(--border)] px-5 py-2 text-sm font-semibold text-[var(--text)]"
+              className={secondaryButton}
             >
               Start over
             </button>
@@ -268,12 +270,12 @@ export function QuizRunner({
           type="button"
           onClick={undo}
           disabled={history.length <= 1}
-          className="rounded-full border border-[var(--border)] px-3 py-1 text-xs font-semibold disabled:opacity-40"
+          className={secondaryButtonSmall}
         >
           Undo
         </button>
       </div>
-      <div className="mb-6 h-1.5 overflow-hidden rounded-full bg-[var(--chip-bg)]">
+      <div className="mb-6 h-2 overflow-hidden rounded-full bg-[var(--border)]">
         <div
           className="h-full rounded-full bg-[var(--blue-deep)] transition-[width]"
           style={{ width: `${progress * 100}%` }}
@@ -294,7 +296,7 @@ export function QuizRunner({
               type="button"
               data-testid="quiz-option"
               onClick={() => pick(id)}
-              className="feature-card rise-in rounded-2xl border border-[var(--border)] p-5 text-left transition hover:-translate-y-0.5 hover:border-[var(--blue)] focus-visible:border-[var(--blue)]"
+              className="feature-card rise-in rounded-2xl border border-[var(--chip-border)] bg-[var(--surface-strong)] p-5 text-left text-[var(--text)] outline-none transition hover:-translate-y-0.5 hover:border-[var(--blue)] focus-visible:border-[var(--blue)] focus-visible:ring-2 focus-visible:ring-[var(--blue)]/40"
             >
               <QuizItemCard item={item} />
             </button>

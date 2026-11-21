@@ -1,6 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useId, useState } from 'react'
+import {
+  inputClass,
+  primaryButton,
+  primaryButtonSmall,
+} from '#/components/quizzes/styles'
 import { useAuth } from '#/lib/auth'
 import { adminQuizzesQueryOptions } from '#/lib/queries'
 import { SITE_TITLE } from '#/lib/site'
@@ -56,12 +61,12 @@ function QuizzesIndex() {
               autoComplete="off"
               autoCapitalize="none"
               data-testid="quiz-keyword-entry"
-              className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]"
+              className={`${inputClass} min-w-0 flex-1`}
             />
             <button
               type="submit"
               disabled={!keyword.trim()}
-              className="rounded-full bg-[var(--blue-deep)] px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className={primaryButton}
             >
               Go
             </button>
@@ -94,7 +99,7 @@ function AdminQuizList() {
         <Link
           to="/quizzes/admin/new"
           data-testid="quiz-new"
-          className="rounded-full bg-[var(--blue-deep)] px-4 py-1.5 text-sm font-semibold text-white no-underline"
+          className={primaryButtonSmall}
         >
           New quiz
         </Link>
@@ -116,7 +121,7 @@ function AdminQuizList() {
             <Link
               to="/quizzes/admin/$quizId"
               params={{ quizId: q.id }}
-              className="feature-card flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] px-4 py-3 no-underline"
+              className="feature-card flex items-center justify-between gap-3 rounded-xl border border-[var(--chip-border)] bg-[var(--surface-strong)] px-4 py-3 no-underline"
             >
               <span className="min-w-0">
                 <span className="block truncate font-semibold text-[var(--text)]">

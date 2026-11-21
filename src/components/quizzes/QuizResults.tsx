@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
+import { placeholderBox } from '#/components/quizzes/styles'
 import { aggregateOrderings } from '#/lib/quizRanking'
 import {
   type AdminQuizDetail,
@@ -27,11 +28,13 @@ function ItemLabel({ item }: { item: DbQuizItem | undefined }) {
             src={item.image_url}
             alt={item.secret_label ?? item.description ?? ''}
             loading="lazy"
-            className="h-16 w-16 rounded-lg bg-[var(--chip-bg)] object-contain"
+            className="h-16 w-16 rounded-lg border border-[var(--chip-border)] bg-[var(--chip-bg)] object-contain"
           />
         </a>
       ) : (
-        <span className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--chip-bg)] text-[10px] text-[var(--text-muted)]">
+        <span
+          className={`${placeholderBox} h-16 w-16 flex-shrink-0 text-[10px]`}
+        >
           No picture
         </span>
       )}

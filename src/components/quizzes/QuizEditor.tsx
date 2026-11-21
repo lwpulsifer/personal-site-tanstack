@@ -1,5 +1,15 @@
 import { useMutation } from '@tanstack/react-query'
 import { useId, useState } from 'react'
+import {
+  dangerButton,
+  dangerOutlineButton,
+  iconButton,
+  inputClass,
+  labelClass,
+  placeholderBox,
+  primaryButton,
+  secondaryButton,
+} from '#/components/quizzes/styles'
 import { getSupabaseBrowserClient } from '#/lib/supabase'
 import {
   type AdminQuizDetail,
@@ -16,10 +26,6 @@ type EditorItem = {
   description: string
   image_url: string
 }
-
-const inputClass =
-  'w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-sm text-[var(--text)] outline-none focus:border-[var(--blue)]'
-const labelClass = 'mb-1 block text-xs font-semibold text-[var(--text-muted)]'
 
 function newItem(): EditorItem {
   return {
@@ -237,7 +243,7 @@ export function QuizEditor({
                     setDragOver(null)
                     handleFile(item.key, imageFrom(e.dataTransfer))
                   }}
-                  className={`flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg bg-[var(--chip-bg)] outline-none ring-[var(--blue)] focus:ring-2 ${
+                  className={`${placeholderBox} h-24 w-24 overflow-hidden outline-none ring-[var(--blue)] hover:border-[var(--blue)] focus-visible:ring-2 ${
                     dragOver === item.key ? 'ring-2' : ''
                   }`}
                 >
@@ -313,7 +319,7 @@ export function QuizEditor({
                   aria-label="Move up"
                   onClick={() => moveItem(index, -1)}
                   disabled={index === 0}
-                  className="rounded border border-[var(--border)] px-2 py-0.5 disabled:opacity-30"
+                  className={iconButton}
                 >
                   ↑
                 </button>
@@ -322,7 +328,7 @@ export function QuizEditor({
                   aria-label="Move down"
                   onClick={() => moveItem(index, 1)}
                   disabled={index === items.length - 1}
-                  className="rounded border border-[var(--border)] px-2 py-0.5 disabled:opacity-30"
+                  className={iconButton}
                 >
                   ↓
                 </button>
@@ -332,7 +338,7 @@ export function QuizEditor({
                   onClick={() =>
                     setItems((prev) => prev.filter((i) => i.key !== item.key))
                   }
-                  className="rounded border border-[var(--border)] px-2 py-0.5 text-red-600"
+                  className={`${iconButton} text-red-600 dark:text-red-400`}
                 >
                   ✕
                 </button>
@@ -345,7 +351,7 @@ export function QuizEditor({
         type="button"
         data-testid="quiz-add-item"
         onClick={() => setItems((prev) => [...prev, newItem()])}
-        className="mt-3 rounded-full border border-[var(--border)] px-4 py-1.5 text-sm font-semibold text-[var(--text)]"
+        className={`mt-3 ${secondaryButton}`}
       >
         + Add item
       </button>
@@ -377,7 +383,7 @@ export function QuizEditor({
           type="submit"
           disabled={!canSave || save.isPending}
           data-testid="quiz-save"
-          className="rounded-full bg-[var(--blue-deep)] px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          className={primaryButton}
         >
           {save.isPending ? 'Saving…' : 'Save quiz'}
         </button>
@@ -392,14 +398,14 @@ export function QuizEditor({
                   type="button"
                   onClick={() => remove.mutate()}
                   disabled={remove.isPending}
-                  className="rounded-full bg-red-600 px-4 py-1.5 text-sm font-semibold text-white"
+                  className={dangerButton}
                 >
                   Delete
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmDelete(false)}
-                  className="rounded-full border border-[var(--border)] px-4 py-1.5 text-sm"
+                  className={secondaryButton}
                 >
                   Cancel
                 </button>
@@ -408,7 +414,7 @@ export function QuizEditor({
               <button
                 type="button"
                 onClick={() => setConfirmDelete(true)}
-                className="rounded-full border border-red-500/40 px-4 py-1.5 text-sm font-semibold text-red-600"
+                className={dangerOutlineButton}
               >
                 Delete quiz
               </button>
